@@ -6,7 +6,7 @@ Wikipedia: -ling, an English diminutive suffix
 
 The easy way is to use pre-built binaries:
 
-1. Grab the archive named ling-[version].tar.gz.
+1. Grab the archive named ling-&lt;version&gt;.tar.gz.
 
 1. Extract it locally. This creates directory &lt;path&gt;/ling.
 
