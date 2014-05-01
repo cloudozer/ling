@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<meta name="latexinput" content="mmd-article-header"/>
+	<title>MUMBLE: Shared secret-based authentication for Erlang on Xen    
+Request for Comments
+v0.9</title>
+	<meta name="author" content="Maxim Kharchenko"/>
+	<meta name="date" content="December 19, 2012"/>
+	<meta name="copyright" content="2012, Cloudozer LLP. All Rights Reserved."/>
+	<meta name="latexmode" content="memoir"/>
+	<meta name="latexinput" content="mmd-article-begin-doc"/>
+	<meta name="latexfooter" content="mmd-memoir-footer"/>
+	<link type="text/css" rel="stylesheet" href="mmd.css"/>
+</head>
+<body>
+
+<h2 id="purpose">Purpose</h2>
+
+<p>The purpose of the scheme described here &#8212; MUMBLE &#8212; is to authenticate 9p
+connections between Erlang on Xen nodes running 9P2000.e protocol. MUMBLE is
+inspired by a MUNGE authentication scheme <a class="citation" href="#fn:1" title="Jump to citation">[1]<span class="citekey" style="display:none">munge</span></a>.</p>
+
+<h2 id="overview">Overview</h2>
+
+<p>All nodes of the Erlang on Xen cluster share a secret key. The secret key is
+passed on from parent to child nodes.</p>
+
+<p>When a node establishes a 9p connection to another node, it issues a TAuth
+message and the write a single MUMBLE message to the Afid. The MUMBLE message
+contains the node and group ids of the originating node authenicated by MAC
+based on the secret key. A correct MAC confirms that the message was encoded by
+the node belonging to the same Erlang on Xen cluster. The recieving node then
+decides whether to grant access based on the provided credentials.</p>
+
+<p>The MUMBLE message also carries a session key that may be used for
+reestablishing 9p connections when a transport connection is lost. Additional
+information may be encoded in the Extra field.</p>
+
+<h2 id="amumblemessage">A MUMBLE message</h2>
+
+<p>A MUMBLE message can be represented in binary or textual format. The binary
+encoding of a MUMBLE message is given below. The number encoding is
+<strong>little-endian</strong> (LSB).</p>
+
+<table>
+<colgroup>
+<col style="text-align:right;"/>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:right;">Size</th>
+	<th style="text-align:left;">Description</th>
+	<th style="text-align:left;">Notes</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:right;">2</td>
+	<td style="text-align:left;">Version number</td>
+	<td style="text-align:left;">0x0100</td>
+</tr>
+<tr>
+	<td style="text-align:right;">20</td>
+	<td style="text-align:left;">MAC</td>
+	<td style="text-align:left;">HMAC-SHA1 of the entire message</td>
+</tr>
+<tr>
+	<td style="text-align:right;">8</td>
+	<td style="text-align:left;">Session key</td>
+</tr>
+<tr>
+	<td style="text-align:right;">4</td>
+	<td style="text-align:left;">Time encoded</td>
+	<td style="text-align:left;">time_t</td>
+</tr>
+<tr>
+	<td style="text-align:right;">4</td>
+	<td style="text-align:left;">Time to live</td>
+	<td style="text-align:left;">in seconds</td>
+</tr>
+<tr>
+	<td style="text-align:right;">2</td>
+	<td style="text-align:left;">L1</td>
+</tr>
+<tr>
+	<td style="text-align:right;">L1</td>
+	<td style="text-align:left;">Node id</td>
+	<td style="text-align:left;">e.g. &#8220;550e8400-e29b&#8211;41d4-a716&#8211;446655440000&#8221;</td>
+</tr>
+<tr>
+	<td style="text-align:right;">2</td>
+	<td style="text-align:left;">L2</td>
+</tr>
+<tr>
+	<td style="text-align:right;">L2</td>
+	<td style="text-align:left;">Group id</td>
+	<td style="text-align:left;">e.g. &#8220;swarm1&#8221;</td>
+</tr>
+<tr>
+	<td style="text-align:right;">4</td>
+	<td style="text-align:left;">L3</td>
+</tr>
+<tr>
+	<td style="text-align:right;">L3</td>
+	<td style="text-align:left;">Extra</td>
+</tr>
+</tbody>
+</table>
+<dl>
+<dt>Version</dt>
+<dd>A version of the MUMBLE message, must be 0x0100.</dd>
+
+<dt>MAC</dt>
+<dd>A authentication code produced by running HMAC-SHA1 algorithm on the entire
+ message when MAC field itself is set to zeros.</dd>
+
+<dt>Session key</dt>
+<dd>The identifier of the current session. The session key can be set to all
+ zeros to waive the possibility of reestablishing a session.</dd>
+
+<dt>Time endcoded and time to live</dt>
+<dd>The moment of time (Unix timestamp) when the message was encoded and the
+ number of seconds the message should be considered valid. Not used.</dd>
+
+<dt>Node and group ids</dt>
+<dd>The node and group identifiers of the originating node. Typically the
+ authorization depends on whether the group id matches the group of the
+ receiving node.</dd>
+
+<dt>Extra</dt>
+<dd>Any additional information.</dd>
+</dl>
+
+
+<p>The textual representation of the MUMBLE message can be obtained by
+base64-encoding of the binary format, prepending a string &#8220;MUMBLE:&#8221; to the
+beginning of the string and &#8220;:&#8221; to its end.</p>
+
+<h2 id="limitations">Limitations</h2>
+
+<p>MUMBLE messages are not encrypted. It is assumed that the cluster uses a
+secure private network most of the time. For inter-datacenter communications, 9p
+connections should use an encrypted tunnel, protecting MUMBLE messages along the
+way.</p>
+
+<div class="footnotes">
+<hr />
+<ol>
+
+<li id="fn:1" class="citation"><span class="citekey" style="display:none">munge</span><p>MUNGE project (http://code.google.com/p/munge/).</p>
+</li>
+
+</ol>
+</div>
+
+
+</body>
+</html>

@@ -1,0 +1,2 @@
+code:add_pathz("/home/mk/otp/lib/test_server/ebin").
+ct:run_test([{suite,"/home/mk/otp/erts/emulator/test/estone_SUITE"},{testcase,estone},{logdir,"/home/mk/ling/t2"},{auto_compile,false}]).

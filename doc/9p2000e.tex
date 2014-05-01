@@ -1,0 +1,112 @@
+\input{mmd-article-header}
+\def\mytitle{9P2000 Protocol Erlang Extention    \\
+v0.1}
+\def\myauthor{Maxim Kharchenko}
+\def\mydate{December 17, 2012}
+\def\mycopyright{2012, Cloudozer LLP. All Rights Reserved.}
+\def\latexmode{memoir}
+\input{mmd-article-begin-doc}
+\chapter{Abstract}
+\label{abstract}
+
+TODO
+
+\begin{center}\rule{3in}{0.4pt}\end{center}
+
+
+\chapter{Notation}
+\label{notation}
+
+The key words ``MUST'', ``MUST NOT'', ``REQUIRED'', ``SHALL'', ``SHALL NOT'', ``SHOULD'',
+``SHOULD NOT'', ``RECOMMENDED'', ``MAY'', ``OPTIONAL'' in this document should be
+interpreted as described in ~\citep{RFC2119}.
+
+\chapter{Introduction}
+\label{introduction}
+
+Erlang on Xen makes extensive use of 9p protocol for a multitude of tasks,
+including code loading, storage access, node monitoring, message passing, etc.
+In most cases, the standard semantics of the protocol is enough. However, in a
+few cases limitations of the protocol gets in the way.\begin{description}
+
+\item[Dropped transport connections]
+
+9p connections are tightly coupled to the underlying transport (TCP)
+ connections. The loss of TCP connection --- a frequent occurence during
+ instance migration --- means that all Fids are lost.
+
+\item[Simple operations too chatty]
+
+A simple operation, such as writing ``0'' to a synthetic file, require
+ multiple network roundtrips: walk to file, open Fid, write data, clunk Fid.
+ This makes many administrative tasks noticably slow.
+\end{description}
+
+The 9p protocol extension --- 9P2000.e --- is introduced to address these two
+issues. Erlang on Xen use this protocol version for internode communications.
+
+\chapter{Overview}
+\label{overview}
+
+9P2000.e is the extension of 9P2000 protocol ~\citep{9P2000}. It adds several new
+protocol operations as described below. Semantics of standard protocol
+operations are left unchanged.
+
+A new operation --- session --- establishes a session identifier and allows
+reestablishing sessions over a new transport connection without automatic
+clunking of all Fids.
+
+The protocol extension adds a few new operations that act as macro-operations of
+frequently used sequences.
+
+The server that implements 9P2000.e should fall back gracefully to use 9P2000
+protocol by disable the newly introduced operations.
+
+\chapter{New messages}
+\label{newmessages}
+
+\begin{adjustwidth}{2.5em}{2.5em}
+\begin{verbatim}
+
+size[4] Tsession tag[2] node[s] group[s] key[4]
+
+TODO
+
+\end{verbatim}
+\end{adjustwidth}
+
+\chapter{New operations}
+\label{newoperations}
+
+\section{session - announce\slash reestablish a session}
+\label{session-announcereestablishasession}
+
+SYNOPSIS
+
+\begin{adjustwidth}{2.5em}{2.5em}
+\begin{verbatim}
+
+size[4] Tsession tag[2] node[s] group[s] key[4]
+
+\end{verbatim}
+\end{adjustwidth}
+
+DESCRIPTION
+
+\begin{thebibliography}{0}
+
+\bibitem{RFC2119}
+Bradner, S., ``Key words for use in RFCs to Indicate Requirement
+Levels,'' BCP 14, RFC 2119, March 1997.
+
+
+\bibitem{9P2000}
+9P2000 Protocol Specification, Plan 9 Manual Section 5
+(http:/\slash man.cat-v.org\slash plan\_9\slash 5\slash ).
+
+
+\end{thebibliography}
+
+\input{mmd-memoir-footer}
+
+\end{document}

@@ -1,0 +1,385 @@
+#
+#	Builtin functions
+#
+#####################
+
+# bif_re.c
+re:compile(Re)			cbif_re_compile1
+re:compile(Re,Opts)		cbif_re_compile2
+re:run(Subj,Re)			cbif_re_run2
+re:run(Subj,Re,Opts)	cbif_re_run3
+
+# bif_ets.c
+ets:all()					cbif_ets_all0
+ets:new(Name,Opts)			cbif_ets_new2
+ets:delete(Tab)				cbif_ets_delete1
+ets:delete(Tab,Key)			cbif_ets_delete2
+ets:delete_object(Tab,Obj)	cbif_ets_delete_object2
+ets:delete_all_objects(Tab)	cbif_ets_delete_all_objects1
+ets:first(First)			cbif_ets_first1
+ets:info(Tab)				cbif_ets_info1
+ets:info(Tab,Item)			cbif_ets_info2
+ets:safe_fixtable(Tab,Flag)			cbif_ets_safe_fixtable2
+ets:lookup(Tab,Key)					cbif_ets_lookup2
+ets:lookup_element(Tab,Key,Pos)		cbif_ets_lookup_element3
+ets:insert(Tab,Objs)			cbif_ets_insert2
+ets:insert_new(Tab,Objs)		cbif_ets_insert_new2
+ets:is_compiled_ms(Term)	cbif_ets_is_compiled_ms1
+ets:last(Tab)				cbif_ets_last1
+ets:member(Tab,Key)		cbif_ets_member2
+ets:next(Tab,Key1)		cbif_ets_next2
+ets:prev(Tab,Key)		cbif_ets_prev2
+ets:rename(Tab,Name)	cbif_ets_rename2
+ets:slot(Tab,I)			cbif_ets_slot2
+ets:match(Cont)			cbif_ets_match1
+ets:match(Tab,Pat)		cbif_ets_match2
+ets:match(Tab,Pat,Lim)	cbif_ets_match3
+ets:match_object(Cont)				cbif_ets_match_object1
+ets:match_object(Tab,Pat)			cbif_ets_match_object2
+ets:match_object(Tab,Pat,Lim)		cbif_ets_match_object3
+ets:match_spec_compile(Ms)			cbif_ets_match_spec_compile1
+ets:match_spec_run_r(List,Ms,Opts)	cbif_ets_match_spec_run_r3
+ets:select(Cont)			cbif_ets_select1
+ets:select(Tab,Ms)			cbif_ets_select2
+ets:select(Tab,Ms,Lim)		cbif_ets_select3
+ets:select_count(Tab,Ms)	cbif_ets_select_count2
+ets:select_reverse(Cont)		cbif_ets_select_reverse1
+ets:select_reverse(Tab,Ms)		cbif_ets_select_reverse2
+ets:select_reverse(Tab,Ms,Lim)	cbif_ets_select_reverse3
+ets:select_delete(Tab,Ms)		cbif_ets_select_delete2
+ets:setopts(Tab,Opts)			cbif_ets_setopts2
+ets:update_counter(Tab,Key,Op)		cbif_ets_update_counter3
+ets:update_element(Tab,Key,What)	cbif_ets_update_element3
+ets:give_away(Tab,Pid,GiftData)		cbif_ets_give_away3
+
+# bif_proc.c
+erlang:process_flag(Flag,Value) 		cbif_process_flag2
+erlang:process_flag(Pid,Flag,Value)		cbif_process_flag3
+erlang:process_info(Pid,Item)			cbif_process_info2
+erlang:group_leader()					cbif_group_leader0
+erlang:group_leader(Leader,Pid)			cbif_group_leader2
+erlang:is_process_alive(Pid)			cbif_is_process_alive1
+erlang:garbage_collect()				cbif_garbage_collect0
+erlang:garbage_collect(Pid)				cbif_garbage_collect1
+
+# erlang:error/1 etc have separate opcodes after specialization analysis. They
+# have special cases in proc_main() and stubs in erlang.erl to enable indirect
+# calls. Thus there is no need to implement them in bif_*.c. '@' in the
+# implementation column says just this. Moreover, it is not possible to
+# implement error/2 or raise/3 as a standalone BIF.
+
+erlang:throw(Reason)				@
+erlang:exit(Reason)					@
+erlang:exit(Pid,Reason)				@
+erlang:error(Reason)				@
+erlang:error(Reason,Args)			@
+erlang:raise(Class,Reason,STrace)	@
+
+erlang:get_stacktrace()		cbif_get_stacktrace0
+
+erlang:spawn(Module,Function,Args)			cbif_spawn3
+erlang:spawn_link(Module,Function,Args)		cbif_spawn_link3
+erlang:spawn_monitor(Module,Function,Args)	cbif_spawn_monitor3
+erlang:spawn(Fun)							cbif_spawn1
+erlang:spawn_link(Fun)						cbif_spawn_link1
+erlang:spawn_monitor(Fun)					cbif_spawn_monitor1
+
+erlang:monitor(Type,Item)		cbif_monitor2
+erlang:demonitor(MRef)			cbif_demonitor1
+
+erlang:link(Pid)		cbif_link1
+erlang:unlink(Pid)		cbif_unlink1
+
+erlang:set_dictionary$(Dict)	cbif_set_dictionary1
+erlang:get_dictionary$()		cbif_get_dictionary0
+
+# bif_sys.c
+erlang:system_flag(Flag,Value)		cbif_system_flag2
+
+erlang:statistics(What)				cbif_statistics1
+erlang:memory(Type)					cbif_memory1
+
+erlang:processes()			cbif_processes0
+erlang:ports()				cbif_ports0
+erlang:registered()			cbif_registered0
+
+erlang:register(Name,Pid)			cbif_register2
+erlang:unregister(Name)				cbif_unregister1
+erlang:whereis(Name)				cbif_whereis1
+
+erlang:display(Term)				cbif_display1
+erlang:process_display(Pid,Type)	cbif_process_display2
+
+erlang:loaded()					cbif_loaded0
+erlang:pre_loaded()				cbif_pre_loaded0
+erlang:module_loaded(Mod)		cbif_module_loaded1
+erlang:load_module$(Mod,Bin)		cbif_load_module2
+erlang:delete_module(Module)	cbif_delete_module1
+erlang:check_old_code(Module)	cbif_check_old_code1
+erlang:check_process_code(Pid,Module)	cbif_check_process_code2
+erlang:purge_module(Module)		@
+
+erlang:get_module_info(Mod,What)			cbif_get_module_info2
+erlang:function_exported(Mod,Func,Arity)	cbif_function_exported3
+
+erlang:fun_info(Fun)			cbif_fun_info1
+erlang:fun_info(Fun,What)		cbif_fun_info2
+
+erlang:halt$(Status,Flush)		cbif_halt2
+
+erlang:now()				cbif_now0
+erlang:date()				cbif_date0
+erlang:time()				cbif_time0
+erlang:localtime()			cbif_localtime0
+erlang:universaltime()		cbif_universaltime0
+
+file:native_name_encoding()	cbif_native_name_encoding0
+
+erlang:start_timer(Time,Dest,Msg)	cbif_start_timer3
+erlang:send_after(Time,Dest,Msg)	cbif_send_after3
+erlang:cancel_timer(TRef)			cbif_cancel_timer1
+erlang:read_timer(TRef)				cbif_read_timer1
+
+erlang:parent_node()	cbif_parent_node0
+erlang:node_group()		cbif_node_group0
+
+auth:set_secrets(S1,S2)	cbif_set_secrets2
+auth:secret1()			cbif_secret1_0
+auth:secret2()			cbif_secret2_0
+
+erlang:disk_info(Item)	cbif_disk_info1
+
+erlang:new_counter(Bits)			cbif_new_counter1
+erlang:read_counter(Ref)			cbif_read_counter1
+erlang:update_counter(Ref,Incr)		cbif_update_counter2
+erlang:release_counter(Ref)			cbif_release_counter1
+
+#bif_outlet.c
+erlang:port_info(Port,Item) 			cbif_port_info2
+erlang:port_open(Drv,BitOpts)			cbif_port_open2
+erlang:port_is_busy(Port)				cbif_port_is_busy1
+erlang:port_control(Port,Op,Data)		cbif_port_control3
+
+erlang:port_set_data(Port,Data)			cbif_port_set_data2
+erlang:port_get_data(Port)				cbif_port_get_data1
+
+erlang:decode_packet$(Type,Bin,PackSize,LineLen)	cbif_decode_packet4
+
+lwip:setup(IpAddr,NetMask,Gateway,Dhcp)		cbif_setup4
+
+# bif_ling.c
+ling:b1()					cbif_b1_0
+ling:b2()					cbif_b2_0
+ling:b3()					cbif_b3_0
+
+ling:trace(Mask)		cbif_trace1
+ling:trace(Mask,Module)	cbif_trace2
+
+ling:profile(Flag)		cbif_profile1
+ling:profile_display()	cbif_profile_display0
+
+ling:experimental(What,Arg)			cbif_experimental2
+
+lwip:stats()			cbif_stats0
+
+# bif_hash.c
+erlang:hash(Term,Range)		cbif_hash2
+erlang:phash(Term,Range)	cbif_phash2
+erlang:phash2(Term)			cbif_phash2_1
+erlang:phash2(Term,Range)	cbif_phash2_2
+
+erlang:md5(Data)				cbif_md5_1
+erlang:md5_init()				cbif_md5_init0
+erlang:md5_update(Ctx,IoData)	cbif_md5_update2
+erlang:md5_final(Ctx)			cbif_md5_final1
+
+erlang:crc32(Old,Data)				cbif_crc32_2
+erlang:crc32_combine(Fst,Sec,Sz)	cbif_crc32_combine3
+
+# bif_generic.c
+erlang:is_binary(Binary)	bif_is_binary1
+erlang:is_bitstring(Bits)	bif_is_bitstring1
+erlang:is_list(List)		bif_is_list1
+erlang:is_integer(N)		bif_is_integer1
+erlang:is_float(N)			bif_is_float1
+erlang:is_number(N)			bif_is_number1
+erlang:is_atom(Atom)		bif_is_atom1
+erlang:is_boolean(Fun)		bif_is_boolean1
+erlang:is_tuple(Tuple)		bif_is_tuple1
+erlang:is_function(Fun)			bif_is_function1
+erlang:is_function(Fun,Arity)	bif_is_function2
+erlang:is_pid(Pid)			bif_is_pid1
+erlang:is_port(Port)		bif_is_port1
+erlang:is_reference(Pid)	bif_is_reference1
+
+erlang:and(A,B)				bif_and2
+erlang:or(A,B)				bif_or2
+erlang:not(A)				bif_not1
+
+erlang:<(A,B)				bif_less2
+erlang:>(A,B)				bif_more2
+erlang:=<(A,B)				bif_less_eq2
+erlang:>=(A,B)				bif_more_eq2
+erlang:=:=(A,B)				bif_eq_exact2
+erlang:==(A,B)				bif_eq2
+erlang:=/=(A,B)				bif_ne_exact2
+erlang:/=(A,B)				bif_ne2
+
+erlang:length(List)			gc_bif_length1
+erlang:size(TupleBin)		bif_size1
+erlang:tuple_size(Tuple)	bif_tuple_size1
+erlang:byte_size(Bin)		gc_bif_byte_size1
+erlang:bit_size(Bin)		gc_bif_bit_size1
+
+erlang:float(Value)			gc_bif_float1
+erlang:trunc(Value)			gc_bif_trunc1
+erlang:round(Value)			gc_bif_round1
+
+erlang:abs(Value)			gc_bif_abs1
+
+erlang:pid_to_list(Pid)			cbif_pid_to_list1
+erlang:list_to_pid(List)		cbif_list_to_pid1
+erlang:fun_to_list(Fun)			cbif_fun_to_list1
+erlang:port_to_list(Port)		cbif_port_to_list1
+erlang:ref_to_list(Ref)			cbif_ref_to_list1
+erlang:list_to_atom(List)		cbif_list_to_atom1
+erlang:list_to_existing_atom(List)	cbif_list_to_existing_atom1
+erlang:atom_to_list(Atom)		cbif_atom_to_list1
+erlang:integer_to_list(Int)		cbif_integer_to_list1
+erlang:list_to_float(List)	 	cbif_list_to_float1
+erlang:float_to_list(Float) 	cbif_float_to_list1
+erlang:binary_to_list(Bin)				cbif_binary_to_list1
+erlang:binary_to_list(Bin,Start,Stop)	cbif_binary_to_list3
+erlang:bitstring_to_list(Bin)	cbif_bitstring_to_list1
+erlang:list_to_binary(List)		cbif_list_to_binary1
+erlang:list_to_bitstring(List)	cbif_list_to_bitstring1
+
+string:to_integer(N)			cbif_to_integer1
+
+erlang:binary_to_term$(Bin,Safe)		cbif_binary_to_term0_2
+erlang:term_to_binary$(Term,Comp,Ver)	cbif_term_to_binary0_3
+erlang:external_size$(Term,Ver)			cbif_external_size0_2
+
+erlang:tuple_to_list(Tuple)			cbif_tuple_to_list1
+erlang:list_to_tuple(List)			cbif_list_to_tuple1
+
+erlang:iolist_to_binary(IoList)		cbif_iolist_to_binary1
+erlang:iolist_size(IoList)			cbif_iolist_size1
+
+erlang:split_binary(N,Bin)		cbif_split_binary2
+
+erlang:binary_part(Bin,PosLen)		gc_bif_binary_part2
+erlang:binary_part(Bin,Pos,Len)		gc_bif_binary_part3
+
+erlang:++(List1,List2)				cbif_plusplus2
+erlang:--(List1,List2)				cbif_minusminus2
+
+erlang:hd(List)				bif_hd1
+erlang:tl(List)				bif_tl1
+erlang:element(N,Tuple)		bif_element2
+
+erlang:setelement(N,Tuple,Value)	cbif_setelement3
+
+erlang:make_tuple(N,InitValue)				cbif_make_tuple2
+erlang:make_tuple(N,DefValue,InitList)		cbif_make_tuple3
+erlang:append_element(Tuple,Elem)			cbif_append_element2
+
+erlang:make_ref()				cbif_make_ref0
+
+erlang:node(Thing)			bif_node1
+
+math:sin(X)			cbif_sin1
+math:cos(X)			cbif_cos1
+math:tan(X)			cbif_tan1
+math:asin(X)		cbif_asin1
+math:acos(X)		cbif_acos1
+math:atan(X)		cbif_atan1
+math:atan2(X,Y)		cbif_atan2_2
+math:sinh(X)		cbif_sinh1
+math:cosh(X)		cbif_cosh1
+math:tanh(X)		cbif_tanh1
+math:asinh(X)		cbif_asinh1
+math:acosh(X)		cbif_acosh1
+math:atanh(X)		cbif_atanh1
+math:exp(X)			cbif_exp1
+math:log(N)			cbif_log1
+math:log10(N)		cbif_log10_1
+math:pow(X,Y)		cbif_pow2
+math:sqrt(X)		cbif_sqrt1
+math:erf(X)			cbif_erf1
+math:erfc(X)		cbif_erfc1
+
+#bif_binary.c
+binary:compile_pattern(Pat)			cbif_compile_pattern1
+binary:match(Subj,Pat)				cbif_match2
+binary:match(Subj,Pat,Opts)			cbif_match3
+binary:matches(Subj,Pat)			cbif_matches2
+binary:matches(Subj,Pat,Opts)		cbif_matches3
+binary:longest_common_prefix(Bins)	cbif_longest_common_prefix1	
+binary:longest_common_suffix(Bins)	cbif_longest_common_suffix1
+binary:first(Subj)					cbif_first1
+binary:last(Subj)					cbif_last1
+binary:at(Subj,Pos)					cbif_at2
+binary:part(Subj,PosLen)			cbif_part2
+binary:part(Subj,Pos,Len)			cbif_part3
+binary:bin_to_list(Subj)			cbif_bin_to_list1
+binary:bin_to_list(Subj,PosLen)		cbif_bin_to_list2
+binary:bin_to_list(Subj,Pos,Len)	cbif_bin_to_list3
+binary:list_to_bin(List)			cbif_list_to_bin1
+binary:copy(Subj)					cbif_copy1
+binary:copy(Subj,N)					cbif_copy2
+binary:referenced_byte_size(Bin)	cbif_referenced_byte_size1
+binary:decode_unsigned(Unsig)		cbif_decode_unsigned1
+binary:decode_unsigned(Unsig,End)	cbif_decode_unsigned2
+
+binary:embedded_buckets()					cbif_embedded_buckets0
+binary:list_embedded(Bucket)				cbif_list_embedded1
+binary:embedded_size(Bucket,Name)			cbif_embedded_size2
+binary:embedded_part(Bucket,Name,Pos,Len)	cbif_embedded_part4
+binary:embedded_part(Bucket,Name,PosLen)	cbif_embedded_part3
+binary:lookup_embedded(Name)				cbif_lookup_embedded1
+
+# for LINC
+binary:ip_checksum(Hdr)				cbif_ip_checksum1
+
+#bif_unicode.c
+unicode:bin_is_7bit(Bin)							cbif_bin_is_7bit1
+unicode:characters_to_list(Chars,InEnc)				cbif_characters_to_list2
+unicode:characters_to_binary(Chars,InEnc,OutEnc)	cbif_characters_to_binary3
+
+net_kernel:dflag_unicode_io(Pid)					cbif_dflag_unicode_io1
+
+io:printable_range()		cbif_printable_range0
+
+#bif_list.c
+lists:member(Elem,List)				cbif_member2
+lists:reverse(Ls,Hs)				cbif_reverse2
+lists:keymember(Key,N,TupleList)	cbif_keymember3
+lists:keysearch(Key,N,TupleList)	cbif_keysearch3
+lists:keyfind(Key,N,TupleList)		cbif_keyfind3
+
+#bif_crypto.c
+crypto:md5(Data)				cbif_md5_1
+crypto:md5_init()				cbif_md5_init0
+crypto:md5_update(Ctx,IoData)	cbif_md5_update2
+crypto:md5_final(Ctx)			cbif_md5_final1
+
+crypto:sha(Data)				cbif_sha1
+crypto:sha_init()				cbif_sha_init0
+crypto:sha_update(Ctx,Data)		cbif_sha_update2
+crypto:sha_final(Ctx)			cbif_sha_final1
+
+crypto:md5_mac_n(Key,Data,Size)		cbif_md5_mac_n3
+crypto:sha_mac_n(Key,Data,Size)		cbif_sha_mac_n3
+crypto:sha224_mac_n(Key,Data,Size)	cbif_sha224_mac_n3
+crypto:sha256_mac_n(Key,Data,Size)	cbif_sha256_mac_n3
+crypto:sha384_mac_n(Key,Data,Size)	cbif_sha384_mac_n3
+crypto:sha512_mac_n(Key,Data,Size)	cbif_sha512_mac_n3
+
+crypto:aes_cbc_crypt(Key,IVec,Data,Dir)		cbif_aes_cbc_crypt4
+
+crypto:rand_bytes(N)		cbif_rand_bytes1
+crypto:exor(Bin1,Bin2)		cbif_exor2
+
+#EOF
+

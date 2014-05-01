@@ -1,0 +1,28 @@
+
+\documentclass{article}
+
+\title{Memory Management}
+
+\begin{document}
+\maketitle
+
+\section{Start of Day}
+
+\begin{table}[htbp]
+\caption{Memory Layout}
+\begin{tabular}{|c|c|l|}
+
+\hline
+Start & Size & Description \\
+\hline
+0x0000 & 1 & \_start \\
+0x1000 & 1 & hypercall\_page \\
+0x2000 & 1 & shared\_info \\
+0x3000 & 1 & grant\_table \\
+0x4000 & 1 & hypervisor\_callback, failsafe\_callback \\
+\hline
+
+\end{tabular}
+\end{table}
+
+\end{document}

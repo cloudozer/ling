@@ -1,0 +1,6 @@
+
+Modified of rewritten portions of Erlang/OTP.
+
+These directories are embedded into the image and mounted on top of standard
+directories to replace implementations of same-name moduels.
+

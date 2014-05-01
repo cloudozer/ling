@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<meta name="copyright" content="2013, Cloudozer LLP. All Rights Reserved."/>
+	<meta name="latexmode" content="memoir"/>
+	<meta name="latexinput" content="mmd-article-begin-doc"/>
+	<meta name="latexfooter" content="mmd-memoir-footer"/>
+	<link type="text/css" rel="stylesheet" href="mmd.css"/>
+</head>
+<body>
+
+<h2 id="background">Background</h2>
+
+<p>The primary way for packaging an Erlang application with LING virtual ine is to
+use a build service. The build service publishes a REST interface that exposes
+most of its operations. </p>
+
+<p>The build workflow is further simplified by a plugin to the standard Erlang
+build tool &#8211; rebar. The plugin is called ling_builder. ling_builder relies
+exclusively of the facilities of the build service API.</p>
+
+<p>The purpose of the present document is to document the build service API and the
+configuration of the ling_builder plugin. The design goal of the plugin and the
+API is to simplify the workflow, make it as natural as possible.</p>
+
+<p>The document should be kept in sync with the contents of the Erlang on Xen build
+service website <a class="citation" href="#fn:1" title="Jump to citation">[1]<span class="citekey" style="display:none">lbs</span></a>.</p>
+
+<h2 id="restapi">REST API</h2>
+
+<p>A user must register before using the API. The credentials are passed along with
+requests using the basic HTTP authentication. Consequently, the build service is
+accessed over HTTPS only.</p>
+
+<p>The primary data format is JSON. Most requests will also provide sensible
+textual representation, if Accept header is set to &#8216;text/plain&#8217;.</p>
+
+<h3 id="get1about">GET /1/about</h3>
+
+<p>Returns a descriptive string about the service including its version. No
+authorization required.</p>
+
+<h3 id="get1stats">GET /1/stats</h3>
+
+<p>Returns the current service statistics. For JSON requests, the service returns a
+JSON object with the following fields:</p>
+<dl>
+<dt>num_users</dt>
+<dd>the total number of users registered;</dd>
+
+<dt>num_projs</dt>
+<dd>the total number of projectes created;</dd>
+
+<dt>num_builds</dt>
+<dd>the total number of successful builds;</dd>
+
+<dt>cur_queue_len</dt>
+<dd>the current length of the build queue;</dd>
+
+<dt>avg_queue_len</dt>
+<dd>the average length of the build queue;</dd>
+
+<dt>avg_build_time</dt>
+<dd>the average build time across projects in seconds.</dd>
+</dl>
+
+
+<p>The textual response is the concatenation of field values using a pipe (|)
+character. The order of the fields is as follows: num_users, num_projs,
+num_builds, cur_queue_len, avg_queue_len, avg_build_time. The request does not
+require authorization.</p>
+
+<h3 id="get1status">GET /1/status</h3>
+
+<p>Returns the current status of the service. For JSON requests, a number is
+returned.</p>
+
+<table>
+<colgroup>
+<col style="text-align:right;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:right;">Status</th>
+	<th style="text-align:left;">Meaning</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:right;">0</td>
+	<td style="text-align:left;">idle</td>
+</tr>
+<tr>
+	<td style="text-align:right;">1</td>
+	<td style="text-align:left;">building</td>
+</tr>
+<tr>
+	<td style="text-align:right;">99</td>
+	<td style="text-align:left;">down</td>
+</tr>
+</tbody>
+</table>
+<p>For textual requests, the service returns a descriptive string. The request does
+not require authorization.</p>
+
+<h3 id="post1users">POST /1/users</h3>
+
+<p>Creates a new user. The body of the request is a JSON object describing the
+user. The following three fields must be present: user_name, email, password.
+The request does not require authorization.</p>
+
+<h3 id="get1usersuser_name">GET /1/users/user_name</h3>
+
+<p>Retrieves information about the user. The only bit of information returned by
+the call is the user&#8217;s email.</p>
+
+<h3 id="put1usersuser_name">PUT /1/users/user_name</h3>
+
+<p>Updates the user information. The body is a JSON object that may contain the
+following fields: email, password.</p>
+
+<h3 id="delete1usersuser_name">DELETE /1/users/user_name</h3>
+
+<p>Removes the user from the build service. All project uploaded by the users are
+deleted along with the user information.</p>
+
+<h3 id="put1projectsproj_name">PUT /1/projects/proj_name</h3>
+
+<p>Creates a new project for the user or updates files of the existing project. The
+project name may not contain characters other than letters, digits, and
+underscores. The body of the request is the project archive. It must have a MIME
+type of &#8216;application/zip&#8217;.</p>
+
+<p>Typically, most of the project files are .beam modules. They are automatically
+renamed into .ling modules and transformed accordingly. All files from the
+archive will be imported into the image. The directory structure from the
+project archive is preserved under the directory named after the project. For
+example, for the project named &#8216;sample1&#8217;, a file &#8216;priv/www/index.html&#8217; will be
+accessible by the application code as /sample1/priv/www/index.html&#8217;. </p>
+
+<h3 id="get1projectsproj_name">GET /1/projects/proj_name</h3>
+
+<p>Retrieves the project archive.</p>
+
+<h3 id="delete1projectsproj_name">DELETE /1/projects/proj_name</h3>
+
+<p>Removes the project including the cached images, if any.</p>
+
+<h3 id="get1projects">GET /1/projects</h3>
+
+<p>Retrieves a list of projects created by the user. The list is a JSON list or a
+textual string that contains project names separated by pipe (|) character.</p>
+
+<h3 id="post1buildproj_name">POST /1/build/proj_name</h3>
+
+<p>Request the image build for the project. The cached image is removed upon the
+request.</p>
+
+<p>The body of the request may be empty or contain a JSON object with the following
+fields:</p>
+<dl>
+<dt>import_lib</dt>
+<dd>a list of standard libraries/applications to import. &#8216;kernel&#8217; and &#8216;stdlib&#8217; are
+auto-imported and must not be listed. Defaults to [].</dd>
+</dl>
+
+
+<p>If the body of the request is empty, default values for build parameters are
+assumed.</p>
+
+<h3 id="get1buildproj_nameimage">GET /1/build/proj_name/image</h3>
+
+<p>Retrieve the newly built (or cached) image.</p>
+
+<h3 id="get1buildproj_namestatus">GET /1/build/proj_name/status</h3>
+
+<p>Retrieve the status of the last build. The reply is a single integer value
+formatted as JSON:</p>
+
+<table>
+<colgroup>
+<col style="text-align:right;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:right;">Status</th>
+	<th style="text-align:left;">Meaning</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:right;">0</td>
+	<td style="text-align:left;">build incomplete/not started</td>
+</tr>
+<tr>
+	<td style="text-align:right;">1</td>
+	<td style="text-align:left;">build ok</td>
+</tr>
+<tr>
+	<td style="text-align:right;">99</td>
+	<td style="text-align:left;">build failed</td>
+</tr>
+</tbody>
+</table>
+<p>If the textual representation is requested a corresponding descriptive string is
+returned.</p>
+
+<h2 id="ling_builderplugin">ling_builder plugin</h2>
+
+<h3 id="pluginconfiguration">Plugin configuration</h3>
+
+<p>The ling_builder plugin is open source <a class="citation" href="#fn:2" title="Jump to citation">[2]<span class="citekey" style="display:none">plugin-repo</span></a>. To use it the following
+should be added to rebar.config:</p>
+
+<pre><code>{plugins,[ling_builder]}.
+
+{deps,[
+    {ling_builder,&quot;.*&quot;,
+            {git,&quot;git://github.com/maximk/ling_builder.git&quot;,&quot;master&quot;}}
+]}.
+
+{ling_builder_opts,[
+    ...
+    {Option,Value}
+    ...
+]}.     
+</code></pre>
+
+<p>The following plugin options are recognized:</p>
+<dl>
+<dt>build_host</dt>
+<dd>the location of the build service. Defaults to &#8220;build.erlangonxen.org:8080&#8221;.</dd>
+
+<dt>username</dt>
+<dd>a username registered with the build service.</dd>
+
+<dt>password</dt>
+<dd>a password associated with the username.</dd>
+
+<dt>import</dt>
+<dd>a miscellaneous file to add to the project archive. May contain wildcards,
+e.g. &#8220;priv/*/*&#8221;, and appear multiple times.</dd>
+
+<dt>import_lib</dt>
+<dd>a name of the standard library/application to import into the image. The
+corresponding modules and auxilliary files will be accessible at the standard
+location under /erlang/lib. May appear multiple times.</dd>
+</dl>
+
+
+<p>build_host, username and password are connection options. They are needed to
+find and access the build service.</p>
+
+<p>import option affects only the contents of the project archive. import_lib is
+the only option that is passed along in the body of the build request.</p>
+
+<h3 id="invokingling_builder">Invoking ling_builder</h3>
+
+<p>The ling_builder plugin adds a few subcommands to rebar.</p>
+
+<h4 id="rebarling-build">rebar ling-build</h4>
+
+<p>The subcommand traverses the project directories and compiles a list of files to
+include into the project archive. The project archive gets uploaded to the build
+service. Then a build request is issued.</p>
+
+<p>The subcommand returns either an error message or a message that the build
+request is enqueued successfully and the estimated time to build.</p>
+
+<h4 id="rebarling-image">rebar ling-image</h4>
+
+<p>Retrieves the image built (or cached from the previous build). The image is
+saved to a file named &#8216;vmling&#8217;. The subcommand may return an error if the image
+is not (yet) ready.</p>
+
+<h4 id="rebarling-build-image">rebar ling-build-image</h4>
+
+<p>Combines the effects of ling-build and ling-image. The subcommand starts the
+build process, waits for its completion, and retrieves the generated image.</p>
+
+<h2 id="lauchinganinstance">Lauching an instance</h2>
+
+<p>An application packaged with LING VM must be able to find its code modules as
+well as modules of standard libraries/applications it requires. This creates a
+bootstrapping problem. Some code modules must be embedded into the image
+(imported) because they are needed early in the boot process, when the ability
+to load code remotely is not yet available. Such modules constitute about 50% of
+kernel and stdlib applications.</p>
+
+<p>The trade-off chosen by Erlang on Xen is to import complete kernel and stdlib
+applications into the image. Thus no attempt at remote networking is made before
+the image boots to the command prompt.</p>
+
+<p>The compiled code of the project must be imported into the image too because it
+is the only way to transform .beam files into corresponding .ling and thus make
+the code runnable by LING VM. All other files may or may not be imported. Before
+launching the application remote filesystems may be mounted to get access to
+required files.</p>
+
+<p>A complete list of files to be imported must be known during the compile time.
+On the other hand, the information about remote filesystems may vary from one
+instance invocation to the other. Such information is passed to the instance
+using a command line.</p>
+
+<h3 id="buildtimeparameters">Build time parameters</h3>
+
+<p>All information needed for a successful image generation is the project archive
+that contains all project files to be imported into the image and the list of
+standard/libraries to import.</p>
+
+<p>The local 9p server and 9p mounter make the project files accessible under
+/&lt;project-name&gt; subtree, the code of the standard libraries/applications -
+under /erlang/lib.</p>
+
+<h3 id="commandlineparameters">Command line parameters</h3>
+
+<p>The command line parameters should configure security, networking, and remote
+filesystems. An empty command line should result in a sensible configuration of
+the node (without networking).</p>
+
+<h4 id="networkingparameters">Networking parameters</h4>
+
+<p>The preferred way to setup networking statically. This ensures the fastest
+startup. Alternatively, networking may be set up using DHCP. DHCP configuration
+is required by Amazon EC2.</p>
+<dl>
+<dt>-ipaddr <em>xxx.xxx.xxx.xxx</em></dt>
+<dd>A static ip address assigned to the external network interface.</dd>
+
+<dt>-netmask <em>xxx.xxx.xxx.xxx</em></dt>
+<dd>A network mask.</dd>
+
+<dt>-gateway <em>xxx.xxx.xxx.xxx</em></dt>
+<dd>A default network gateway address.</dd>
+
+<dt>-dhcp</dt>
+<dd>Requests DHCP configuration of the external network interface.</dd>
+</dl>
+
+
+<p>It must be possible to wait until the DHCP configuration is complete. This
+dictates implementation of the network configuration as an outlet.</p>
+
+<p>If any of the above options is present, then the external network interface is
+created and configured accordingly. Otherwise, the node starts without an
+external network interface.</p>
+
+<h3 id="remotefilesystems">Remote filesystems</h3>
+
+<p>Erlang on Xen accesses remote (and local) filesystems exclusively using 9p
+protocol. The standard 9p reexporting server available on Linux is called diod
+<a class="citation" href="#fn:3" title="Jump to citation">[3]<span class="citekey" style="display:none">diod</span></a>. 9p connections may be added/removed dynamically. The following
+describes how to configure initial 9p connections, which are created at the end
+of the boot sequence before starting applications.</p>
+<dl>
+<dt>&#8211;9p host[:port] attach_to mount_at &#8230;</dt>
+<dt>&#8211;9p- host[:port] attach_to mount_at &#8230;</dt>
+<dd>opens a 9p connection using the standard 9p_tcp transport to the host. Port
+defaults to 564. Then mounts remote subtrees according to attach/mount pairs.
+&#8211;9p/&#8211;9p- control the priority of newly added connection with respect to
+union mounts. &#8211;9p assigns the highest priority, &#8211;9p- - the lowest.</dd>
+
+<dt>-secret secret1 secret2</dt>
+<dd>the two keys that are needed for authentication between Erlang on Xen nodes
+(MUMBLE) and between Erlang on Xen and external 9p servers (MUNGE).
+secret1 and secret2 are represented as hexadecimal strings of variable length.</dd>
+</dl>
+
+
+<p>A MUNGE authentication must be enabled on the 9p server accessed from Erlang on
+Xen. There is a small utility - mungeling - handy for synchronisations of
+authentication tokens <a class="citation" href="#fn:4" title="Jump to citation">[4]<span class="citekey" style="display:none">mungeling</span></a>. Running mungeling on the host of the 9p
+server rints out the values for the -secret option.</p>
+
+<h3 id="emptycommandline">Empty command line</h3>
+
+<p>An empty command line results in a valid default configuration of the node. The
+default configuration is as follows:</p>
+
+<ul>
+<li>Local networking only. No external network interface is created.</li>
+<li>Imported files only. The filesystem is limited to the imported files.</li>
+<li>Console only. The console is the only way to access the node.</li>
+<li>Home directory is set to the project directory.</li>
+<li>Code path does NOT include project subdirectories.</li>
+</ul>
+
+<h3 id="domainconfiguration">Domain configuration</h3>
+
+<p>Launching a node using Xen or libvirt stack requires a configuration file. The
+minimal such file for Xen toolstack is:</p>
+
+<pre><code>name = &quot;sample1&quot;
+kernel = &quot;vmling&quot;
+memory = 512
+</code></pre>
+
+<p>A typical Xen doman configuration file includes more items:</p>
+
+<pre><code>name = &quot;sample1&quot;
+kernel = &quot;vmling&quot;
+memory = 512
+extra = &quot;-dhcp -secret xxxx xxxx -9p 192.168.0.1 / /linux&quot;
+extra = &quot; -pz ebin -pz deps/proj1/ebin -s sample1_app&quot;
+vif = [&quot;bridge=br0&quot;,]
+on_crash = &quot;destroy&quot;
+</code></pre>
+
+<p>An example of libvirt XML configuration file:</p>
+
+<pre><code>&lt;domain type='xen'&gt;
+    &lt;name&gt;sample1&lt;/name&gt;
+    &lt;memory unit='KiB'&gt;524288&lt;/memory&gt;
+    &lt;currentMemory unit='KiB'&gt;524288&lt;/currentMemory&gt;
+    &lt;vcpu&gt;1&lt;/vcpu&gt;
+    &lt;bootloader&gt;&lt;/bootloader&gt;
+    &lt;os&gt;
+        &lt;type&gt;linux&lt;/type&gt;
+        &lt;kernel&gt;vmling&lt;/kernel&gt;
+        &lt;cmdline&gt;-ipaddr 192.168.0.4 -netmask 255.255.255.0 -gateway 192.168.0.1&lt;/cmdline&gt;
+    &lt;/os&gt;
+    &lt;on_poweroff&gt;destroy&lt;/on_poweroff&gt;
+    &lt;on_reboot&gt;restart&lt;/on_reboot&gt;
+    &lt;on_crash&gt;restart&lt;/on_crash&gt;
+    &lt;devices&gt;
+        &lt;interface type='ethernet'&gt;
+            &lt;script path='/etc/xen/scripts/vif-bridge'/&gt;
+        &lt;/interface&gt;
+    &lt;/devices&gt;
+&lt;/domain&gt;
+</code></pre>
+
+<div class="footnotes">
+<hr />
+<ol>
+
+<li id="fn:1" class="citation"><span class="citekey" style="display:none">lbs</span><p>http://build.erlangonxen.org</p>
+</li>
+
+<li id="fn:2" class="citation"><span class="citekey" style="display:none">plugin-repo</span><p>https://github.com/maximk/ling_builder</p>
+</li>
+
+<li id="fn:3" class="citation"><span class="citekey" style="display:none">diod</span><p>https://github.com/chaos/diod</p>
+</li>
+
+<li id="fn:4" class="citation"><span class="citekey" style="display:none">mungeling</span><p>https://github.com/maximk/mungeling</p>
+</li>
+
+</ol>
+</div>
+
+
+</body>
+</html>

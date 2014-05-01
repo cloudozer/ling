@@ -1,0 +1,422 @@
+#!/usr/bin/env escript 
+%%! -pa ../bc gentab
+
+%% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+%% 
+%% Redistribution and use in source and binary forms, with or without
+%% modification, are permitted provided that the following conditions are met:
+%% 
+%% * Redistributions of source code must retain the above copyright notice, this
+%% list of conditions and the following disclaimer.
+%% 
+%% * Redistributions in binary form must reproduce the above copyright notice,
+%% this list of conditions and the following disclaimer in the documentation
+%% and/or other materials provided with the distribution.
+%% 
+%% * Redistributions in any form must be accompanied by information on how to
+%% obtain complete source code for the LING software and any accompanying
+%% software that uses the LING software. The source code must either be included
+%% in the distribution or be available for no more than the cost of distribution
+%% plus a nominal fee, and must be freely redistributable under reasonable
+%% conditions.  For an executable file, complete source code means the source
+%% code for all modules it contains. It does not include source code for modules
+%% or files that typically accompany the major components of the operating
+%% system on which the executable file runs.
+%% 
+%% THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+%% IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+%% DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+%% INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%% (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%% ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%% (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-mode(compile).
+
+-include_lib("bc/ling_code.hrl").
+
+main([PreloadDir,PremodIncFile,
+				 CodeBaseIncFile,
+				 ModInfoIncFile,
+				 LitBlobFile,
+				 CatchTabIncFile|MasterOpts]) ->
+
+	%%
+	%% Recognized options:
+	%% 
+	%% copy
+	%%
+	%%		construct modules on stack and them copy them to their proper static
+	%%		places to avoid "not computable" errors on x86_64
+	%%
+
+	Copy = lists:member("copy", MasterOpts),	
+
+	BeamFiles = filelib:wildcard(PreloadDir ++ "/*.beam"),
+
+	Lings = lists:map(fun(BF) ->
+		{ok,L} = ling_code:beam_to_ling(BF),
+
+		%% Fix the list order for l_select_val_atoms
+		FixedL = L#m{code=fix_select_val_atoms_lists(L#m.code)},
+
+		{ok,Ling} = ling_code:ling_to_specs(FixedL),
+		Ling
+	end, BeamFiles),
+
+	LitOffs = write_literals_blob(Lings, LitBlobFile),
+
+	NameTab = [{exp_tab:entry_index(MFA),
+				MFA,
+				exp_tab:entry_label(MFA)} || MFA <- exp_tab:all()],
+
+	%%AllMods = lists:usort([M
+	%%			|| {M,F,A} <- exp_tab:all(), not ling_bifs:is_builtin(M, F, A)]),
+	%%PreMods = [Ling#m.mod_name || Ling <- Lings],
+
+	NameTab2 = lists:foldl(fun(Ling, NT) ->
+		update_name_tab(Ling#m.exports, Ling#m.mod_name, NT)
+	end, NameTab, Lings),
+
+	ExpTab = lists:keysort(1, NameTab2),
+
+	%%
+	%% Determine the index where Erlang module exports start
+	%%
+	ErlIdx = length(lists:takewhile(fun({_,{M,F,A},_}) ->
+		ling_bifs:is_builtin(M, F, A)
+	end, ExpTab)),
+
+	CatchOffsets = write_catch_table(Lings, CatchTabIncFile),
+
+	{ok,BaseOut}= file:open(CodeBaseIncFile, [write]),
+	{ok,ModOut}= file:open(ModInfoIncFile, [write]),
+
+	io:format(BaseOut, "export_t preloaded_exports[] = {~n", []),
+	lists:foreach(fun({_,{M,F,A},undefined}) ->
+		io:format(BaseOut, "{ .module=~s, .function=~s, .arity=~w, .is_bif=0, .entry=0 },~n",
+						[atoms:c_name(M),atoms:c_name(F),A]);
+	({_,{M,F,A},Off}) when is_integer(Off) ->
+		io:format(BaseOut, "{ .module=~s, .function=~s, .arity=~w, .is_bif=0, .entry=(void *)~w },~n",
+						[atoms:c_name(M),atoms:c_name(F),A,Off]);
+	({_,{M,F,A},BifImpl}) when is_list(BifImpl) ->
+		io:format(BaseOut, "{ .module=~s, .function=~s, .arity=~w, .is_bif=~s, .entry=(void *)~s },~n",
+						[atoms:c_name(M),atoms:c_name(F),A,
+												bif_type(BifImpl, A),BifImpl])
+	end, ExpTab),
+	io:format(BaseOut, "};~n~n", []),
+
+	io:format(BaseOut, "#define NUM_PRE_EXPS ~w~n", [length(ExpTab)]),
+	io:format(BaseOut, "#define NUM_BIF_EXPS ~w~n~n", [ErlIdx]),
+
+	{ok,CodeOut} = file:open(PremodIncFile, [write]),
+	lists:foldl(fun(#m{mod_name=M}=Ling, ModInfoNum) ->
+		io:format("---- ~w~n", [M]),
+		ModName = atom_to_list(M),
+		CodeStarts = "premod_" ++ ModName ++ "_code",
+		LitFixups = "premod_" ++ ModName ++ "_fixups",
+		FunsTable = "premod_" ++ ModName ++ "_funs",
+		StrSpace = "premod_" ++ ModName ++ "_strings",
+		ModInfo = "preloaded_modules+" ++ integer_to_list(ModInfoNum),
+		LineRefsTab = "premod_" ++ ModName ++ "_line_refs",
+		FileNamesTab = "premod_" ++ ModName ++ "_file_names",
+
+		{_,CatchOffset} = lists:keyfind(M, 1, CatchOffsets),
+
+		#m{code=Specs,lambdas=Lambdas,catches=Catches,
+						line_info={LineRefs,FileNames}} = Ling,
+
+		io:format(BaseOut, "fun_entry_t ~s[] = {~n", [FunsTable]),
+		lists:foreach(fun({Name,Arity,Off,Index,NumFree,Uniq}) ->
+			io:format(BaseOut, "\t{ .index=~w, .arity=~w, .module=~s, .num_free=~w,~n"
+							   "\t  .old_uniq=tag_int(~w), .name=~s,~n"
+							   "\t  .entry=(uint32_t *)~w },~n",
+				[Index,Arity,atoms:c_name(M),NumFree,Uniq,atoms:c_name(Name),Off])
+		end, Lambdas),
+		io:format(BaseOut, "};~n~n", []),
+
+		io:format(BaseOut, "line_info_t ~s[] = {~n", [LineRefsTab]),
+		lists:foreach(fun({Off,undefined}) ->
+			io:format(BaseOut, "\t{ .offset=~w, .location=0},~n", [Off]);
+		({Off,{File,Line}}) ->
+			io:format(BaseOut, "\t{ .offset=~w, .location=make_loc(~w, ~w)},~n", [Off,File,Line])
+		end, LineRefs),
+		io:format(BaseOut, "};~n~n", []),
+		
+		io:format(BaseOut, "term_t  ~s[] = {~n", [FileNamesTab]),
+		lists:foreach(fun(File) ->
+			io:format(BaseOut, "\t~s,~n", [atoms:c_name(File)])
+		end, FileNames),
+		io:format(BaseOut, "};~n~n", []),
+
+		write_string_table(BaseOut, StrSpace, Ling#m.strings),
+
+		%% Auxilliary data needed for code generation
+		Data = {CodeStarts,FunsTable,StrSpace,CatchOffset},
+
+		CodeSize = lists:sum([length(Ss) || Ss <- Specs]),
+
+		if Copy ->
+			io:format(CodeOut, "static uint32_t ~s[~w];~n~n",
+											[CodeStarts,CodeSize]),
+			io:format(CodeOut, "{~n", []),
+			io:format(CodeOut, "uint32_t ~s_[] = {~n", [CodeStarts]);
+		true ->
+			io:format(CodeOut, "static uint32_t ~s[] = {~n", [CodeStarts])
+		end,
+
+		{Fixes,CodeSize} = lists:foldl(fun(Ss, {Fixes,Off}) ->
+			Fs = [Off+O || {{literal,_Index},O}
+					<- lists:zip(Ss, lists:seq(0, length(Ss)-1))],
+			L = string:join([spec_to_list(S, Ling, Data) || S <- Ss], ", "),
+			io:format(CodeOut, "\t~s,~n", [L]),
+			{Fs ++ Fixes,Off +length(Ss)}
+		end, {[],0}, Specs),
+
+		if Copy ->
+			io:format(CodeOut, "};~n~n", []),
+			io:format(CodeOut, "memcpy(~s, ~s_, sizeof(~s_));~n",
+											[CodeStarts,CodeStarts,CodeStarts]),
+			io:format(CodeOut, "}~n~n", []);
+		true ->
+			io:format(CodeOut, "};~n~n", [])
+		end,
+
+		io:format(CodeOut, "static uint32_t *~s[] = {~n", [LitFixups]),
+		lists:foreach(fun(Off) ->
+			io:format(CodeOut, "\t~s+~w,~n", [CodeStarts,Off])
+		end, lists:sort(Fixes)),
+		io:format(CodeOut, "};~n~n", []),
+
+		io:format(CodeOut, "module_fix_preloaded_code(~s, ~s, ~w, ~s, ~w);~n",
+						[ModInfo,CodeStarts,CodeSize,LitFixups,length(Fixes)]),
+		io:format(CodeOut, "catches_attach_preloaded_code(~w, ~w, ~s);~n~n",
+						[CatchOffset,CatchOffset+length(Catches),CodeStarts]),
+
+		io:format(ModOut, "extern fun_entry_t ~s[];~n", [FunsTable]),
+		io:format(ModOut, "extern uint8_t ~s[];~n~n", [StrSpace]),
+
+		ModInfoNum+1
+	end, 0, Lings),
+
+	%% Generate preloaded_modules_array
+	io:format(BaseOut, "module_info_t preloaded_modules[] = {~n", []),
+	lists:foreach(fun(#m{mod_name=M,lambdas=Lambdas,line_info=LI,catches=Catches}) ->
+		ModName = atom_to_list(M),
+		FunsTable = "premod_" ++ ModName ++ "_funs",
+		LineRefsTab = "premod_" ++ ModName ++ "_line_refs",
+		FileNamesTab = "premod_" ++ ModName ++ "_file_names",
+		StrSpace = "premod_" ++ ModName ++ "_strings",
+
+		{From,To} = exp_tab:mod_range(M),
+		{_,LOff,NumLits} = lists:keyfind(M, 1, LitOffs),
+
+		{_,CatchOffset} = lists:keyfind(M, 1, CatchOffsets),
+
+		{LineRefs,_} = LI,
+
+		io:format(BaseOut, "{~n\t.name = ~s,~n"
+			"\t.is_old = 0,~n"
+			"\t.my_node = 0,~n"
+			"\t.num_funs = ~w,~n"
+			"\t.funs_table = ~s,~n"
+			"\t.exp_start_index = ~w,~n"
+			"\t.exp_end_index = ~w,~n"
+			"\t.lit_blob_offset = ~w,~n"
+			"\t.num_lits = ~w,~n"
+			"\t.attrs_data = 0,~n"
+			"\t.attrs_size = 0,~n"
+			"\t.cinfo_data = 0,~n"
+			"\t.cinfo_size = 0,~n"
+			"\t.catch_block_base = ~w,~n"
+			"\t.catch_block_size = ~w,~n"
+			"\t.line_refs = ~s,~n"
+			"\t.num_line_refs = ~w,~n"
+			"\t.file_names = ~s,~n"
+			"\t.str_space = ~s~n},~n",
+				[atoms:c_name(M),
+				 length(Lambdas),FunsTable,
+				 From,To+1,
+				 LOff,NumLits,
+				 CatchOffset,length(Catches),
+				 LineRefsTab,length(LineRefs),
+				 FileNamesTab,
+				 StrSpace])
+	end, Lings),
+	io:format(BaseOut, "};~n~n", []),
+
+	io:format(BaseOut, "#define NUM_PRE_MODS ~w~n~n", [length(Lings)]),
+
+	{EhUndefExp,_,_} = lists:keyfind({error_handler,undefined_function,3}, 2, ExpTab),
+	io:format(ModOut, "#define EH_UNDEF_EXP	(preloaded_exports+~w)~n~n", [EhUndefExp]),
+
+	file:close(ModOut),
+	file:close(BaseOut),
+	file:close(CodeOut);
+
+main(_) ->
+	io:format("usage: premod_gen preload premod.inc"
+					" code_base.inc mod_info.inc literals.bin catch_tab.inc~n", []).
+
+pairup([]) -> [];
+pairup([V,L|VLs]) ->
+	[{V,L}|pairup(VLs)].
+
+fix_select_val_atoms_lists(Ls) ->
+	lists:map(fun({l_select_val_atoms,Args,Trail}) ->
+
+		%% NB: atoms:index() is known for all atoms occuring in preloaded modules
+		%% for dynamically loaded modules this is done by the loader
+
+		{_,SortedPairs} = lists:unzip(lists:keysort(1,
+				[{atoms:index(A),P} || {{a,A},_}=P <- pairup(Trail)])),
+		SortedTrail = lists:concat([[V,F] || {V,F} <- SortedPairs]),
+		
+		{l_select_val_atoms,Args,SortedTrail};
+
+	(L) ->
+		L
+	end, Ls).
+
+write_literals_blob(Lings, LitBlobFile) -> %% {M,Off,Num}
+	{ok,Blob} = file:open(LitBlobFile, [raw,write]),
+	{Tab,_} = lists:foldl(fun(Ling, {Tab,Off}) ->
+		Bs = [term_to_binary(Q) || Q <- Ling#m.literals],
+		Bin = list_to_binary([<<(size(B)):32,B/binary>> || B <- Bs]),
+		ok = file:write(Blob, Bin),
+		Rec = {Ling#m.mod_name,Off,length(Bs)},
+		{[Rec|Tab],Off + size(Bin)}
+	end, {[],0}, Lings),
+	file:close(Blob),
+	Tab.
+
+write_catch_table(Lings, CatchTabFile) -> %% [{M,CatchOffset}]
+	{ok,Out} = file:open(CatchTabFile, [write]),
+	io:format(Out, "static catch_ref_t catch_refs[CATCH_REFS_SIZE] = {~n", []),
+	{Tab,Total} = lists:foldl(fun(Ling, {Tab,Off}) ->
+		lists:foldl(fun(C, N) ->
+			io:format(Out, "\t{ .code = (uint32_t *)~w, .ord = ~w }, // ~w~n",
+											[C,N,Ling#m.mod_name]),
+			N+1
+		end, Off, Ling#m.catches),
+		Rec = {Ling#m.mod_name,Off},
+		{[Rec|Tab],Off + length(Ling#m.catches)}
+	end, {[],0}, Lings),
+	io:format(Out, "};~n~n", []),
+	io:format(Out, "#define INIT_NR_CATCH_REFS\t ~w~n~n", [Total]),
+	file:close(Out),
+	Tab.
+
+write_string_table(Out, StrSpace, StrTabBin) ->
+	io:format(Out, "uint8_t ~s[] = ", [StrSpace]),
+	write_string_table_1(Out, StrTabBin),
+	io:format(Out, ";~n~n", []).
+
+write_string_table_1(Out, <<B1:32/binary,B2/binary>>) ->
+	io:format(Out, "\"~s\"", [hex_str(B1)]),
+	if B2 =/= <<>> -> io:format(Out, "~n\t", []); true -> ok end,
+	write_string_table_1(Out, B2);
+write_string_table_1(Out, B) ->
+	io:format(Out, "\"~s\"", [hex_str(B)]).
+
+hex_str(B) ->
+	lists:map(fun(C) ->
+		case is_print(C) of
+		true ->
+			C;
+		false ->
+			io_lib:format("\\x~2.16.0b\"\"", [C])	%% nice
+		end
+	end, binary_to_list(B)).
+
+is_print(C) when C >= $0, C =< $9 -> true;
+is_print(C) when C >= $a, C =< $z -> true;
+is_print(C) when C >= $A, C =< $Z -> true;
+is_print($ ) -> true;
+is_print(_) -> false.
+
+update_name_tab(Exps, Module, NameTab) ->
+	lists:foldl(fun({F,A,Off}, NT) ->
+		MFA = {Module,F,A},
+
+		{value,{Index,_,_},NT1} = lists:keytake(MFA, 2, NT),
+		[{Index,MFA,Off}|NT1]
+	end, NameTab, Exps).
+	
+spec_to_list({opcode,Index}, _M, _) ->
+	case ling_iopvars:var_by_index(Index) of
+	{l_select_val_atoms=Op,No} ->
+		io_lib:format("(unsigned long) &&~w_~w_sorted", [Op,No]);
+	{Op,No} ->
+		io_lib:format("(unsigned long) &&~w_~w", [Op,No])
+	end;
+spec_to_list(nil, _M, _) ->
+	"nil";
+spec_to_list(N, _M, _) when is_integer(N) ->
+	io_lib:format("(uint32_t) ~w", [N]);
+spec_to_list({atom,N}, M, _) ->
+	A = lists:nth(N+1, M#m.atoms),
+	atoms:c_name(A);
+spec_to_list({tag_int,I}, _M, _) ->
+	io_lib:format("tag_int(~w)", [I]);
+spec_to_list({reg_as_term,X}, _M, _) ->
+	io_lib:format("reg_as_term(~w)", [X]);
+spec_to_list({slot_as_term,Y}, _M, _) ->
+	io_lib:format("slot_as_term(~w)", [Y]);
+spec_to_list({f,none}, _M, _) ->
+	"0";
+
+spec_to_list({f,Off}, _M, {CodeStarts,_,_,_}) ->
+	io_lib:format("(unsigned long) (~s+~w)", [CodeStarts,Off]);
+
+%% make_export generates this - to be resolved during runtime
+%%
+%% Also, see the comment near l_make_export implementation about removing
+%% make_export in favour of a BIF and then getting rid of {export,none}
+%% completely.
+%%
+spec_to_list({export,none}, _M, _) ->
+	io_lib:format("0", []);
+
+spec_to_list({export,N}, M, _) ->
+	MFA = lists:nth(N+1, M#m.imports),
+	Index = exp_tab:entry_index(MFA),
+	io_lib:format("(unsigned long) (preloaded_exports+~w)", [Index]);
+
+spec_to_list({bif,N}, M, _) ->
+	MFA = lists:nth(N+1, M#m.imports),
+	case exp_tab:entry_label(MFA) of
+	undefined ->
+		io:format("*** BIF ~p not in bif.tab~n", [MFA]),
+		"0";
+	Func ->
+		"(unsigned long) " ++ Func
+	end;
+
+spec_to_list({fu,N}, _M, {_,FunsTable,_,_}) ->
+	io_lib:format("(unsigned long) (~s+~w)", [FunsTable,N]);
+
+spec_to_list({str,Off}, _M, {_,_,StrSpace,_}) ->
+	io_lib:format("(unsigned long) (~s+~w)", [StrSpace,Off]);
+
+spec_to_list({'catch',N}, _M, {_,_,_,CatchOffset}) ->
+	io_lib:format("tag_catch(~w+~w)", [CatchOffset,N]);
+
+spec_to_list({literal,Index}, _M, _) ->
+	%% replaced with the actual term during literal fix-up
+	io_lib:format("~w", [Index]).
+
+bif_type("cbif_" ++ _, _Arity) -> "BIF_TYPE_CALL";
+bif_type("bif_" ++ _, 0) -> "BIF_TYPE_NORMAL_0";
+bif_type("bif_" ++ _, 1) -> "BIF_TYPE_NORMAL_1";
+bif_type("bif_" ++ _, 2) -> "BIF_TYPE_NORMAL_2";
+bif_type("gc_bif_" ++_, 1) -> "BIF_TYPE_GC_1";
+bif_type("gc_bif_" ++_, 2) -> "BIF_TYPE_GC_2";
+bif_type("gc_bif_" ++_, 3) -> "BIF_TYPE_GC_3";
+bif_type(Impl, Arity) ->
+	erlang:error({no_bif_type,Impl,Arity}).
+
+%%EOF

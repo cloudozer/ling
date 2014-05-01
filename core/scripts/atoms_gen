@@ -1,0 +1,209 @@
+#!/usr/bin/env escript
+%%! -pa ../bc gentab
+
+%% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+%% 
+%% Redistribution and use in source and binary forms, with or without
+%% modification, are permitted provided that the following conditions are met:
+%% 
+%% * Redistributions of source code must retain the above copyright notice, this
+%% list of conditions and the following disclaimer.
+%% 
+%% * Redistributions in binary form must reproduce the above copyright notice,
+%% this list of conditions and the following disclaimer in the documentation
+%% and/or other materials provided with the distribution.
+%% 
+%% * Redistributions in any form must be accompanied by information on how to
+%% obtain complete source code for the LING software and any accompanying
+%% software that uses the LING software. The source code must either be included
+%% in the distribution or be available for no more than the cost of distribution
+%% plus a nominal fee, and must be freely redistributable under reasonable
+%% conditions.  For an executable file, complete source code means the source
+%% code for all modules it contains. It does not include source code for modules
+%% or files that typically accompany the major components of the operating
+%% system on which the executable file runs.
+%% 
+%% THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+%% IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+%% DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+%% INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%% (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%% ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%% (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-mode(compile).
+
+-include_lib("bc/ling_code.hrl").
+
+-define(ATOM_INDEX_STARTS, 0).
+
+%%#
+%%# Standard atoms
+%%################
+%%#
+%%false
+%%true
+%%
+%%EXIT = A_EXIT__
+%%...
+%%
+
+main([LstFile, PreloadDir, DefsFile, IncFile, IndexFile]) ->
+	Atoms = atom_infos(LstFile, PreloadDir),
+		
+	dump_defs(Atoms, DefsFile),
+	dump_inc(Atoms, IncFile),
+	dump_index(Atoms, IndexFile),
+	ok;
+main(_) ->
+	io:format("usage atoms.tab preload atom_defs.h atoms.inc atoms.erl~n", []).
+
+atom_infos(LstFile, PreloadDir) ->
+
+	%% io:format("~p~n", [LstFile]),
+	{ok,LstIn} = file:open(LstFile, read),
+	Infos1 = atom_infos1(LstIn, []),
+	file:close(LstIn),
+
+	%%
+	%% Other sources of atoms:
+	%%
+	%% {M,F,A} in the name table
+	%% {a,_} in preloaded modules
+	%% {a,_} in iopvars
+	%%
+
+	BeamFiles = filelib:wildcard(PreloadDir ++ "/*.beam"),
+	Lings = lists:map(fun(BF) ->
+		{ok,Ling} =	ling_code:beam_to_ling(BF),
+		Ling
+	end, BeamFiles),
+	AllCode = lists:concat([Ling#m.code || Ling <- Lings]),
+
+	SourceFileNameAtoms = lists:map(fun(#m{line_info={_,_,_,FileNames}}) ->
+		[{a,list_to_atom(FN)} || FN <- FileNames]
+	end, Lings),
+
+	Ass = [[{a,M},{a,F}] || {M,F,_} <- exp_tab:all()]
+
+				++
+
+		  [ling_iopvars:var_args(Op, No) || {Op,No} <- ling_iopvars:var_order()]
+
+				++
+
+		  [As ++ Trail || {_,As,Trail} <- AllCode]
+
+				++
+
+		  SourceFileNameAtoms,
+
+	Infos2 = lists:foldl(fun add_atom/2, Infos1,
+					[A || {a,A} <- lists:concat(Ass)]),
+
+	{Atoms,_} = lists:mapfoldl(fun({A,S}, N) ->
+		{{N,A,S},N+1}
+	end, ?ATOM_INDEX_STARTS, lists:ukeysort(1, Infos2)),
+	Atoms.
+
+atom_infos1(In, Atoms) ->
+	case io:get_line(In, '') of
+	  eof ->
+	    Atoms;
+	  [10] ->
+		atom_infos1(In, Atoms);
+	  [$#|_] ->
+	    atom_infos1(In, Atoms);
+	  Line ->
+		case re:run(Line, "(\\S+) = (\\S+)", [{capture,all_but_first,list}]) of
+		{match,[A1,A2]} ->
+			Info = {erlang:list_to_atom(A1), A2},
+			sense_dups(Info, Atoms),
+			atom_infos1(In, [Info|Atoms]);
+	     _ ->
+			A = string:strip(string:strip(Line, right, 10)),
+			Info = {erlang:list_to_atom(A), "A_" ++ string:to_upper(A)},
+			sense_dups(Info, Atoms),
+			atom_infos1(In, [Info|Atoms])
+	    end
+	end.
+
+sense_dups({A,_}, Atoms) ->
+	case lists:keysearch(A, 1, Atoms) of
+	  false ->
+	    ok;
+	  _ ->
+	    io:format("Atom '~w' appeared on the list more than once~n", [A]),
+	    false
+	end.
+
+add_atom(A, Atoms) ->
+	case lists:keymember(A, 1, Atoms) of
+	  false ->
+		LA = atom_to_list(A),
+		S = case is_funny(LA) of
+		false ->
+			"A_" ++ string:to_upper(LA);
+		true ->
+			"A_FUNNY" ++ integer_to_list(length(Atoms))
+		end,
+	    [{A,S}|Atoms];
+	  true ->
+	    Atoms
+	end.
+
+is_funny(L) ->
+	re:run(L, "^[a-z0-9_]+$") =:= nomatch.
+
+dump_defs(Atoms, DefsFile) ->
+	{ok, DF} = file:open(DefsFile, write),
+	lists:foreach(fun({N, _, CName}) ->
+		      io:format(DF, "#define ~s (tag_atom(~w))~n", [CName, N])
+		    end, Atoms),
+	file:close(DF).
+
+dump_inc(Atoms, IncFile) ->
+	{ok, IF} = file:open(IncFile, write),
+	Count = length(Atoms),
+	io:format(IF, "atom_chunk_t standard_atoms = {~n", []),
+	io:format(IF, "\t.start_index = 0,~n", []),
+	io:format(IF, "\t.end_index = ~w,~n", [Count]),
+	io:format(IF, "\t.max_index = ~w,~n", [Count]),
+	io:format(IF, "\t.next = 0,~n", []),
+	io:format(IF, "\t.items = {~n", []),
+	lists:foreach(fun({N, Atom, _}) ->
+		L = atom_to_list(Atom),
+	    io:format(IF, "\t\t{ .index = ~w, .name = (uint8_t *)\"\\~3.8.0b~s\" },~n",
+										[N, length(L), L])
+	end, Atoms),
+	io:format(IF, "\t}~n};~n~n", []),
+
+	file:close(IF).
+
+dump_index(Atoms, IndexFile) ->
+	{ok,F} = file:open(IndexFile, write),
+	io:format(F, "-module(atoms).~n", []),
+	io:format(F, "-export([index/1,std_atom/1,c_name/1]).~n~n", []),
+
+	lists:foreach(fun({N,Atom,_}) ->
+		io:format(F, "index(~w) -> ~w;~n", [Atom,N])
+	end, Atoms),
+	io:format(F, "index(_) -> nonstd.~n~n", []),
+
+	lists:foreach(fun({N,Atom,_}) ->
+		io:format(F, "std_atom(~w) -> ~w;~n", [N,Atom])
+	end, Atoms),
+	io:format(F, "std_atom(X) -> erlang:error(X).~n~n", []),
+
+	lists:foreach(fun({_,Atom,Name}) ->
+		io:format(F, "c_name(~w) -> ~p;~n", [Atom,Name])
+	end, Atoms),
+	io:format(F, "c_name(X) -> erlang:error(X).~n", []),
+
+	io:format(F, "~n%%EOF~n", []),
+	ok = file:close(F).
+
+%% EOF

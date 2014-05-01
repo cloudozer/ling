@@ -1,0 +1,28 @@
+EStone test completed
+**** CPU speed UNKNOWN MHz ****
+**** Total time 00.00113316748046875 seconds ****
+**** ESTONES = 27436 ****
+
+    Title                            Millis        Estone       %    Loops      
+
+list manipulation                    610             2486         7     6400       
+small messages                       5646            549          10    1515       
+medium messages                      6562            925          14    1527       
+huge messages                        728             680          4     52         
+pattern matching                     180             4304         5     1046       
+traverse                             390             1268         4     2834       
+Work with large dataset              275             1013         3     1193       
+Work with large local dataset        255             1090         3     1174       
+Alloc and dealloc                    80              1545         2     3710       
+Bif dispatch                         172             4500         5     1623       
+Binary handling                      563             879          4     581        
+Generic server (with timeout)        2112            1188         9     7977       
+Small Integer arithmetics            269             1037         3     4157       
+Float arithmetics                    84              365          1     5526       
+Function calls                       169             4582         5     882        
+Timers                               133             932          2     2312       
+Links                                330             93           1     30         
+Test estone (estone_SUITE) ok: UNKNOWN MHz, 27436 ESTONES
+Suite estone_SUITE ok (1 total 0 skipped)
+18834 millisecond(s) elapsed
+

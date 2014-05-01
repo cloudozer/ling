@@ -1,0 +1,172 @@
+#!/bin/bash
+
+# This script has been created manually
+
+REQ_OTP_REL=R16B01
+LING_VER=0.2.3
+
+# Default values
+NETTLE_DIR=/usr/local/lib64
+UCLIBC_DIR=/usr/x86_64-linux-uclibc
+XEN_DIR=/usr/src/xen
+PREFIX=/usr/local
+
+while true; do
+	case "$1" in
+	--with-prefix=*)
+		LING_ROOT=${1#*=}
+		shift
+		;;
+	--with-nettle=*)
+		NETTLE_DIR=${1#*=}
+		shift
+		;;
+	--with-uclibc=*)
+		UCLIBC_DIR=${1#*=}
+		shift
+		;;
+	--with-xen=*)
+		XEN_DIR=${1#*=}
+		shift
+		;;
+	--help)
+		cat <<EOF
+--with-prefix=PREFIX  path prefix for the LING installation
+--with-nettle=DIR     path to the Nettle library
+--with-uclibc=DIR     path to the uClibc library
+--with-xen=DIR        path to the xen source checkout
+EOF
+		exit 0
+		;;
+	*)
+		break
+		;;
+	esac
+done
+
+TEMPS="test.c test.o a.out"
+cleanup() {
+	rm -f $TEMPS
+}
+trap cleanup SIGINT SIGTERM
+
+# gcc dependency
+echo -ne "checking for gcc... "
+if which gcc &>/dev/null; then
+	echo yes
+else
+	echo no
+cat <<EOF
+--------------------------------------------------------------------------------
+gcc not found. LING requires gcc (>= 4.8.1 recommended).
+EOF
+	cleanup
+	exit 1
+fi
+
+# Erlang/OTP dependency
+echo -ne "checking for erl... "
+if which erl &>/dev/null; then
+	echo yes
+else
+	echo no
+cat <<EOF
+--------------------------------------------------------------------------------
+Erlang/OTP not found. LING requires Erlang/OTP $REQ_OTP_REL installed.
+EOF
+	cleanup
+	exit 1
+fi
+
+#echo -ne "checking Erlang/OTP release... "
+#OTP=`erl -noshell -eval 'erlang:display(erlang:system_info(otp_release)), halt()' |tr -d '\r"'`
+#echo -ne "$OTP "
+#if [ "$OTP" == "$REQ_OTP_REL" ]; then
+#	echo ok
+#else
+#	echo "(incompatible)"
+#	cat <<EOF
+#--------------------------------------------------------------------------------
+#LING requires a specific version of Erlang/OTP ($REQ_OTP_REL). You may need to build
+#it from sources (http://erlang.org).
+#EOF
+#	exit 1
+#fi
+#
+# Nettle dependency
+echo -ne "checking for nettle... "
+cat > test.c <<EOF
+main() {
+}
+EOF
+if gcc -L $NETTLE_DIR -Xlinker -r -static -nostdlib \
+		test.c -lnettle &>/dev/null; then
+	echo yes
+else
+	echo no
+	cat <<EOF
+--------------------------------------------------------------------------------
+The core library of LING requires the *static* version of Nettle - a low-level
+cryptographic library (http://www.lysator.liu.se/~nisse/nettle/). You need to
+build it from sources. See core/lib/README. Use --with-nettle= option. For
+example,
+
+	./configure --with-nettle=/usr/local/lib64
+
+EOF
+	cleanup
+	exit 1
+fi
+
+# uClibc dependency
+echo -ne "checking for uClibc... "
+if [ -e $UCLIBC_DIR/usr/lib/libc.a ]; then
+	echo yes
+else
+	echo no
+	cat <<EOF
+--------------------------------------------------------------------------------
+The core library of LING imports a few routines, such as memcpy(), from the
+*static* version of uClibc (http://www.uclibc.org). You may need to build it
+from sources. Use core/lib/uClibc_config as the configuration file for the
+library. Provide the parent directory of uClibc when you rerun the script:
+
+	./configure --with-uclibc=/usr/x86_64-linux-uclibc
+
+EOF
+	cleanup
+	exit 1
+fi
+
+# Xen dependency
+echo -ne "checking for xen... "
+if [ -e $XEN_DIR/xen/include/public/xen.h ]; then
+	echo yes
+else
+	echo no
+	cat <<EOF
+--------------------------------------------------------------------------------
+Erlang on Xen needs Xen development headers, check them out from http://xenbits.xen.org/
+
+	./configure --with-xen=../xen
+
+EOF
+	cleanup
+	exit 1
+fi
+
+cat > Config.mk <<EOF
+LING_VER := $LING_VER
+NETTLE_DIR := $NETTLE_DIR
+UCLIBC_DIR := $UCLIBC_DIR
+LING_ROOT := $PREFIX/lib/ling
+BIN_DIR := $PREFIX/bin
+XEN_DIR := $XEN_DIR
+EOF
+
+cp Makefile.in Makefile
+
+cleanup
+echo "Run 'make' to build LING"
+
+#EOF

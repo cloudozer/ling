@@ -1,0 +1,1217 @@
+
+\documentclass{article}
+\usepackage{fontspec}
+\usepackage{multicol}
+\usepackage{textcomp}
+
+\title{BEAM instructions semantics}
+
+\setromanfont[Mapping=tex-text]{NeoSans}
+
+\newcommand{\tmpa}{\textbf{tmp\_arg1}}
+\newcommand{\tmpb}{\textbf{tmp\_arg2}}
+\newcommand{\ip}{\textbf{IP}}
+\newcommand{\cp}{\textbf{CP}}
+\newcommand{\ep}{\textbf{EP}}
+\newcommand{\htop}{\textbf{HTOP}}
+\newcommand{\save}{\textbf{SAVE}}
+\newcommand{\iop}[1]{\texttt{#1}}
+
+\begin{document}
+\maketitle
+
+\section*{Abstract machine elements}
+
+\begin{enumerate}
+\item Registers. R0 is a special fast register.
+\item \ip{} (instruction pointer) contains the reference to the instruction
+being executed.
+\item \cp{} (continuation pointer) contains a return address of the current
+function call.
+\item The stack$:$
+
+\setlength{\unitlength}{8pt}
+\begin{picture}(20,20)
+\put(5,0){\line(0,1){20}}
+\put(15,0){\line(0,1){20}}
+\multiput(5,0)(0,2){11}{\line(1,0){10}}
+\put(0,4.6){\ep{}}
+\put(2,5){\vector(1,0){3}}
+\multiput(8,0.6)(0,2){2}{unused}
+\put(8,4.6){saved \cp{}}
+\put(8,6.6){slot 0}
+\put(8,8.6){slot 1}
+\put(8,10.6){slot 2}
+\end{picture}
+
+\item \ep{} (stack pointer) points to the last value pushed on stack.
+\item \htop{} (heap top) points to the first empty word of the heap.
+\item The message queue$:$
+
+\begin{picture}(20,16)
+\put(5,0){\line(0,1){16}}
+\put(15,0){\line(0,1){16}}
+\multiput(5,0)(0,2){9}{\line(1,0){10}}
+\put(0,6.6){\save{}}
+\put(4,7){\vector(1,0){1}}
+\end{picture}
+
+\item \save{} pointer marks the message being currently matched.
+\item \tmpa{} and \tmpb{} variables that temporarily hold values for the
+imminent arithmetic or logical operation.
+\end{enumerate}
+
+\section*{Instructions semantics}
+
+\subsection*{\iop{allocate t t}}
+
+Allocates Arg0 slots on the stack. Arg1 is Live. See Fig. \ref{fig:alloc}.
+
+\begin{figure}[!ht]
+\setlength{\unitlength}{8pt}
+\begin{picture}(40,20)
+\put(5,0){\line(0,1){20}}
+\put(15,0){\line(0,1){20}}
+\multiput(5,0)(0,2){11}{\line(1,0){10}}
+\put(0,12.6){\ep{}}
+\put(2,13){\vector(1,0){3}}
+\multiput(8,0.6)(0,2){6}{unused}
+\put(25,0){\line(0,1){20}}
+\put(35,0){\line(0,1){20}}
+\multiput(25,0)(0,2){11}{\line(1,0){10}}
+\put(20,4.6){\ep{}}
+\put(22,5){\vector(1,0){3}}
+\multiput(28,0.6)(0,2){2}{unused}
+\put(28,4.6){saved \cp{}}
+\multiput(28,6.6)(0,2){3}{allocated}
+\put(18,10){\vector(1,0){4}}
+\end{picture}
+\caption{Allocating 3 slots on the stack.}
+\label{fig:alloc}
+\end{figure}
+
+\subsection*{\iop{allocate\_heap t I t}}
+
+Allocates Arg0 slots on the stack. See \iop{allocate t t}. Ensures that heap
+contains at least Arg1 words after \htop{}. Arg2 is Live.
+
+\subsection*{\iop{deallocate I}}
+
+Restores \cp{} to the value references by \ep{}. Adds Arg0$+$1 to \ep{} to
+remove the saved \cp{} and Arg0 slots from the stack.
+
+\subsection*{\iop{init y}}
+
+Sets the Arg0 slot to nil. The op was called ``kill'' earlier.
+
+\subsection*{\iop{init2 y y}}
+
+Sets slots Arg0 and Arg1 to nil.
+
+\subsection*{\iop{init3 y y y}}
+
+Sets slots Arg0, Arg1, and Arg2 to nil.
+
+\subsection*{\iop{i\_trim I}}
+
+Removes Arg0 slots from the stack. Th saved \cp{} is moved to the new top of the
+stack.
+
+\subsection*{\iop{test\_heap I t}}
+
+Ensures that the heap has at least Arg0 words available. Arg1 is Live.
+
+\subsection*{\iop{allocate\_zero t t}}
+
+Same as \iop{allocate t t} but sets the slots to nil.
+
+\subsection*{\iop{allocate\_heap\_zero t I t}}
+
+Same as \iop{allocate\_heap t I t} but sets the slots to nil.
+
+\subsection*{\iop{i\_select\_val r f I}\\
+\iop{i\_select\_val x f I}\\
+\iop{i\_select\_val y f I}}
+
+Searches an array of \verb${val,addr}$ pairs for the value of Arg0. The length
+of the array is Arg2. If the value is found the execution continues at the
+corresponding \verb$addr$. Otherwise, jumps to Arg1. Uses binary search and
+\emph{bitwise} comparisons.
+
+\subsection*{\iop{i\_select\_val2 r f c f c f}\\
+\iop{i\_select\_val2 x f c f c f}\\
+\iop{i\_select\_val2 y f c f c f}}
+
+Same as \iop{i\_select\_val rxy f I} but uses an array made of
+\verb${Arg2,Arg3}$ and \verb${Arg4,Arg5}$.
+
+\subsection*{\iop{i\_jump\_on\_val rxy f I I}}
+
+Implements a ``jump table''. Calculates the index by adding Arg0 to the minimum
+value Arg2. Jumps to Arg1 if the index falls outside of the table boundaries.
+Arg3 is the length of the jump table. Picks the label from the table using the
+calculated index and jumps there. 
+
+\subsection*{\iop{i\_jump\_on\_val\_zero rxy f I}}
+
+Same as \iop{i\_jump\_on\_val rxy f I I} but the minimum value is assumed to be
+zero.
+
+\subsection*{\iop{i\_select\_tuple\_arity r f I}\\
+\iop{i\_select\_tuple\_arity x f I}\\
+\iop{i\_select\_tuple\_arity y f I}}
+
+Checks that Arg0 is tuple and then searches the array for \verb${arity,addr}$
+for the right arity. See \iop{i\_select\_val rxy f I}.
+
+\subsection*{\iop{i\_select\_tuple\_arity2 r f A f A f}\\
+\iop{i\_select\_tuple\_arity2 x f A f A f}\\
+\iop{i\_select\_tuple\_arity2 y f A f A f}}
+
+Same as \iop{i\_select\_tuple\_arity rxy f I} but uses the array made up of two
+pairs$:$ \verb${Arg2,Arg3}$ and \verb${Arg4,Arg5}$.
+
+\subsection*{\iop{i\_func\_info I a a I}}
+
+Raises \texttt{function\_clause} exception. Arg1, Arg2, Arg3 are MFA. Arg0 is
+a mystery coming out of nowhere, probably, needed for NIFs.
+
+\subsection*{\iop{return}}
+
+\ip{} is set to \cp{}.
+
+\subsection*{\iop{get\_list rxy rxy rxy}}
+
+Gets the head of the list from Arg0 and puts it to Arg1, the tail --- to Arg2.
+
+\subsection*{\iop{catch y f}}
+
+Creates a new ``catch'' context. Saves value of the label from Arg1 to the Arg0 stack
+slot.
+
+\subsection*{\iop{catch\_end y}}
+
+Pops a ``catch'' context. Erases the label saved in the Arg0 slot. Noval in R0
+indicates that something is caught. If R1 contains atom \verb$throw$ then R0 is
+set to R2. If R1 contains atom \verb$error$ R0 is set to
+\verb${'EXIT',{R2,<stack trace>}}$.
+
+\subsection*{\iop{try\_end y}}
+
+Pops a ``catch'' context. Erases the label saved in the Arg0 slot. Noval in R0
+indicate that something is caught. If so, R0 is set to R1, R1 --- to R2, R2 ---
+to R3.
+
+\subsection*{\iop{try\_case\_end s}}
+
+Raises a \verb$try_clause$ exception with the value read from Arg0.
+
+\subsection*{\iop{set\_tuple\_element s d P}}
+
+Sets the Arg2'th element of the tuple Arg1 to to the value of Arg0. The index in
+Arg2 is 1-based.
+
+\subsection*{\iop{i\_get\_tuple\_element rxy P rxy}}
+
+Gets the value of the the Arg1'th element of the tuple Arg0 and puts it to Arg2.
+Arg1 is 1-based.
+
+\subsection*{\iop{is\_number f rxy}}
+
+Jumps to Arg0 if Arg1 is not integer and is not float.
+
+\subsection*{\iop{jump f}}
+
+Continues execution at the location Arg0.
+
+\subsection*{\iop{case\_end rxy}}
+
+Raises the \verb$case_clause$ exception with the value of Arg0.
+
+\subsection*{\iop{badmatch rxy}}
+
+Raises the \verb$badmatch$ exception with the value of Arg0.
+
+\subsection*{\iop{if\_end}}
+
+Raises the \verb$if_clause$ exception.
+
+\subsection*{\iop{raise s s}}
+
+Raises the exception. The instruction is garbled by backward compatibility. Arg0
+is a stack trace and Arg1 is the value accompanying the exception. The reason of
+the raised exception is dug up from the stack trace. 
+
+\subsection*{\iop{badarg j}}
+
+If Arg0 is not 0 then jumps to the label Arg0. Otherwise, raises the
+\verb$badarg$ exception.
+
+\subsection*{\iop{system\_limit j}}
+
+Similar to \iop{badarg j} but raises \verb${system_limit}$ exception.
+
+\subsection*{\iop{move\_jump f ncxy}}
+
+Move the value from Arg1 to R0 and then jumps to the label Arg0.
+
+\subsection*{\iop{move\_x1 c}}
+
+Sets R1 to the value of Arg0.
+
+\subsection*{\iop{move\_x2 c}}
+
+Sets R2 to the value of Arg0.
+
+\subsection*{\iop{move2 x y x y}\\
+\iop{move2 y x y x}\\
+\iop{move2 x x x x}}
+
+Combine two move operations.
+
+\subsection*{\iop{move rxync rxy}}
+
+Copies Arg0 to Arg1.
+
+\subsection*{\iop{recv\_mark f}}
+
+Saves the last pointer of the message queue and the label of the soon expected
+\iop{loop\_rec f r}.
+
+\subsection*{\iop{i\_recv\_set f}}
+
+Sets the \save{} pointer to the saved last pointer if the label is right. This
+is somehow needed for in-order processing of monitoring messages.
+
+\subsection*{\iop{remove\_message}}
+
+Removes the (matched) message from the message queue.
+
+\subsection*{\iop{timeout}}
+
+Timeout has occured. Resets the \save{} pointer to the first message in the
+message queue.
+
+\subsection*{\iop{timeout\_locked}}
+
+Same as \iop{timeout} but with SMP precautions.
+
+\subsection*{\iop{i\_loop\_rec f r}}
+
+Picks the next message from the message queue and places it in R0. If there are
+no messages then jumps to Arg0 which points to \iop{wait} or \iop{wait\_timeout}
+instruction.
+
+\subsection*{\iop{loop\_rec\_end f}}
+
+Advances the \save{} pointer to the next message as the current message did not
+match. Jumps to Arg0 that points to \iop{loop\_rec f r} instruction.
+
+\subsection*{\iop{wait f}}
+
+Prepares to wait indefinitely for a message to arrive. When the message arrives
+transfers control to the \iop{loop\_rec} instruction at the label Arg0.
+
+\subsection*{\iop{wait\_locked f}}
+
+Same as \iop{wait f}.
+
+\subsection*{\iop{wait\_unlocked f}}
+
+Same as \iop{wait f} but messes with SMP locks.
+
+\subsection*{\iop{i\_wait\_timeout f I}\\
+\iop{i\_wait\_timeout f s}}
+
+Sets the timer to the appropriate time as indicated by Arg1. Afterwards acts as
+\iop{wait f}.
+
+\subsection*{\iop{i\_wait\_timeout\_locked f I}\\
+\iop{i\_wait\_timeout\_locked f s}}
+
+Same as \iop{i\_wait\_timeout f I} but with SMP trickery.
+
+\subsection*{\iop{i\_wait\_error}}
+
+Raises \verb$timeout_value$ exception.
+
+\subsection*{\iop{i\_wait\_error\_locked}}
+
+Same as \iop{i\_wait\_error} but with due respect to SMP.
+
+\subsection*{\iop{send}}
+
+Sends the message from R1 to the process R0.
+
+\subsection*{\iop{i\_is\_eq\_exact\_immed f rxy c}}
+
+Checks if Arg1 equals Arg2 using \emph{bitwise} comparison. Jumps to Arg0 it
+does not.
+
+\subsection*{\iop{i\_is\_ne\_exact\_immed f rxy c}}
+
+Checks if Arg1 equals Arg2 using \emph{bitwise} comparison. Jumps to Arg0 it
+does.
+
+\subsection*{\iop{i\_is\_eq\_exact\_literal f rxy c}}
+
+Checks if Arg1 equals Arg2 using the term comparison. Jumps to Arg0 it does not.
+
+\subsection*{\iop{i\_is\_ne\_exact\_literal f rxy c}}
+
+Checks if Arg1 equals Arg2 using the term comparison. Jumps to Arg0 it does.
+
+\subsection*{\iop{i\_is\_eq\_exact f}}
+
+Checks if \tmpa{} ``exactly'' equals \tmpb{}. Jumps to the label Arg0 if it does
+not.
+
+\subsection*{\iop{i\_is\_ne\_exact f}}
+
+Checks if \tmpa{} ``exactly'' equals \tmpb{}. Jumps to the label Arg0 it does.
+
+\subsection*{\iop{i\_is\_lt f}}
+
+Checks if \tmpa{} is less than \tmpb{}. Jumps to the label Arg0 if it is not.
+
+\subsection*{\iop{i\_is\_ge f}}
+
+Checks if \tmpa{} is greater than or equal to \tmpb{}. Jumps to the label Arg0
+if it is not.
+
+\subsection*{\iop{i\_is\_eq f}}
+
+Checks if \tmpa{} is equal to \tmpb{}. Jumps to the label Arg0 if it is not.
+
+\subsection*{\iop{i\_is\_ne f}}
+
+Checks if \tmpa{} is equal to \tmpb{}. Jumps to the label Arg0 if it is.
+
+\subsection*{\iop{i\_put\_tuple rxy I}}
+
+Creates a tuple on the heap and places it in Arg0. Arg1 is the arity of the
+tuple. The elements of the tuple follow the instruction. Some of the elements
+may refer to registers or stack slots.
+
+\subsection*{\iop{put\_list s s d}}
+
+Create a cons cell on the heap and places in onto Arg2. Arg0 is the head of the
+list saved to \htop{}[0] and Arg1 is the tail saved to \htop{}[1].
+
+\subsection*{\iop{i\_fetch s s}}
+
+Fetches values from Arg0 and Arg1 and places them in \tmpa{} and \tmpb{}
+respectively.
+
+\subsection*{\iop{move\_return xcn r}}
+
+Combines \iop{move xcn r} and \iop{return}.
+
+\subsection*{\iop{move\_deallocate\_return xycn r Q}}
+
+Combines \iop{move xycn r}, \iop{deallocate Q}, and \iop{return}.
+
+\subsection*{\iop{deallocate\_return Q}}
+
+Combines \iop{deallocate Q} and \iop{return}.
+
+\subsection*{\iop{test\_heap\_1\_put\_list I y}}
+
+Test that the heap has a room for Arg0 words and than conses value of Arg1 with
+R0.
+
+\subsection*{\iop{is\_tuple\_of\_arity f rxy A}}
+
+Jumps to the label Arg0 if Arg1 is not a tuple or its arity is not Arg2. If Arg1
+is tuple its value is saved to \tmpa{}.
+
+\subsection*{\iop{is\_tuple f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not a tuple.
+
+\subsection*{\iop{test\_arity f rxy A}}
+
+Jumps to the label Arg0 is the arity of the tuple Arg1 is not Arg2. The value of
+Arg1 is saved to \tmpa{}.
+
+\subsection*{\iop{extract\_next\_element xy}}
+
+The pointer in \tmpa{} moved to the next element of the tuple. The element is
+read from the location pointed to by \tmpa{} to Arg0.
+
+\subsection*{\iop{extract\_next\_element2 xy}}
+
+The pointer in \tmpa{} moved to the next element of the tuple. Copies 2 terms
+from the array pointed to by \tmpa{} to the registers or slots pointed to by
+Arg0. For instance, if Arg0 is R3 then tuple elements are loaded to R3 and R4.
+
+\subsection*{\iop{extract\_next\_element3 xy}}
+
+Same as \iop{extract\_next\_element2 xy} but copies three elements.
+
+\subsection*{\iop{is\_integer\_allocate f rx I I}}
+
+Combines \iop{is\_integer f rx} and \iop{allocate I I}.
+
+\subsection*{\iop{is\_integer f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not integer.
+
+\subsection*{\iop{is\_list f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not a list.
+
+\subsection*{\iop{is\_nonempty\_list\_allocate f rx I t}}
+
+Combines \iop{is\_nonempty\_list f rx} and \iop{allocate I t}.
+
+\subsection*{\iop{is\_nonempty\_list\_test\_heap f r I t}}
+
+Combines \iop{is\_nonempty\_list f r} and \iop{test\_heap I t}.
+
+\subsection*{\iop{is\_nonempty\_list f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not an nonempty list.
+
+\subsection*{\iop{is\_atom f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not an atom.
+
+\subsection*{\iop{is\_float f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not a float.
+
+\subsection*{\iop{is\_nil f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not nil.
+
+\subsection*{\iop{is\_bitstring f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not a bitstring (or a binary).
+
+\subsection*{\iop{is\_reference f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not a reference.
+
+\subsection*{\iop{is\_pid f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not a pid.
+
+\subsection*{\iop{is\_port f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not a port.
+
+\subsection*{\iop{is\_boolean f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not true or false.
+
+\subsection*{\iop{is\_function2 f s s}}
+
+Jumps to the label Arg0 if Arg1 is not fun or have an arity different from Arg1.
+
+\subsection*{\iop{allocate\_init t I y}}
+
+Combines \iop{allocate t I} and \iop{init y}.
+
+\subsection*{\iop{i\_apply}}
+
+Applies the function identified by R0 (module), R1 (function), and R2
+(arguments). Sets \cp{} to the point after the instruction.
+
+\subsection*{\iop{i\_apply\_last P}}
+
+Applies the function identified by R0 (module), R1 (function), and R2
+(arguments). Afterwards, restores \cp{} from stack and deallocates Arg0 slots
+from stack.
+
+\subsection*{\iop{i\_apply\_only}}
+
+Applies the function identified by R0 (module), R1 (function), and R2
+(arguments).
+
+\subsection*{\iop{apply I}}
+
+Finds the address from the export entry for the function (possibly BIF)
+identified by the module R(N), the function R($N+1$), and the arity N. The arity
+is taken from Arg0. Sets \cp{} to the next instruction and jumps to the found
+address.
+
+\subsection*{\iop{apply\_last I P}}
+
+Similar to \iop{apply I} but restores \cp{} from stack and drops Arg1 slots from
+it before jumping to the found address.
+
+\subsection*{\iop{i\_apply\_fun}}
+
+Applies the fun R0 to the argument list in R1. Set \cp{} to the location right
+after the instruction.
+
+\subsection*{\iop{i\_apply\_fun\_last P}}
+
+Applies the fun R0 to the argument list in R1. Restores \cp{} from stack and
+deallocates Arg0 slots from stack.
+
+\subsection*{\iop{i\_apply\_fun\_only}}
+
+Applies the fun R0 to the argument list in R1.
+
+\subsection*{\iop{i\_hibernate}}
+
+Puts the process into a hibernated state dropping its stack and minimizing its
+heap. When a message arrives or if the message queue is not empty the process is
+waken up and starts executing a function identified by R0 (module), R1
+(function), and R2 (arguments).
+
+\subsection*{\iop{call\_bif0 e}}
+
+Calls the BIF from Arg0 without arguments and returns result in R0.
+
+\subsection*{\iop{call\_bif1 e}}
+
+Calls the BIF from Arg0 with R0 as the argument and returns result in R0.
+
+\subsection*{\iop{call\_bif2 e}}
+
+Calls the BIF from Arg0 with arguments in R0 and R1 and returns result in R0.
+
+\subsection*{\iop{call\_bif3 e}}
+
+Calls the BIF from Arg0 with arguments in R0, R1, and R2 and returns result in R0.
+
+\subsection*{\iop{i\_get s d}}
+
+Reads the process dictionary key Arg0 and places the result to Arg1.
+
+\subsection*{\iop{self rxy}}
+
+Put the identifier of the current process to Arg0.
+
+\subsection*{\iop{node rxy}}
+
+Put the node identifier of the virtual machine to Arg0.
+
+\subsection*{\iop{i\_fast\_element rxy j I d}}
+
+Gets the Arg2'th element of the tuple Arg0 and places it to Arg3. Arg1 is
+effectively disregarded.
+
+\subsection*{\iop{i\_element rxy j s d}}
+
+Gets the Arg2'th element of the tuple Arg0 and places it to Arg3. Arg1 is
+effectively disregarded.
+
+\subsection*{\iop{bif1 f b s d}}
+
+Calls the BIF from Arg1 with the argument Arg2 and places the result to Arg3.
+Upon error jumps to Arg0 as appropriate for the guard BIF.
+
+\subsection*{\iop{bif1\_body b s d}}
+
+Calls the BIF from Arg0 with the argument Argr1 and places the result to Arg3.
+This is the case of a guard BIF in the function body. It fails like an ordinary
+BIF.
+
+\subsection*{\iop{i\_bif2 f b d}}
+
+Calls the guard BIF from Arg1 with the two arguments in \tmpa{} and \tmpb{} and
+places the result to Arg2. Upon error jumps to Arg0 as appropriate for the guard
+BIF.
+
+\subsection*{\iop{i\_bif2\_body b d}}
+
+Calls the guard BIF from Arg0 with the two arguments in \tmpa{} and \tmpb{} and
+places the result to Arg1. This is the case of a guard BIF in the function body.
+It fails like an ordinary BIF.
+
+\subsection*{\iop{i\_move\_call c r f}}
+
+Combines \iop{move c r} and \iop{call f}.
+
+\subsection*{\iop{i\_move\_call\_last f P c r}}
+
+Combines \iop{move c r} and \iop{call\_last f P}.
+
+\subsection*{\iop{i\_move\_call\_only f c r}}
+
+Combines \iop{move c r} and \iop{call\_only f}.
+
+\subsection*{\iop{move\_call xy r f}}
+
+Same as \iop{i\_move\_call xy r f}.
+
+\subsection*{\iop{move\_call\_last xy r f Q}}
+
+Same as \iop{i\_move\_last f Q xy r}.
+
+\subsection*{\iop{move\_call\_only x r f}}
+
+Same as \iop{i\_move\_only xy r f}.
+
+\subsection*{\iop{i\_call f}}
+
+Sets \cp{} to the location after the instruction and then jumps to the label
+Arg0.
+
+\subsection*{\iop{i\_call\_last f P}}
+
+Restores \cp{} from the stack, drops Arg1 slots from stack, and jumps to the
+label Arg0.
+
+\subsection*{\iop{i\_call\_only f}}
+
+Jumps to Arg0.
+
+\subsection*{\iop{i\_call\_ext e}}
+
+Sets \cp{} to the point after the instruction and then jumps to the address of
+the export entry Arg0.
+
+\subsection*{\iop{i\_call\_ext\_last e P}}
+
+Restores \cp{} from the stack, drops Arg1 slots from the stack, and then jumps
+to the address of the export entry Arg0.
+
+\subsection*{\iop{i\_call\_ext\_only e}}
+
+Jumps to the address of the export entry Arg0.
+
+\subsection*{\iop{i\_move\_call\_ext c r e}}
+
+Combines \iop{move c r} with \iop{i\_call\_ext e}.
+
+\subsection*{\iop{i\_move\_call\_ext\_last e P c r}}
+
+Combines \iop{move c r} with \iop{i\_call\_last e}.
+
+\subsection*{\iop{i\_move\_call\_ext\_only e c r}}
+
+Combines \iop{move c r} with \iop{i\_call\_only e}.
+
+\subsection*{\iop{i\_call\_fun I}}
+
+Calls the fun with the arity Arg0. The fun is found in the arity'th registers.
+Thus the fun call arguments are in registers starting with R0 and the fun itself
+immediately follows. The result is returned in R0. Sets \cp{} to the point after
+the instruction and jumps to the fun's entry.
+
+\subsection*{\iop{i\_call\_fun\_last I P}}
+
+Same as \iop{i\_call\_fun I} but restores \cp{} from stack and drops Arg1 slots
+from it before proceeding to the fun's entry.
+
+\subsection*{\iop{i\_make\_fun I t}}
+
+Creates a fun and puts it to R0. Arg0 contains a reference to the entry of the
+lamdba table of the module. Arg1 is the number of free variables. The values of
+free variables are taken from registers starting with R0. Only these registers
+are concidered live. It means that Arg1 is Live also.
+
+\subsection*{\iop{is\_function f rxy}}
+
+Jumps to the label Arg0 if Arg1 is not a fun.
+
+\subsection*{\iop{i\_bs\_start\_match2 rxy f I I d}}
+
+Checks that Arg0 is the matching context with enough slots for saved offsets.
+The number of slots needed is given by Arg3. If there not enough slots of if
+Arg0 is a regular binary then recreates the matching context and saves it to
+Arg4. If something does not work jumps to Arg1. Arg2 is Live.
+
+\subsection*{\iop{i\_bs\_save2 rx I}}
+
+Saves the offset from the matching context Arg0 to the saved offsets array at
+the index Arg1.
+
+\subsection*{\iop{i\_bs\_restore2 rx I}}
+
+Does the opposite of \iop{i\_bs\_save2 rx I}. Restores the offset of the
+matching context Arg0 from the saved offsets array at index Arg1.
+
+\subsection*{\iop{i\_bs\_match\_string rx f I I}}
+
+Compares Arg2 bits from the matching context Arg2 with the data referenced by
+the raw data pointer Arg3. Jumps to the label Arg1 if there is no match.
+
+\subsection*{\iop{i\_bs\_get\_integer\_small\_imm rx I f I d}}
+
+Gets a (small) integer of size (in bits) Arg1 from the matching context Arg0 and
+puts it to Arg4. Arg3 are flags. Jumps to the label Arg2 on failure.
+
+\subsection*{\iop{i\_bs\_get\_integer\_imm rx I I f I d}}
+
+Gets an integer of size (in bits) Arg1 from the matching context Arg0 and puts
+it to Arg5. Arg4 are flags. Arg2 is Live. Jumps to the label Arg3 on failure.
+
+\subsection*{\iop{i\_bs\_get\_integer f I I d}}
+
+Gets an integer of size \tmpb{} (in units) from the matching context \tmpa{} and
+saves it to Arg3. Arg1 is Live.  Arg2 are flags and unit. Jumps to Arg0 on
+failure.
+
+\subsection*{\iop{i\_bs\_get\_integer\_8 rx f d}}
+
+Gets an 8-bit integer from the matching context Arg0 and saves it to Arg2. Jumps
+to Arg1 if there are not enough bits left.
+
+\subsection*{\iop{i\_bs\_get\_integer\_16 rx f d}}
+
+Gets an 16-bit integer from the matching context Arg0 and saves it to Arg2. Jumps
+to Arg1 if there are not enough bits left.
+
+\subsection*{\iop{i\_bs\_get\_integer\_32 rx f I d}}
+
+Gets an 32-bit integer from the matching context Arg0 and saves it to Arg3. Jumps
+to Arg1 if there are not enough bits left. Arg2 is Live as the integer may not
+be small.
+
+\subsection*{\iop{i\_bs\_get\_binary\_imm2 f rx I I I d}}
+
+Gets a binary from the matching context Arg1 of size (in bits) Arg3. Arg2 is
+Live. Arg4 are flags. The binary is put to Arg5. Jumps yo Arg0 on failure.
+
+\subsection*{\iop{i\_bs\_get\_binary2 f rx I s I d}}
+
+Gets a binary from the matching context Arg1 of size (in units) Arg3. Arg2 is
+Live. Arg4 are flags and unit. Puts result to Arg5. Jumps to Arg0 on failure.
+
+\subsection*{\iop{i\_bs\_get\_binary\_all2 f rx I I d}}
+
+Gets the rest of the matching context Arg1 as a binary and puts it to Arg4. The
+binary size should be divisable by unit Arg3. Arg2 is Live. Jumps to Arg0 upon
+failure.
+
+\subsection*{\iop{i\_bs\_get\_binary\_all\_reuse rx f I}}
+
+Replaces the matching context Arg0 with the rest of its reminder represented as
+a binary. Arg2 is the unit. The size of the binary should be divisible by unit.
+Jumps to the label Arg1 on failure.
+
+\subsection*{\iop{i\_bs\_get\_float2 f rx I s I d}}
+
+Gets the float value form the matching context Arg1. Arg3 is the size in units.
+Arg4 are unit and flags. Puts the value to Arg5. Arg2 is Live. Jumps to Arg0 on
+failure.
+
+\subsection*{\iop{i\_bs\_skip\_bits2\_imm2 f rx I}}
+
+Move the offset of the matching context Arg1 by Arg2 bits. Jumps to Arg0 on
+failure.
+
+\subsection*{\iop{i\_bs\_skip\_bits2 f rx rxy I}}
+
+Skips2 Arg2 units of the matching context Arg1. Arg3 is the unit size. Jumps to
+Arg0 on failure.
+
+\subsection*{\iop{i\_bs\_skip\_bits\_all2 f rx I}}
+
+Skips all remaining bits of the matching context Arg1. The number of bits
+skipped should be divisible by unit Arg2. Jumps to the label Arg0 on failure.
+
+\subsection*{\iop{bs\_test\_zero\_tail2 f rx}}
+
+Jumps to the label in Arg0 if the matching context Arg1 still have unmatched
+bits.
+
+\subsection*{\iop{bs\_test\_tail\_imm2 f rx I}}
+
+Checks that the matching context Arg1 has exactly Arg2 unmatched bits. Jumps to
+the label Arg0 if it is not so.
+
+\subsection*{\iop{bs\_test\_unit f rx I}}
+
+Checks that the size of the remainder of the matching context Arg1 is divisible
+by unit Arg2. Jumps to the label Arg0 if it is not so.
+
+\subsection*{\iop{bs\_test\_unit8 f rx}}
+
+Checks that the size of the remainder of the matching context Arg1 is divisible
+by 8. Jumps to the label Arg1 if it is not.
+
+\subsection*{\iop{bs\_context\_to\_binary rxy}}
+
+Converts the matching context to a (sub)binary using almost the same code as
+\iop{i\_bs\_get\_binary\_all\_reuse rx f I}.
+
+\subsection*{\iop{i\_bs\_get\_utf8 rx f d}}
+
+Extracts a UTF-8 encoded character from the matching context Arg0 and places it
+to Arg2. Jumps to Arg1 upon failure.
+
+\subsection*{\iop{i\_bs\_get\_utf16 rx f I d}}
+
+Extracts a UTF-16 encoded character from the matching context Arg0 using flags
+Arg2 and places it to Arg3. Jumps to Arg1 upon failure.
+
+\subsection*{\iop{i\_bs\_validate\_unicode\_retract j}}
+
+Verifies that a matched out integer \tmpa{} falls into the valid range for
+Unicode characters. If not the matching context \tmpb{} is rectracted by 32
+bits. Arg0 looks like a failure label but it is never used.
+
+\subsection*{\iop{i\_bs\_init\_fail rxy j I d}}
+
+The same as \iop{i\_bs\_init I I d} but may fail if the size in Arg0 is invalid.
+Arg1 is not used.
+
+\subsection*{\iop{i\_bs\_init\_fail\_heap I j I d}}
+
+Follows the \iop{i\_fetch d d} that loads binary data size into \tmpa{}.
+Allocates space for a shared binary data of \tmpa{} size. Creates a ProcBin
+referencing the data. Makes sure that heap has enough space for a subbinary and
+Arg0 more words. Arg2 is Live. Puts the ProcBin to Arg3.
+
+\subsection*{\iop{i\_bs\_init I I d}}
+
+Allocates space for a shared binary data of Arg0 size. Creates a ProcBin
+referencing the data. Makes sure that the heap has enough space for a subbinary.
+Arg1 is Live. Puts the ProcBin into Arg2.
+
+\subsection*{\iop{i\_bs\_init\_heap I I I d}}
+
+Allocates space for a shared binary data of Arg0 size. Create a ProcBin
+referencing the data. Makes sure that the heap has enough space for a subbinary
+and Arg1 more words. Arg2 is Live. Puts the ProcBin into Arg3.
+
+\subsection*{\iop{i\_bs\_init\_heap\_bin I I d}}
+
+Allocates a heap binary of size Arg0 and makes sure that the heap has enough
+space for a subbinary. Arg1 is Live. The heap binary is put to Arg2.
+
+\subsection*{\iop{i\_bs\_init\_heap\_bin\_heap I I I d}}
+
+Allocates a heap binary of size Arg0 and makes sure that the heap has enough
+space for a subbinary and Arg1 more words. Arg2 is Live. The heap binary is put
+to Arg3.
+
+\subsection*{\iop{i\_bs\_init\_bits\_fail rxy j I d}}
+
+Same as \iop{i\_bs\_init\_bits\_heap I I I d} but the number of extra words
+allocated on the heap is zero and may fail if the number of bits in Arg0 is not
+valid. Arg1 is not used.
+
+\subsection*{\iop{i\_bs\_init\_bits\_fail\_heap I j I d}}
+
+Same as \iop{i\_bs\_init\_bits\_heap I I I d} but the number of bits is fetched
+to \tmpa{} by previous instruction and may fail if the number of bits in \tmpa{}
+is not valid. Arg1 is not used.
+
+\subsection*{\iop{i\_bs\_init\_bits I I d}}
+
+Same as \iop{i\_bs\_init\_bits\_heap I I I d} but the number of extra words
+allocated on heap is zero.
+
+\subsection*{\iop{i\_bs\_init\_bits\_heap I I I d}}
+
+Allocates a heap binary of size (in bits) Arg0. If the size is not divisible by
+8 than allocates a subbinary referencing the exact number of bits of the heap
+binary. Makes sure that heap has Arg1 extra words available. Arg2 is Live. Puts
+the result (the heap binary or the subbinary) to Arg3.
+
+\subsection*{\iop{i\_bs\_add j I d}}
+
+Calculates the total of the number of bits in \tmpa{} and the number of units in
+\tmpb{}. Arg1 is the unit. Stores the result to Arg2.
+
+\subsection*{\iop{i\_bs\_init\_writable}}
+
+Allocates a shared data space of size R0. Creates a ProcBin on the heap
+referencing the data. Create a subbinary referencing the ProcBin. Save the
+subbinary to R0.
+
+\subsection*{\iop{i\_bs\_append j I I I d}}
+
+Appends \tmpa{} bits to a binary \tmpb{}. If the binary is a writable subbinary
+referencing a ProcBin with enough empty space then a new writable subbinary is
+created and the old one is made non-writable. In other cases, creates a new
+shared data, a new ProcBin, and a new subbinary. For all heap allocation, a
+space for more Arg1 words are requested. Arg2 is Live. Arg3 is unit. Saves the
+resultant subbinary to Arg4.
+
+\subsection*{\iop{i\_bs\_private\_append j I d}}
+
+Same as \iop{i\_bs\_append j I I I d} but assumes that the binary writable.
+Reallocates the shared data if there is not enough space. This should be safe.
+Changes the subbinary \tmpb{} in place. No heap allocations. Arg1 is the unit.
+Save the result to Arg2.
+
+\subsection*{\iop{i\_new\_bs\_put\_integer j s I s}}
+
+Assumes that previous instructions created a binary creation context. Packs an
+integer value Arg3 into Arg1 units of the context. Arg2 are the unit and flags.
+The failure label Arg0 is unused.
+
+\subsection*{\iop{i\_new\_bs\_put\_integer\_imm j I I s}}
+
+Assumes that previous instructions created a binary creation context. Packs an
+integer value Arg3 into Arg1 bits of the context. Arg2 are flags.  The failure
+label Arg0 is unused.
+
+\subsection*{\iop{i\_bs\_utf8\_size s d}}
+
+\begin{verbatim}
+/*
+  * Calculate the number of bytes needed to encode the source
+  * operarand to UTF-8. If the source operand is invalid (e.g. wrong
+  * type or range) we return a nonsense integer result (2 or 4). We
+  * can get away with that because we KNOW that bs_put_utf16 will do
+  * full error checking.
+  */
+\end{verbatim}
+
+\subsection*{\iop{i\_bs\_utf16\_size s d}}
+
+\begin{verbatim}
+/*
+  * Calculate the number of bytes needed to encode the source
+  * operarand to UTF-16. If the source operand is invalid (e.g. wrong
+  * type or range) we return a nonsense integer result (2 or 4). We
+  * can get away with that because we KNOW that bs_put_utf16 will do
+  * full error checking
+  */
+\end{verbatim}
+
+\subsection*{\iop{i\_bs\_put\_utf8 j s}}
+
+Assumes that previous instructions created a binary creation context. Packs a
+UTF-8 character Arg1 into the context. The failure label Arg0 is unused.
+
+\subsection*{\iop{i\_bs\_put\_utf16 j I s}}
+
+Assumes that previous instructions created a binary creation context. Packs a
+UTF-16 character Arg2 into the context. Arg1 are flags. The failure label Arg0
+is unused.
+
+\subsection*{\iop{i\_bs\_validate\_unicode j s}}
+
+Validates a single unicode character Arg1. Raises \verb$badarg$ on error. Arg0
+is not used. NB: the existence of the instruction may be dependent on the
+implementation detail of binary construction; see comment in beam\_emu.c, line
+3963.
+
+\subsection*{\iop{i\_new\_bs\_put\_float j s I s}}
+
+Assumes that previous instructions created a binary creation context. Packs a
+float of Arg1 units size into the context. Arg2 are the unit and flags. The
+failure label Arg0 is not used.
+
+\subsection*{\iop{i\_new\_bs\_put\_float\_imm j I I s}}
+
+Assumes that previous instructions created a binary creation context. Packs a
+float Arg3 of Arg1 bits size into the context. Arg2 are flags. The failure label Arg0
+is not used.
+
+\subsection*{\iop{i\_new\_bs\_put\_binary j s I s}}
+
+Assumes that previous instructions created a binary creation context. Packs a
+binary Arg3 of Arg1 units size into the context. Arg2 are flags and the unit.
+The failure label Arg0 is not used.
+
+\subsection*{\iop{i\_new\_bs\_put\_binary\_imm j I s}}
+
+Assumes that previous instructions created a binary creation context. Packs a
+binary Arg2 of Arg1 bits size into the context. The failure label Arg0 is not
+used.
+
+\subsection*{\iop{i\_new\_bs\_put\_binary\_all j s I}}
+
+Assumes that previous instructions created a binary creation context. Packs a
+whole binary Arg1 into the context. Arg2 is the unit. The failure label Arg0 is
+not used.
+
+\subsection*{\iop{bs\_put\_string I I}}
+
+Assumes that previous instructions created a binary creation context. Packs a
+string of characters Arg0 bytes long referenced by the pointer Arg1 into the
+context.
+
+\subsection*{\iop{fmove qdl ld}}
+
+Copies Arg0 to Arg1.
+
+\subsection*{\iop{fconv d l}}
+
+Converts Arg0 to float and places the result to Arg1.
+
+\subsection*{\iop{i\_fadd l l l}}
+
+$Arg2 = Arg0 + Arg1$.
+
+\subsection*{\iop{i\_fsub l l l}}
+
+$Arg2 = Arg0 - Arg1$.
+
+\subsection*{\iop{i\_fmul l l l}}
+
+$Arg2 = Arg0 \times Arg1$.
+
+\subsection*{\iop{i\_fdiv l l l}}
+
+$Arg2 = Arg0 / Arg1$.
+
+\subsection*{\iop{i\_fnegate l l l}}
+
+$Arg1 = -Arg0$.
+
+\subsection*{\iop{i\_fcheckerror}}
+
+Checks if the FR0 contains Nan or +-Inf. Raises \verb$badarith$ if this is the
+case.
+
+\subsection*{\iop{fclearerror}}
+
+Maybe clears FP error flag.
+
+\subsection*{\iop{i\_increment rxy I I d}}
+
+$Arg3 = Arg0 + Arg1$. Arg2 is Live.
+
+\subsection*{\iop{i\_plus j I d}}
+
+$Arg2 = \tmpa{} + \tmpb{}$. Arg1 is Live. Jumps to Arg0 on error if Arg0 is not
+zero.
+
+\subsection*{\iop{i\_minus j I d}}
+
+$Arg2 = \tmpa{} - \tmpb{}$. Arg1 is Live. Jumps to Arg0 on error if Arg0 is not
+zero.
+
+\subsection*{\iop{i\_times j I d}}
+
+$Arg2 = \tmpa{} \times \tmpb{}$. Mixed. Arg1 is Live. Jumps to Arg0 on error if Arg0 is
+not zero.
+
+\subsection*{\iop{i\_m\_div j I d}}
+
+$Arg2 = \tmpa{} / \tmpb{}$. Mixed. Arg1 is Live. Jumps to Arg0 on error if Arg0 is
+not zero.
+
+\subsection*{\iop{i\_int\_div j I d}}
+
+$Arg2 = \tmpa{} / \tmpb{}$. Division is integer. Arg1 is Live. Jumps to Arg0 on
+error if Arg0 is not zero.
+
+\subsection*{\iop{i\_rem j I d}}
+
+$Arg2 = \tmpa{} \% \tmpb{}$. Division is integer. Arg1 is Live. Jumps to Arg0 on
+error if Arg0 is not zero.
+
+\subsection*{\iop{i\_bsl j I d}}
+
+$Arg2 = \tmpa{} <</>> \tmpb{}$. The direction of the shift depends on the sign of
+\tmpb{}. Arg1 is Live. Jumps to Arg0 on error if Arg0 is not zero.
+
+\subsection*{\iop{i\_bsr j I d}}
+
+$Arg2 = \tmpa{} >>/<< \tmpb{}$. The direction of the shift depends on the sign of
+\tmpb{}. Arg1 is Live. Jumps to Arg0 on error if Arg0 is not zero.
+
+\subsection*{\iop{i\_band j I d}}
+
+$Arg2 = \tmpa{} \& \tmpb{}$. Arg1 is Live. Jumps to Arg0 on error if Arg0 is not
+zero.
+
+\subsection*{\iop{i\_bor j I d}}
+
+$Arg2 = \tmpa{} | \tmpb{}$. Arg1 is Live. Jumps to Arg0 on error if Arg0 is not
+zero.
+
+\subsection*{\iop{i\_bxor j I d}}
+
+$Arg2 = \tmpa{} \oplus \tmpb{}$. Arg1 is Live. Jumps to Arg0 on error if Arg0 is not
+zero.
+
+\subsection*{\iop{i\_int\_bnot j s I d}}
+
+$Arg3 = \neg Arg1$. Arg2 is Live. Jumps to Arg0 on error if Arg0 is not zero.
+
+\subsection*{\iop{i\_gc\_bif1 j I s I d}}
+
+Executes a guard BIF at the address Arg1 with a single parameter Arg2. Arg3 is
+Live. Stores the result in Arg4. Jumps to Arg0 on error if it is not zero.
+Otherwise, raises an exception.
+
+\subsection*{\iop{i\_gc\_bif2 j I I d}}
+
+Executes a guard BIF at the address Arg1 with two parameters --- \tmpa{} and
+\tmpb{}. Arg2 is Live. Stores the result in Arg3. Jumps to Arg0 on error if it
+is not zero.  Otherwise, raises an exception.
+
+\subsection*{\iop{i\_gc\_bif3 j I s I d}}
+
+Executes a guard BIF at the address Arg1 with three parameters --- Arg2,
+\tmpa{}, and \tmpb{}. Arg3 is Live. Stores the result in Arg4. Jumps to Arg0 on
+error if it is not zero.  Otherwise, raises an exception.
+
+\section*{Message passing}
+
+\begin{verbatim}
+ /*
+  * Skeleton for receive statement:
+  *
+  *             recv_mark L1                     Optional
+  *             call make_ref/monitor            Optional
+  *             ...
+  *             recv_set L1                      Optional
+  *      L1:          <-------------------+
+  *                   <-----------+       |
+  *                               |       |
+  *             loop_rec L2 ------+---+   |
+  *             ...               |   |   |
+  *             remove_message    |   |   |
+  *             jump L3           |   |   |
+  *             ...               |   |   |
+  *             loop_rec_end L1 --+   |   |
+  *      L2:          <---------------+   |
+  *             wait L1  -----------------+      or wait_timeout
+  *             timeout
+  *
+  *      L3:    Code after receive...
+  *
+  *
+  */
+\end{verbatim}
+
+\section*{Meta instructions}
+
+All meta instructions are omitted by the loader. Their presence is recognized by
+the interpreter as an error.
+
+\subsection*{\iop{int\_code\_end}}
+
+Maybe marks the end of the code.
+
+\subsection*{\iop{label L}}
+
+The label L is set to the current code location.
+
+\subsection*{\iop{line I}}
+
+Maybe augments debugging output when backtracking.
+
+\section*{Superficial instructions}
+
+The use of the following instructions supported by BEAM is avoided in Ling$:$
+
+\begin{multicols}{2}
+\begin{itemize}
+\item \iop{too\_old\_compiler}
+\item \iop{i\_trace\_breakpoint}
+\item \iop{i\_debug\_breakpoint}
+\item \iop{i\_count\_breakpoint}
+\item \iop{i\_time\_breakpoint}
+\item \iop{i\_return\_time\_trace}
+\item \iop{i\_return\_to\_trace}
+\item \iop{i\_yield}
+\item \iop{normal\_exit}
+\item \iop{continue\_exit}
+\item \iop{apply\_bif}
+\item \iop{call\_nif}
+\item \iop{call\_error\_handler}
+\item \iop{call\_traced\_function}
+\item \iop{return\_trace}
+\item \iop{unsupported\_guard\_bif}
+\item \iop{on\_load}
+\end{itemize}
+\end{multicols}
+
+\end{document}

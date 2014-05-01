@@ -1,0 +1,5 @@
+cd("/home/mk/ling").
+calendar:module_info().
+code:add_pathz("/usr/lib/erlang/lib/common_test-1.6.1/ebin").
+code:add_pathz("/usr/lib/erlang/lib/test_server-3.5.1/ebin").
+ct:run_test([{suite,"/home/mk/otp/erts/emulator/test/estone_SUITE"},{testcase,estone},{logdir,"/home/mk/ling/t1"},{auto_compile,false}]).

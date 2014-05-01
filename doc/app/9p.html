@@ -1,0 +1,360 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Module 9p</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module 9p</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>.
+
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+
+<h2><a name="description">Description</a></h2>
+
+<p>Each 9p connection is managed by a separate Erlang process. A 9p connection is
+initiatied by calling:</p>
+
+<pre>
+	start_link(TransMod, TransConf, AttachTo) -&gt; {ok,ConnPid}
+	start_link(TransMod, TransConf, AttachTo, Opts) -&gt; {ok,ConnPid}
+</pre>
+
+<p>TransMod/TranConf is the transport configuration. AttachTo is the list of
+attach paths. Attach paths should be either a binary, a {AName,User} tuple or
+{AName,User,Uid} tuple. The tuple format lets the caller specify the
+parameters of the attach message.</p>
+
+<p>The following options are recognized by '9p':start\_link():</p>
+
+<pre>
+	{version,Ver}
+	{msize,N}
+	{auth_user,AUser}
+	{auth_user_id,AUserId}
+	{auth_path,APath}
+	{unix_uid,Uid}
+	{unix_gid,Gid}
+</pre>
+
+<p>Possible versions are '9P2000.L' and '9P2000.e' (default). msize defaults to
+4294967295 for '9P2000.e' version to allow sending processes messages as a
+single 9p frame. AUser, AUserId, and APath are auxilliary parameters of the 9p
+auth message. Uid and Gid are passed on to the server if MUNGE authentication is
+in effect.</p>
+
+<p>Establishing a 9p connection involves many, sometimes a dozen roundtrips to the
+server. The start\_link() calls only initiates the process. Completed attach
+operations are communicated to the 9p mounter asynchronously using the following
+messages:</p>
+
+<pre>
+	{'9p_attached',ConnPid,Fid,AName}
+</pre>
+
+<p>9p mounter translates these messages into the corresponding updates to the mounting
+table.</p>
+
+<p>A 9p connection should be started by the 9p mounter. Otherwise, the process
+opening a 9p connection should trap exits and send the message
+{'9p_closed',ConnPid} to the 9p mounter when it detects a dropped 9p
+connection.</p>
+
+<p>A 9p connection can detect dropped/lost transport connections and attempt to
+recover them using a session key (9P2000.e only).</p>
+
+
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-at">at()</a></h3>
+<p><tt>at() = bof | {bof, Offset} | cur | {cur, Offset} | eof | {eof, Offset}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-attr">attr()</a></h3>
+<p><tt>attr() = mode | nlink | uid | gid | rdev | atime | mtime | ctime | ino | size | blocks | btime | gen | data_version</tt></p>
+
+
+<h3 class="typedecl"><a name="type-fid">fid()</a></h3>
+<p><tt>fid() = integer()</tt></p>
+
+
+<h3 class="typedecl"><a name="type-flag">flag()</a></h3>
+<p><tt>flag() = rdonly | wronly | rdwr | excl | trunc | append | sync</tt></p>
+
+
+<h3 class="typedecl"><a name="type-option">option()</a></h3>
+<p><tt>option() = {version, '9P2000.e'} | {version, '9P2000.L'} | {msize, integer()} | {auth_user, binary()} | {auth_user_id, integer()} | {auth_path, binary()} | {unix_uid, integer()} | {unix_gid, integer()}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-qid">qid()</a></h3>
+<p><tt>qid() = integer()</tt></p>
+
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#close-1">close/1</a></td><td>Terminates the 9p connection.</td></tr>
+<tr><td valign="top"><a href="#clunk-2">clunk/2</a></td><td>Closes the Fid.</td></tr>
+<tr><td valign="top"><a href="#create-3">create/3</a></td><td>Creates a file named Name in the directory referenced to by the Fid.</td></tr>
+<tr><td valign="top"><a href="#create-4">create/4</a></td><td>Creates a file named Name in the directory referenced to by the Fid.</td></tr>
+<tr><td valign="top"><a href="#fsync-2">fsync/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#getattr-2">getattr/2</a></td><td>Retrieves attributes of the object pointed to by the Fid.</td></tr>
+<tr><td valign="top"><a href="#getattr-3">getattr/3</a></td><td>Retrives selected attributes of the object referenced by the Fid.</td></tr>
+<tr><td valign="top"><a href="#link-4">link/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#mkdir-3">mkdir/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#mkdir-4">mkdir/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#mkdir-5">mkdir/5</a></td><td>Creates a directory named <code>Name</code> in the directory referenced by the
+  DFid.</td></tr>
+<tr><td valign="top"><a href="#open-2">open/2</a></td><td>Opens the fid for subsequent read/write operations.</td></tr>
+<tr><td valign="top"><a href="#open-3">open/3</a></td><td>Opens the fid for subsequent read/write operations.</td></tr>
+<tr><td valign="top"><a href="#read-2">read/2</a></td><td>Reads a chunk of data from the file referenced by the Fid.</td></tr>
+<tr><td valign="top"><a href="#read-3">read/3</a></td><td>Read N bytes from the file referenced by the Fid.</td></tr>
+<tr><td valign="top"><a href="#read-4">read/4</a></td><td>Read N bytes from the file referenced by the Fid at the known offset.</td></tr>
+<tr><td valign="top"><a href="#read_all-2">read_all/2</a></td><td>Reads the entire contents of the file referenced by Fid.</td></tr>
+<tr><td valign="top"><a href="#read_dir-2">read_dir/2</a></td><td>Reads the contents of the directory.</td></tr>
+<tr><td valign="top"><a href="#read_link-2">read_link/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#remove-2">remove/2</a></td><td>Removes the object referenced by the Fid.</td></tr>
+<tr><td valign="top"><a href="#rename-4">rename/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#renameat-5">renameat/5</a></td><td></td></tr>
+<tr><td valign="top"><a href="#seek-3">seek/3</a></td><td>Changes the current position of the file referenced by the Fid.</td></tr>
+<tr><td valign="top"><a href="#setattr-3">setattr/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#simple_read-3">simple_read/3</a></td><td>Walks to the file, opens it, and reads its entire contents.</td></tr>
+<tr><td valign="top"><a href="#simple_write-4">simple_write/4</a></td><td>Walks to the file, opens it, and overwrites it contents with Data.</td></tr>
+<tr><td valign="top"><a href="#start_link-3">start_link/3</a></td><td>Initiates a new 9p connection.</td></tr>
+<tr><td valign="top"><a href="#start_link-4">start_link/4</a></td><td>Initiates a new 9p connection.</td></tr>
+<tr><td valign="top"><a href="#symlink-4">symlink/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#symlink-5">symlink/5</a></td><td></td></tr>
+<tr><td valign="top"><a href="#terminate-2">terminate/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#timestamp-0">timestamp/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#walk-3">walk/3</a></td><td>Walks the tree starting with the Fid.</td></tr>
+<tr><td valign="top"><a href="#write-3">write/3</a></td><td>Write <code>Data</code> to the file referenced by the Fid.</td></tr>
+<tr><td valign="top"><a href="#write-4">write/4</a></td><td>Write <code>Data</code> to the file referenced by the Fid at the known offset.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="close-1">close/1</a></h3>
+<div class="spec">
+<p><tt>close(ConnPid::pid()) -&gt; ok</tt><br></p>
+</div><p>Terminates the 9p connection. All pending operations are 'flushed' before
+  closing the connection.</p>
+
+<h3 class="function"><a name="clunk-2">clunk/2</a></h3>
+<div class="spec">
+<p><tt>clunk(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>) -&gt; ok | {error, term()}</tt><br></p>
+</div><p>Closes the Fid.</p>
+
+<h3 class="function"><a name="create-3">create/3</a></h3>
+<div class="spec">
+<p><tt>create(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, Name::binary()) -&gt; {ok, <a href="#type-qid">qid()</a>, integer()} | {error, term()}</tt><br></p>
+</div><p>Creates a file named Name in the directory referenced to by the Fid.</p>
+<p><b>See also:</b> <a href="#create-4">create/4</a>.</p>
+
+<h3 class="function"><a name="create-4">create/4</a></h3>
+<div class="spec">
+<p><tt>create(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, Name::binary(), Flags::[<a href="#type-flag">flag()</a>]) -&gt; {ok, <a href="#type-qid">qid()</a>, integer()} | {error, term()}</tt><br></p>
+</div><p>Creates a file named Name in the directory referenced to by the Fid.</p>
+
+<h3 class="function"><a name="fsync-2">fsync/2</a></h3>
+<div class="spec">
+<p><tt>fsync(ConnPid, Fid) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="getattr-2">getattr/2</a></h3>
+<div class="spec">
+<p><tt>getattr(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>) -&gt; {ok, [{atom(), term()}]} | {error, term()}</tt><br></p>
+</div><p>Retrieves attributes of the object pointed to by the Fid. Attempts to
+  read  all attributes are returned except btime, gen, and data version. Not
+  all attributes may be returned depending on the server capabilities.</p>
+<p><b>See also:</b> <a href="#getattr-3">getattr/3</a>.</p>
+
+<h3 class="function"><a name="getattr-3">getattr/3</a></h3>
+<div class="spec">
+<p><tt>getattr(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, Flds::[<a href="#type-attr">attr()</a>]) -&gt; {ok, [{<a href="#type-attr">attr()</a>, term()}]} | {error, term()}</tt><br></p>
+</div><p>Retrives selected attributes of the object referenced by the Fid. The
+  following attribute names are recongized:
+ <pre>
+  mode    % protection
+  nlink   % number of hard links
+  uid     % user ID of owner
+  gid     % group ID of owner
+  rdev    % device ID (if special file)
+  atime   % time of last access
+  mtime   % time of last modification
+  ctime   % time of last status change
+  ino     % inode number
+  size    % total size, in bytes
+  blocks  % number of 512M blocks allocated
+  btime   % reserved for future use
+  gen     % reserved for future use
+  data_version % reserved for future use</pre>
+ </p>
+
+<h3 class="function"><a name="link-4">link/4</a></h3>
+<div class="spec">
+<p><tt>link(ConnPid, DFid, Fid, Name) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="mkdir-3">mkdir/3</a></h3>
+<div class="spec">
+<p><tt>mkdir(ConnPid::pid(), DFid::<a href="#type-fid">fid()</a>, Name::binary()) -&gt; {ok, <a href="#type-qid">qid()</a>} | {error, term()}</tt><br></p>
+</div>
+
+<h3 class="function"><a name="mkdir-4">mkdir/4</a></h3>
+<div class="spec">
+<p><tt>mkdir(ConnPid::pid(), DFid::<a href="#type-fid">fid()</a>, Name::binary(), ModeList::[isvtx]) -&gt; {ok, <a href="#type-qid">qid()</a>} | {error, term()}</tt><br></p>
+</div>
+
+<h3 class="function"><a name="mkdir-5">mkdir/5</a></h3>
+<div class="spec">
+<p><tt>mkdir(ConnPid::pid(), DFid::<a href="#type-fid">fid()</a>, Name::binary(), ModeList::[isvtx], Gid::integer()) -&gt; {ok, <a href="#type-qid">qid()</a>} | {error, term()}</tt><br></p>
+</div><p>Creates a directory named <code>Name</code> in the directory referenced by the
+  DFid. <code>isvtx</code> mode adds a 'sticky' bit to the new directory.</p>
+
+<h3 class="function"><a name="open-2">open/2</a></h3>
+<div class="spec">
+<p><tt>open(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>) -&gt; {ok, <a href="#type-qid">qid()</a>, integer()} | {error, term()}</tt><br></p>
+</div><p>Opens the fid for subsequent read/write operations.</p>
+<p><b>See also:</b> <a href="#open-3">open/3</a>.</p>
+
+<h3 class="function"><a name="open-3">open/3</a></h3>
+<div class="spec">
+<p><tt>open(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, Flags::[<a href="#type-flag">flag()</a>]) -&gt; {ok, <a href="#type-qid">qid()</a>, integer()} | {error, term()}</tt><br></p>
+</div><p>Opens the fid for subsequent read/write operations.</p>
+
+<h3 class="function"><a name="read-2">read/2</a></h3>
+<div class="spec">
+<p><tt>read(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>) -&gt; {ok, binary()} | eof | {error, term()}</tt><br></p>
+</div><p>Reads a chunk of data from the file referenced by the Fid. Returns eof
+  if there is not data to be read.</p>
+
+<h3 class="function"><a name="read-3">read/3</a></h3>
+<div class="spec">
+<p><tt>read(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, N::integer()) -&gt; {ok, binary()} | eof | {error, term()}</tt><br></p>
+</div><p>Read N bytes from the file referenced by the Fid. Less than N bytes may
+  be returned if the end of file is reached. Returns eof if there is no data to
+  be read.</p>
+
+<h3 class="function"><a name="read-4">read/4</a></h3>
+<div class="spec">
+<p><tt>read(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, Offset::integer(), N::integer()) -&gt; {ok, binary()} | eof | {error, term()}</tt><br></p>
+</div><p>Read N bytes from the file referenced by the Fid at the known offset.
+  Less than N bytes may be returned if the end of file is reached. Returns
+  eof if there is no data to % be read.</p>
+
+<h3 class="function"><a name="read_all-2">read_all/2</a></h3>
+<div class="spec">
+<p><tt>read_all(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>) -&gt; {ok, binary()} | {error, term()}</tt><br></p>
+</div><p>Reads the entire contents of the file referenced by Fid. Unlike read/2
+  read/3 returns <code>{ok,&lt;&lt;&gt;&gt;}</code> if the file is empty.</p>
+
+<h3 class="function"><a name="read_dir-2">read_dir/2</a></h3>
+<div class="spec">
+<p><tt>read_dir(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>) -&gt; {ok, [{<a href="#type-qid">qid()</a>, term(), integer(), binary()}]} | {error, term()}</tt><br></p>
+</div><p>Reads the contents of the directory. The type of entries is not
+  documented. Use Qid to distinguish between files and directories.</p>
+
+<h3 class="function"><a name="read_link-2">read_link/2</a></h3>
+<div class="spec">
+<p><tt>read_link(ConnPid, Fid) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="remove-2">remove/2</a></h3>
+<div class="spec">
+<p><tt>remove(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>) -&gt; ok | {error, term()}</tt><br></p>
+</div><p>Removes the object referenced by the Fid.</p>
+
+<h3 class="function"><a name="rename-4">rename/4</a></h3>
+<div class="spec">
+<p><tt>rename(ConnPid, Fid, DFid, Name) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="renameat-5">renameat/5</a></h3>
+<div class="spec">
+<p><tt>renameat(ConnPid, DFid1, Name1, DFid2, Name2) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="seek-3">seek/3</a></h3>
+<div class="spec">
+<p><tt>seek(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, At::<a href="#type-at">at()</a>) -&gt; {ok, integer()} | {error, term()}</tt><br></p>
+</div><p>Changes the current position of the file referenced by the Fid. The
+  operation is handled on the client side.</p>
+
+<h3 class="function"><a name="setattr-3">setattr/3</a></h3>
+<div class="spec">
+<p><tt>setattr(ConnPid, Fid, Props) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="simple_read-3">simple_read/3</a></h3>
+<div class="spec">
+<p><tt>simple_read(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, WalkTo::[binary()]) -&gt; {ok, binary()} | {error, term()}</tt><br></p>
+</div><p>Walks to the file, opens it, and reads its entire contents. The
+  operation fails if the size of the file does not fit a single 9p frame.</p>
+
+<h3 class="function"><a name="simple_write-4">simple_write/4</a></h3>
+<div class="spec">
+<p><tt>simple_write(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, WalkTo::[binary()], Data::binary()) -&gt; ok | {error, term()}</tt><br></p>
+</div><p>Walks to the file, opens it, and overwrites it contents with Data.</p>
+
+<h3 class="function"><a name="start_link-3">start_link/3</a></h3>
+<div class="spec">
+<p><tt>start_link(TransMod::module(), TransConf::any(), AttachTo::[binary()]) -&gt; {ok, pid()} | {error, term()}</tt><br></p>
+</div><p>Initiates a new 9p connection.</p>
+<p><b>See also:</b> <a href="#start_link-4">start_link/4</a>.</p>
+
+<h3 class="function"><a name="start_link-4">start_link/4</a></h3>
+<div class="spec">
+<p><tt>start_link(TransMod::module(), TransConf::any(), AttachTo::[binary()], Opts::[<a href="#type-option">option()</a>]) -&gt; {ok, pid()} | {error, term()}</tt><br></p>
+</div><p><p>Initiates a new 9p connection. After version negotation and
+  authentication exchange tries to attach to all locations listed in
+  <code>AttachTo</code>.</p>
+ 
+  The function is usually called by 9p mounter. Otherwise, the 9p mounter
+  should be manually notified when the connection closes.</p>
+
+<h3 class="function"><a name="symlink-4">symlink/4</a></h3>
+<div class="spec">
+<p><tt>symlink(ConnPid, DFid, Name, Target) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="symlink-5">symlink/5</a></h3>
+<div class="spec">
+<p><tt>symlink(ConnPid, DFid, Name, Target, Gid) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="terminate-2">terminate/2</a></h3>
+<div class="spec">
+<p><tt>terminate(Reason, St) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="timestamp-0">timestamp/0</a></h3>
+<div class="spec">
+<p><tt>timestamp() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="walk-3">walk/3</a></h3>
+<div class="spec">
+<p><tt>walk(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, Names::[binary()]) -&gt; {ok, <a href="#type-fid">fid()</a>, [<a href="#type-qid">qid()</a>]} | {error, any}</tt><br></p>
+</div><p>Walks the tree starting with the Fid. Returns the Fid pointing to the
+  last reachable name in the list. The caller should check that the length of
+  returned list of qids is the same as the number of names. A shorter list
+  indicates a (partial) error. It is possible to 'walk' to an empty list
+  effectively cloning the fid.</p>
+
+<h3 class="function"><a name="write-3">write/3</a></h3>
+<div class="spec">
+<p><tt>write(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, Data::binary()) -&gt; ok | {error, term()}</tt><br></p>
+</div><p>Write <code>Data</code> to the file referenced by the Fid.</p>
+
+<h3 class="function"><a name="write-4">write/4</a></h3>
+<div class="spec">
+<p><tt>write(ConnPid::pid(), Fid::<a href="#type-fid">fid()</a>, Offset::integer(), Data::binary()) -&gt; ok | {error, term()}</tt><br></p>
+</div><p>Write <code>Data</code> to the file referenced by the Fid at the known offset</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Aug 9 2013, 01:28:48.</i></p>
+</body>
+</html>

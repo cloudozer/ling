@@ -1,0 +1,105 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Module 9p_info</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module 9p_info</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Accessors for 9p connection parameters.
+
+
+<h2><a name="description">Description</a></h2>Accessors for 9p connection parameters. All functions of a callback
+   module that implements an exported directory take and opaque <code>Conn</code> parameter.
+   The '9p_info':* functions provide access to various bits of information stored
+   in the <code>Conn</code> structure. The primary purpose is to make informed decisions
+   about permissions of files and directories.
+  
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-opaque">opaque()</a></h3>
+<p><tt>opaque() = any()</tt></p>
+
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#auth_path-1">auth_path/1</a></td><td>Returns the path (aname) indicate in the auth message.</td></tr>
+<tr><td valign="top"><a href="#auth_user-1">auth_user/1</a></td><td>Returns the user name indicated in the auth message.</td></tr>
+<tr><td valign="top"><a href="#auth_user_id-1">auth_user_id/1</a></td><td>Returns the numeric used id that may be indicated in the auth message
+  ('9P2000.u' only).</td></tr>
+<tr><td valign="top"><a href="#peer_group-1">peer_group/1</a></td><td>Returns the node group of the connected peer discovered using the MUMBLE
+  authentication exchange.</td></tr>
+<tr><td valign="top"><a href="#peer_node-1">peer_node/1</a></td><td>Returns the node id of the connected peer discovered using the MUMBLE
+  authentication exchange.</td></tr>
+<tr><td valign="top"><a href="#unix_group-1">unix_group/1</a></td><td>Returns the Unix group id of the connected peer discovered during a
+  successful MUNGE authentication exchange.</td></tr>
+<tr><td valign="top"><a href="#unix_user-1">unix_user/1</a></td><td>Returns the Unix user id of the connected peer discovered during a
+  successful MUNGE authentication exchange.</td></tr>
+<tr><td valign="top"><a href="#version-1">version/1</a></td><td>Returns the negotiated version of the 9p protocol.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="auth_path-1">auth_path/1</a></h3>
+<div class="spec">
+<p><tt>auth_path(Conn) -&gt; Path | undefined</tt>
+<ul class="definitions"><li><tt>Conn = <a href="#type-opaque">opaque()</a></tt></li><li><tt>Path = binary()</tt></li></ul></p>
+</div><p>Returns the path (aname) indicate in the auth message.</p>
+
+<h3 class="function"><a name="auth_user-1">auth_user/1</a></h3>
+<div class="spec">
+<p><tt>auth_user(Conn) -&gt; User | undefined</tt>
+<ul class="definitions"><li><tt>Conn = <a href="#type-opaque">opaque()</a></tt></li><li><tt>User = binary()</tt></li></ul></p>
+</div><p>Returns the user name indicated in the auth message.</p>
+
+<h3 class="function"><a name="auth_user_id-1">auth_user_id/1</a></h3>
+<div class="spec">
+<p><tt>auth_user_id(Conn) -&gt; UserId | undefined</tt>
+<ul class="definitions"><li><tt>Conn = <a href="#type-opaque">opaque()</a></tt></li><li><tt>UserId = integer()</tt></li></ul></p>
+</div><p>Returns the numeric used id that may be indicated in the auth message
+  ('9P2000.u' only).</p>
+
+<h3 class="function"><a name="peer_group-1">peer_group/1</a></h3>
+<div class="spec">
+<p><tt>peer_group(Conn) -&gt; Group | undefined</tt>
+<ul class="definitions"><li><tt>Conn = <a href="#type-opaque">opaque()</a></tt></li><li><tt>Group = atom()</tt></li></ul></p>
+</div><p>Returns the node group of the connected peer discovered using the MUMBLE
+  authentication exchange.</p>
+
+<h3 class="function"><a name="peer_node-1">peer_node/1</a></h3>
+<div class="spec">
+<p><tt>peer_node(Conn) -&gt; Node | undefined</tt>
+<ul class="definitions"><li><tt>Conn = <a href="#type-opaque">opaque()</a></tt></li><li><tt>Node = atom()</tt></li></ul></p>
+</div><p>Returns the node id of the connected peer discovered using the MUMBLE
+  authentication exchange.</p>
+
+<h3 class="function"><a name="unix_group-1">unix_group/1</a></h3>
+<div class="spec">
+<p><tt>unix_group(Conn) -&gt; GroupId | undefined</tt>
+<ul class="definitions"><li><tt>Conn = <a href="#type-opaque">opaque()</a></tt></li><li><tt>GroupId = integer()</tt></li></ul></p>
+</div><p>Returns the Unix group id of the connected peer discovered during a
+  successful MUNGE authentication exchange.</p>
+
+<h3 class="function"><a name="unix_user-1">unix_user/1</a></h3>
+<div class="spec">
+<p><tt>unix_user(Conn) -&gt; UserId | undefined</tt>
+<ul class="definitions"><li><tt>Conn = <a href="#type-opaque">opaque()</a></tt></li><li><tt>UserId = integer()</tt></li></ul></p>
+</div><p>Returns the Unix user id of the connected peer discovered during a
+  successful MUNGE authentication exchange.</p>
+
+<h3 class="function"><a name="version-1">version/1</a></h3>
+<div class="spec">
+<p><tt>version(Conn) -&gt; '9P2000.e' | '9P2000.u'</tt>
+<ul class="definitions"><li><tt>Conn = <a href="#type-opaque">opaque()</a></tt></li></ul></p>
+</div><p>Returns the negotiated version of the 9p protocol. '9P2000.e' is Erlang
+  extension version used by Erlang on Xen nodes. Linux clients based on v9fs
+  kernel module use '9P2000.u' version.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Aug 9 2013, 01:28:48.</i></p>
+</body>
+</html>

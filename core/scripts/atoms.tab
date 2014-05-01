@@ -1,0 +1,384 @@
+#
+# Standard atoms
+################
+#
+false
+true
+
+! = ASEND__
+- = AMINUS__
++ = APLUS__
+* = ATIMES__
+/ = ADIV__
+div
+rem
+bor
+band
+bxor
+bnot
+bsl
+bsr
+-- = AMINUSMINUS__
+++ = APLUSPLUS__
+
+EXIT = AEXIT__
+DOWN = ADOWN__
+
+ok
+
+# process priorities
+high
+normal
+low
+
+# exceptions
+badarg
+badarith
+badfun
+badarity
+badmatch
+case_clause
+try_clause
+if_clause
+function_clause
+timeout_value
+system_limit
+not_spawned
+not_linked
+not_delivered
+not_exited
+not_loaded
+not_implemented
+not_found
+no_memory
+badsig
+
+# BIF implementation
+file
+module
+value
+preloaded
+embedded
+non_existing
+badfile
+not_purged
+undefined
+nonode@nohost = ANONODE_NOHOST__
+nogroup
+type
+local
+external
+name
+arity
+env
+pid
+index
+new_index
+uniq
+new_uniq
+not_a_list
+no_integer
+context_switches
+reductions
+runtime
+garbage_collection
+io
+run_queue
+wall_clock
+input
+output
+kill
+killed
+noproc
+trap_exit
+fullsweep_after
+monitor_nodes
+backtrace
+binary
+catchlevel
+current_function
+current_location
+current_stacktrace
+dictionary
+error_handler
+group_leader
+heap_size
+initial_call
+links
+last_calls
+memory
+message_binary
+message_queue_len
+messages
+min_heap_size
+min_bin_vheap_size
+monitored_by
+monitors
+priority
+registered_name
+sequential_trace_token
+stack_size
+status
+suspending
+total_heap_size
+trace
+runnable
+waiting
+running
+backtrace_depth
+line
+data
+total
+processes
+processes_used
+system
+atom
+atom_used
+code
+ets
+exports
+imports
+attributes
+compile
+functions
+close
+close$ = ACLOSE__
+closed
+connect
+connect$ = ACONNECT__
+connected
+command
+command$ = ACOMMAND__
+infinity
+latin1
+unicode
+utf8
+utf16
+utf32
+error
+incomplete
+big
+little
+id
+abort
+console
+lwip_mem
+lwip_buf
+lwip_timeout
+lwip_rte
+lwip_inprogress
+lwip_val
+lwip_wouldblock
+lwip_use
+lwip_isconn
+lwip_abrt
+lwip_rst
+lwip_clsd
+lwip_conn
+lwip_arg
+lwip_if
+netif_up
+more
+invalid
+OPTIONS = AOPTIONS__
+GET = AGET__
+HEAD = AHEAD__
+POST = APOST__
+PUT = APUT__
+DELETE = ADELETE__
+TRACE = ATRACE__
+http_eoh
+http_request
+http_response
+http_header
+http_error
+absoluteURI = AABSOLUTEURI__
+http
+https
+scheme
+abs_path
+Cache-Control = ACACHE_CONTROL__
+Connection = ACONNECTION__
+Date = ADATE__
+Pragma = APRAGMA__
+Transfer-Encoding = ATRANSFER_ENCODING__
+Upgrade = AUPGRADE__
+Via = AVIA__
+Accept = AACCEPT__
+Accept-Charset = AACCEPT_CHARSET__
+Accept-Encoding = AACCEPT_ENCODING__
+Accept-Language = AACCEPT_LANGUAGE__
+Authorization = AAUTHORIZATION__
+From = AFROM__
+Host = AHOST__
+If-Modified-Since = AIF_MODIFIED_SINCE__
+If-Match = AIF_MATCH__
+If-None-Match = AIF_NONE_MATCH__
+If-Range = AIF_RANGE__
+If-Unmodified-Since = AIF_UNMODIFIED_SINCE__
+Max-Forwards = AMAX_FORWARDS__
+Proxy-Authorization = APROXY_AUTHORIZATION__
+Range = ARANGE__
+Referer = AREFERER__
+User-Agent = AUSER_AGENT__
+Age = AAGE__
+Location = ALOCATION__
+Proxy-Authenticate = APROXY_AUTHENTICATE__
+Public = APUBLIC__
+Retry-After = ARETRY_AFTER__
+Server = ASERVER__
+Vary = AVARY__
+Warning = AWARNING__
+Www-Authenticate = AWWW_AUTHENTICATE__
+Allow = AALLOW__
+Content-Base = ACONTENT_BASE__
+Content-Encoding = ACONTENT_ENCODING__
+Content-Language = ACONTENT_LANGUAGE__
+Content-Length = ACONTENT_LENGTH__
+Content-Location = ACONTENT_LOCATION__
+Content-Md5 = ACONTENT_MD5__
+Content-Range = ACONTENT_RANGE__
+Content-Type = ACONTENT_TYPE__
+Etag = AETAG__
+Expires = AEXPIRES__
+Last-Modified = ALAST_MODIFIED__
+Accept-Ranges = AACCEPT_RANGES__
+Set-Cookie = ASET_COOKIE__
+Set-Cookie2 = ASET_COOKIE2__
+X-Forwarded-For = AX_FORWARDED_FOR__
+Cookie = ACOOKIE__
+Keep-Alive = AKEEP_ALIVE__
+Proxy-Connection = APROXY_CONNECTION__
+raw
+asn1
+sunrm
+cdr
+fcgi
+tpkt
+httph
+ssl_tls
+http_bin
+httph_bin
+tcp
+tcp_error
+tcp_closed
+emsgsize
+ac
+scope
+empty_out_q
+info
+sectors
+sector_size
+features
+barrier
+flush
+trim
+disk
+disk_async
+disk_async_error
+eio
+enotsup
+
+#ETS tables
+set
+ordered_set
+bag
+duplicate_bag
+ETS-TRANSFER = AETS_TRANSFER__
+none
+$end_of_table = AEOT__
+public
+protected
+named_table
+keypos
+owner
+heir
+write_concurrency
+read_concurrency
+compressed
+fixed
+safe_fixed
+protection
+stats
+is_atom
+is_float
+is_integer
+is_list
+is_number
+is_pid
+is_port
+is_reference
+is_tuple
+is_binary
+is_function
+is_record
+and
+or
+not
+xor
+andalso
+orelse
+abs
+element
+hd
+tl
+length
+node
+round
+size
+trunc
+> = AGT__
+>= = AGE__
+< = ALT__
+=< = ALE__
+=:= = AEQEX__
+== = AEQ__
+=/= = ANEEX__
+/= = ANE__
+self
+_ = AVARANY__
+$_ = AVARENTIRE__
+$$ = AVARALL__
+const
+
+#PCRE
+re_pattern
+anchored
+caseless
+dollar_endonly
+dotall
+extended
+firstline
+multiline
+no_auto_capture
+dupnames
+ungreedy
+bsr_anycrlf
+bsr_unicode
+newline
+cr
+lf
+crlf
+anycrlf
+any
+global
+notbol
+noteol
+all
+first
+all_but_first
+offset
+nomatch
+match
+notempty
+capture
+list
+
+#Experimental
+module_size
+variant_size
+count_iops
+processing_delay
+help
+
+#EOF

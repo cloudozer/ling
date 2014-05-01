@@ -1,0 +1,54 @@
+
+@doc
+
+<p>Each 9p connection is managed by a separate Erlang process. A 9p connection is
+initiatied by calling:</p>
+
+<pre>
+	start_link(TransMod, TransConf, AttachTo) -> {ok,ConnPid}
+	start_link(TransMod, TransConf, AttachTo, Opts) -> {ok,ConnPid}
+</pre>
+
+<p>TransMod/TranConf is the transport configuration. AttachTo is the list of
+attach paths. Attach paths should be either a binary, a {AName,User} tuple or
+{AName,User,Uid} tuple. The tuple format lets the caller specify the
+parameters of the attach message.</p>
+
+<p>The following options are recognized by '9p':start\_link():</p>
+
+<pre>
+	{version,Ver}
+	{msize,N}
+	{auth_user,AUser}
+	{auth_user_id,AUserId}
+	{auth_path,APath}
+	{unix_uid,Uid}
+	{unix_gid,Gid}
+</pre>
+
+<p>Possible versions are '9P2000.L' and '9P2000.e' (default). msize defaults to
+4294967295 for '9P2000.e' version to allow sending processes messages as a
+single 9p frame. AUser, AUserId, and APath are auxilliary parameters of the 9p
+auth message. Uid and Gid are passed on to the server if MUNGE authentication is
+in effect.</p>
+
+<p>Establishing a 9p connection involves many, sometimes a dozen roundtrips to the
+server. The start\_link() calls only initiates the process. Completed attach
+operations are communicated to the 9p mounter asynchronously using the following
+messages:</p>
+
+<pre>
+	{'9p_attached',ConnPid,Fid,AName}
+</pre>
+
+<p>9p mounter translates these messages into the corresponding updates to the mounting
+table.</p>
+
+<p>A 9p connection should be started by the 9p mounter. Otherwise, the process
+opening a 9p connection should trap exits and send the message
+{'9p_closed',ConnPid} to the 9p mounter when it detects a dropped 9p
+connection.</p>
+
+<p>A 9p connection can detect dropped/lost transport connections and attempt to
+recover them using a session key (9P2000.e only).</p>
+

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<meta name="latexinput" content="mmd-article-header"/>
+	<title>Goo FS
+Implementation Notes 
+v0.2</title>
+	<meta name="author" content="Maxim Kharchenko"/>
+	<meta name="date" content="March 2, 2013"/>
+	<meta name="copyright" content="2013, Cloudozer LLP. All Rights Reserved."/>
+	<meta name="latexmode" content="memoir"/>
+	<meta name="latexinput" content="mmd-article-begin-doc"/>
+	<meta name="latexfooter" content="mmd-memoir-footer"/>
+	<link type="text/css" rel="stylesheet" href="mmd.css"/>
+</head>
+<body>
+
+<h2 id="goofs:thefilesystemwethoughtwedonotneed">GooFS: the filesystem we thought we do not need</h2>
+
+<h3 id="legacyapplicationscallforacompromise">Legacy applications call for a compromise</h3>
+
+<p>The recurring idea of Erlang on Xen is to keep an interface and change its
+implementation according to the vision of a truly scalable cloud. One such
+interface is a &#8216;filesystem&#8217;. It was fully reimplemented to expose mostly
+synthetic files and files accessible over the network. Contrary to the industry
+custom, our current implementation does not embrace locally-attached block
+devices. For such devices, a key/value datastore is being designed, that should
+expose a different interface &#8211; &#8216;ets/dets&#8217;.</p>
+
+<p>We strive to support all important Erlang applications with our LING VM.
+Adaptation of ejabberd proved that we need to support at least a mockery of a
+filesystem over a writable block device. Such mockery is the GooFS filesystem
+described here.</p>
+
+<h3 id="atypicalusagescenario">A typical usage scenario</h3>
+
+<p>A GooFS formatted block device usually serves as a backend for a mnesia database
+that keeps data in several dets tables mapped one-to-one to files. For example,
+the mnesia database of ejabberd uses 29 files all created in a single directory.
+The longest file name is 23 characters. This directly translates into design
+constraints of the new filesystem.</p>
+
+<h3 id="asimplestfilesystemthatfillstheneed">A simplest filesystem that fills the need</h3>
+
+<ul>
+<li><p>A flat filesystem, no directories</p></li>
+<li><p>A limited number of files, at least 256</p></li>
+<li><p>A file name may be long, at least 256 chars</p></li>
+<li><p>Must not get corrupted easily, should survive domain_poweroff()</p></li>
+<li><p>Must be easy to implement, in a few days</p></li>
+</ul>
+
+<p>Note that GooFS is not the only modern filesystem, which is flat. See Amazon S3.</p>
+
+<h3 id="insideagoofsvolume">Inside a GooFS volume</h3>
+
+<p>Every GooFS volume has 6 areas:</p>
+
+<ul>
+<li><p>superblock</p></li>
+<li><p>root record</p></li>
+<li><p>file directory</p></li>
+<li><p>transaction journal</p></li>
+<li><p>allocation table</p></li>
+<li><p>data extents</p></li>
+</ul>
+
+<p>The superblock is a single sector (sector 0) that contains the general information
+about the volume.</p>
+
+<p>The root record contains information about the root directory. The information
+is similar to what is kept for ordinary files. The root record occupies a single
+sector (sector 1).</p>
+
+<p>The file directory contains information about all files that exist on the volume.
+Each directory entry occupies a single sector starting with sector 1. The length
+of the file directory &#8211; nr_files &#8211; is set upon formatting of the volume. It
+must be at least 255. Each file is addressed using an integer value, which is
+actually an index into the file directory. nr_files must be less then 65536.</p>
+
+<p>The transaction journal contains information about the current outstanding
+transaction. It occupies exactly 32 blocks. Each journal entry is 16 bytes long
+limiting the transaction to 1024 blocks. The number of entries actually used &#8211;
+trans_len &#8211; is recorded in the superblock. Note that updating the entire
+allocation table requires writing to no more than 512 blocks. The transaction
+journal starts at sector 1 + nr_files.</p>
+
+<p>The allocation table keeps track of chunks of disk space &#8211; extents &#8211; allocated
+to files. The size of a data extent &#8211; extent_size &#8211; is fixed upon formatting.
+A minimum value of extent_size is 128 sectors. The number of data extents &#8211;
+nr_extents &#8211; must be less than or equal to 65536. The allocation table has an
+entry for each extent. It starts at sector 1 + nr_files + 32. Each allocation
+table entry is 4 bytes long. Thus each sector holds 512/4 = 128 such entries.
+Hence the size of the allocation table &#8211; atab_size &#8211; is
+(nr_extents+127)/128.</p>
+
+<p>The data extents area is where all file contents is stored. It immediately
+follows the allocation table. Thus the area starts at sector 1 + nr_files + 32 + atab_size.</p>
+
+<p>Note that by increasing the extent_size value the filesystem may occupy volumes
+of almost any practical size. On average, a half of extent_size will be
+&#8216;wasted&#8217; for each file.</p>
+
+<h4 id="thesuperblock">The superblock</h4>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Starts at</th>
+	<th style="text-align:left;">Size</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">0</td>
+	<td style="text-align:left;">1</td>
+</tr>
+</tbody>
+</table>
+<p>The byte ordering here are later in the document is big-endian.</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Offset</th>
+	<th style="text-align:left;">Type</th>
+	<th style="text-align:left;">Description</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">0</td>
+	<td style="text-align:left;">uint16_t</td>
+	<td style="text-align:left;">nr_files</td>
+</tr>
+<tr>
+	<td style="text-align:left;">2</td>
+	<td style="text-align:left;">uint16_t</td>
+	<td style="text-align:left;">nr_extents</td>
+</tr>
+<tr>
+	<td style="text-align:left;">4</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">extent_size</td>
+</tr>
+<tr>
+	<td style="text-align:left;">8</td>
+	<td style="text-align:left;">uint64_t</td>
+	<td style="text-align:left;">0x2f476f6f2f46532f, magic</td>
+</tr>
+<tr>
+	<td style="text-align:left;">16</td>
+	<td style="text-align:left;">uint16_t</td>
+	<td style="text-align:left;">version, must be 0x1</td>
+</tr>
+<tr>
+	<td style="text-align:left;">18</td>
+	<td style="text-align:left;">uint16_t</td>
+	<td style="text-align:left;">trans_len, 0 - no outstanding transaction</td>
+</tr>
+<tr>
+	<td style="text-align:left;">20</td>
+	<td style="text-align:left;">-</td>
+	<td style="text-align:left;">UNUSED</td>
+</tr>
+</tbody>
+</table>
+<h4 id="therootrecord">The root record</h4>
+
+<p>Start at | Size
+1 | 1</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Offset</th>
+	<th style="text-align:left;">Type</th>
+	<th style="text-align:left;">Description</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">0</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">version, incremented upon each modification</td>
+</tr>
+<tr>
+	<td style="text-align:left;">4</td>
+	<td style="text-align:left;">uint64_t</td>
+	<td style="text-align:left;">object unique id</td>
+</tr>
+<tr>
+	<td style="text-align:left;">12</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">mode, opaque</td>
+</tr>
+<tr>
+	<td style="text-align:left;">16</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">atime, access time, Unix timestamp</td>
+</tr>
+<tr>
+	<td style="text-align:left;">20</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">mtime, modification time, Unix timestamp</td>
+</tr>
+</tbody>
+</table>
+<h4 id="thefiledirectory">The file directory</h4>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Starts at</th>
+	<th style="text-align:left;">Size</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">2</td>
+	<td style="text-align:left;">nr_files</td>
+</tr>
+</tbody>
+</table>
+<p>Each directory entry occupies a whole sector. The layout of the entry is as
+follows:</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Offset</th>
+	<th style="text-align:left;">Type</th>
+	<th style="text-align:left;">Description</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">0</td>
+	<td style="text-align:left;">uint16_t</td>
+	<td style="text-align:left;">0 - free entry, 0xffff - occupied entry</td>
+</tr>
+<tr>
+	<td style="text-align:left;">2</td>
+	<td style="text-align:left;">uint64_t</td>
+	<td style="text-align:left;">file size</td>
+</tr>
+<tr>
+	<td style="text-align:left;">10</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">version, incremented upon each modification</td>
+</tr>
+<tr>
+	<td style="text-align:left;">14</td>
+	<td style="text-align:left;">uint64_t</td>
+	<td style="text-align:left;">file unique id</td>
+</tr>
+<tr>
+	<td style="text-align:left;">22</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">mode, opaque</td>
+</tr>
+<tr>
+	<td style="text-align:left;">26</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">atime, access time, Unix timestamp</td>
+</tr>
+<tr>
+	<td style="text-align:left;">30</td>
+	<td style="text-align:left;">uint32_t</td>
+	<td style="text-align:left;">mtime, modification time, Unix timestamp</td>
+</tr>
+<tr>
+	<td style="text-align:left;">34</td>
+	<td style="text-align:left;">uint16_t</td>
+	<td style="text-align:left;">name len</td>
+</tr>
+<tr>
+	<td style="text-align:left;">36</td>
+	<td style="text-align:left;">char[len]</td>
+	<td style="text-align:left;">name</td>
+</tr>
+</tbody>
+</table>
+<p>Note that the maximum file name length is 476.</p>
+
+<h4 id="thetransactionjournal">The transaction journal</h4>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Starts at</th>
+	<th style="text-align:left;">Size</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">2 + nr_files</td>
+	<td style="text-align:left;">32</td>
+</tr>
+</tbody>
+</table>
+<p>Each transaction log entry has the following layout:</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Offset</th>
+	<th style="text-align:left;">Type</th>
+	<th style="text-align:left;">Description</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">0</td>
+	<td style="text-align:left;">uint64_t</td>
+	<td style="text-align:left;">source sector</td>
+</tr>
+<tr>
+	<td style="text-align:left;">8</td>
+	<td style="text-align:left;">uint64_t</td>
+	<td style="text-align:left;">target sector</td>
+</tr>
+</tbody>
+</table>
+<p>The number of active elements in the transaction log &#8211; trans_len &#8211; is
+recorded in the superblock.</p>
+
+<h4 id="theallocationtable">The allocation table</h4>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Starts at</th>
+	<th style="text-align:left;">Size</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">2 + nr_files + 32</td>
+	<td style="text-align:left;">atab_size</td>
+</tr>
+</tbody>
+</table>
+<p>Each allocation table entry has the following layout:</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Offset</th>
+	<th style="text-align:left;">Type</th>
+	<th style="text-align:left;">Description</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">0</td>
+	<td style="text-align:left;">uint16_t</td>
+	<td style="text-align:left;">file index, 0xffff - unallocated extent</td>
+</tr>
+<tr>
+	<td style="text-align:left;">2</td>
+	<td style="text-align:left;">uint16_t</td>
+	<td style="text-align:left;">extent offset</td>
+</tr>
+</tbody>
+</table>
+<p>A file that occupies N extents will have exactly N entries in the allocation
+table. The entries will have offset fields set to all numbers from 0 to N&#8211;1. All
+entries will have their file index field set accordingly.</p>
+
+<p>Note that the maximum allowed file index is 65534 (0xfffe).</p>
+
+<h3 id="formattingavolume">Formatting a volume</h3>
+
+<p>Let us assume we need to format a volume that has a certain number of sectors &#8211;
+nr_sectors. nr_files is another input parameter that defaults to 255.</p>
+
+<p>The number of sectors left for the data extent area is nr_data_sectors_g =
+nr_sectors - 1 (superblock) - 1 (root record) - nr_files (file directory) - 32
+(transaction journal) - 512 (maximum allocation table).</p>
+
+<p>Now we need to select extent_size that lets map all nr_data_sectors_g given the
+limitation that nr_extents must be no more than 65536.</p>
+
+<p>The minimum extent_size is 128 sectors. We start with this number and double it
+until extent_size * 65536 is at least nr_data_sectors_g. At this point, we fix
+the extent_size value, and calculate nr_extents_g as nr_data_sectors_g /
+extent_size and atab_size_g as (nr_extents_g+127)/128.</p>
+
+<p>We may try another round of reshuffling to improve the estimate for nr_extents.
+For simplicity we just use nr_extents_g for nr_extents (and atab_size_g
+for atab_size). Most probably, some sectors will be left inaccessible at the
+end of the volume.</p>
+
+<p>Now we proceed to writing a superblock using nr_files, nr_extents, and
+extent_size. The formatting operation must be atomic. To provide for atomicity
+we set trans_len field in the superblock to 0xffff for the duration of
+formatting. Then we initialize the root record. After that we write nr_files
+zeroed-out sectors that constitute a file directory. Then we skip 32 blocks for
+the transaction journal and write atab_size sectors with all bytes set to 0xff
+as the allocation table.</p>
+
+<p>After rewriting superblock and setting trans_len to 0, the volume is ready for
+use.</p>
+
+<h3 id="howtransactionswork">How transactions work</h3>
+
+<p>Transactions provide atomicity to all filesystem metadata updates. Failure to
+complete the sequence of modifications to the file directory and the allocation
+table will in most cases leave the entire filesystem unusable.</p>
+
+<p>To insure atomicity filesystem metadata is updated in two stages.</p>
+
+<ol>
+<li><p>Write blocks to unallocated space and populate the transaction journal</p></li>
+<li><p>Write blocks to intended places and reset the journal</p></li>
+</ol>
+
+<p>Suppose we need to update a directory entry at sector 10 and write the
+allocation information to sector 33. First we find two unallocated sectors.
+Let&#8217;s assume their numbers are 1200 and 1201. Then we write a copy of the data
+intended for sector 10 to sector 1200, for sector 33 - to sector 1201. Then we
+write two entries to the transaction journal: 10 &rarr; 1200, 33 &rarr; 1201.
+Everything is ready to start the transaction. It is started by setting the
+trans_len field in the superblock to 2. </p>
+
+<p>Now we proceed to writing data to their true locations, sectors 1200 and 1201.
+When we are done, we reset the trans_len field to zero to end the transaction.</p>
+
+<p>In case a catastophic event happens during the first stage, before we set
+trans_len to 2 in the superblock. The data written to sectors 1200 and 1201
+(and the transaction journal) is disregarded. If the event interrupts the second
+stage, the transaction journal is rerun restoring the filesystem to fully
+consistent state.</p>
+
+<p>The filesystem should issue a &#8216;write barrier&#8217; after each stage of the
+transaction.</p>
+
+<h3 id="fileoperationsdissected">File operations dissected</h3>
+
+<h4 id="in-memorystructures">In-memory structures</h4>
+
+<p>The software layer that exposes a filesystem interface using GooFS may maintain
+in-memory representation of the file directory of the allocation table. Yet
+these representations must be fully synchronised. The layer must be ready for a
+&#8216;power off&#8217; at any time.</p>
+
+<p>Such approach assumes that the actual disk driver underneath the virtual block
+device performs caching and the database that uses GooFS does its own caching.</p>
+
+<p>The filesystem should flush caches periodically (every second by default) to
+increase durability of writes.</p>
+
+<h4 id="listadirectory">List a directory</h4>
+
+<p>The directory listing may use in-memory metadata only. Access time should be
+updated in the root record.</p>
+
+<h4 id="createafile">Create a file</h4>
+
+<ul>
+<li><p>Check that the number of files is less than nr_files</p></li>
+<li><p>Find an unoccupied slot in the file directory</p></li>
+<li><p>Update the file directory and the root record, both on disk and in memory</p></li>
+</ul>
+
+<h4 id="deleteafile">Delete a file</h4>
+
+<ul>
+<li><p>Retrieve the list of extents occupied by the file</p></li>
+<li><p>Mark the directory entry as unoccupied</p></li>
+<li><p>Mark all file extents as unoccupied</p></li>
+<li><p>Update both the file directory, the root record, and the allocation table, in
+memory and on disk</p></li>
+</ul>
+
+<h4 id="readafile">Read a file</h4>
+
+<ul>
+<li><p>Resolve read offset and size into a list of chunks, so that each chunk is
+within a single extent</p></li>
+<li><p>Read the chunks and concatenate them</p></li>
+<li><p>Update the access time of the file, both in memory and on disk</p></li>
+</ul>
+
+<h4 id="changeafilesize">Change a file size</h4>
+
+<ul>
+<li><p>Determine if the file shrinks or grows</p></li>
+<li><p>If the file shrinks, determine the extents that are no longer needed and mark
+them as unallocated</p></li>
+<li><p>If the file grows, determine the number of additional extents it needs</p></li>
+<li><p>If there is enough free space available, find unallocated extents and mark
+them as occupied by the file in the allocation table</p></li>
+<li><p>Update the file modification time and the allocation table, both in memory and
+on disk</p></li>
+</ul>
+
+<h4 id="writeafile">Write a file</h4>
+
+<ul>
+<li><p>Check if the write operation changes the size of the file, perform the change
+size procedure if needed</p></li>
+<li><p>Resolve write offset and size into a list of chunks, so that each chunk
+belongs to a single extent</p></li>
+<li><p>Write data to the chunks</p></li>
+<li><p>Update the modification time of the file, both in memory and on disk </p></li>
+</ul>
+
+<h3 id="knownlimitations">Known limitations</h3>
+
+<h4 id="writesmaynotbedurable">Writes may not be durable</h4>
+
+<p>Due to caching on various levels writes reach the disk media before the
+operation completes. This may lead to corruption of the file data in case of a
+&#8216;power off&#8217; event.</p>
+
+</body>
+</html>

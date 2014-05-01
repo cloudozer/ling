@@ -1,0 +1,218 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Module 9p_mounter</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module 9p_mounter</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>.
+
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+
+<h2><a name="description">Description</a></h2>
+
+<p>The 9p mounter maintains connections to 9p servers. Portions of name hierarchies
+exported by the servers are mapped to mounting points in the local hierarchy.
+This information constitutes the mounting map. Several remote names can share a
+local mounting point. Thus a local path may refer to multiple remote locations
+accessible over several 9p connections.</p> 
+
+<p>During the boot sequence, the flexible mounting hepls to recreate a directory
+structure expected by the code_server. Erlang on Xen mostly use standard
+modules of Erlang/OTP with a few exceptions. For instance, an os module of the
+kernel application is modified to be compatible with Erlang on Xen. The modified
+version is injected into the hierarchy using the flexible mounting. Both
+standard and modified versions are mounted at the same point. The code server
+picks up the right (modified) version because of priorities implied by the order of
+mounting operations.</p>
+
+<p>The '9p_mounter' process acts as a supervisor for
+connection processes.</p>
+
+<p>The following two functions add and remove connections from the 9p
+mounter:</p>
+
+<pre>
+        add_connection(TransMod, TransConf, Mounts, Opts) -&gt; {ok,ConnPid} | {error,Error}
+        remove_connection(ConnPid) -&gt; ok | {error,Error}
+</pre>
+
+<p><code>Mounts</code> is a list of pairs that define the mapping between local and remote
+paths. The the mapping paths can not have '..' (parent) element. For
+instance,</p>
+
+<pre>
+        Mounts = [
+           {&lt;&lt;"/erlang/lib"&gt;&gt;,&lt;&lt;"/"&gt;&gt;},
+           {&lt;&lt;"/amqp/q"&gt;&gt;,&lt;&lt;"/queue"&gt;&gt;}
+         ].
+</pre>
+
+<p><code>Opts</code> is a list of options. The following options are supported:</p>
+
+<dl>
+<dt>{version,Version}</dt>
+<dd>The version of 9p2000 protocl to use. Possible versions are '9p2000.L' and
+'9p2000.e', which is the default.</dd>
+</dl>
+
+<p>When a new connection is added to the 9p mounter, a series of steps happens in
+sequence. Firstly, a transport link is established to the 9p server. Then a
+version negotiation happens that insures that the server supports the required
+version of the protocol. The maximum message size is negotiated too.
+The server can not decrease the maximum size requested by the client. The
+connection is dropped, if it attempts to.</p>
+
+<p>After successful version negotiation, the 9p mounter performs authentication,
+unless the connection is local. Then it attaches to all mounting points listed
+the add_connection() call. If some attach operations fail, then the
+corresponding mapping is not added to the mounting map.</p>
+
+
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-event">event()</a></h3>
+<p><tt>event() = sync | {exists, binary()} | {gone, binary()}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-fid">fid()</a></h3>
+<p><tt>fid() = integer()</tt></p>
+
+
+<h3 class="typedecl"><a name="type-mount">mount()</a></h3>
+<p><tt>mount() = {binary(), binary()}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-name">name()</a></h3>
+<p><tt>name() = binary() | string()</tt></p>
+
+
+<h3 class="typedecl"><a name="type-option">option()</a></h3>
+<p><tt>option() = <a href="9p.html#type-option">'9p':option()</a> | submerge | sync</tt></p>
+
+
+<h3 class="typedecl"><a name="type-place">place()</a></h3>
+<p><tt>place() = {pid(), <a href="#type-fid">fid()</a>, [binary()]} | {local, integer(), integer()}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-spath">spath()</a></h3>
+<p><tt>spath() = [binary()]</tt></p>
+
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_connection-3">add_connection/3</a></td><td>Opens a new connection to a 9p server, attaches to remote names, and maps
+  them to the local hierarchy.</td></tr>
+<tr><td valign="top"><a href="#add_connection-4">add_connection/4</a></td><td>Opens a new connection to a 9p server, attaches to remote names, and maps
+  them to the local hierarchy.</td></tr>
+<tr><td valign="top"><a href="#canonicalise-1">canonicalise/1</a></td><td>Converts absolute or relative paths into a splitted path, which is
+  absolute and does not contain ".." elements.</td></tr>
+<tr><td valign="top"><a href="#get_cwd-0">get_cwd/0</a></td><td>Get the current working directory.</td></tr>
+<tr><td valign="top"><a href="#local_path_element-2">local_path_element/2</a></td><td>Retrieves the Nth local path element of the mapping with the priority
+  Prio.</td></tr>
+<tr><td valign="top"><a href="#resolve_to_both-1">resolve_to_both/1</a></td><td>Queries the mounting map and returns the walking instructions to get to
+  the named filesystem object.</td></tr>
+<tr><td valign="top"><a href="#resolve_to_dir-1">resolve_to_dir/1</a></td><td>Queries the mounting map and returns the walking instructions to get to
+  the directory.</td></tr>
+<tr><td valign="top"><a href="#resolve_to_file-1">resolve_to_file/1</a></td><td>Queries the mounting map and return the walking instructions to reach
+  the file referenced by SPath.</td></tr>
+<tr><td valign="top"><a href="#set_cwd-1">set_cwd/1</a></td><td>Sets the current working directory.</td></tr>
+<tr><td valign="top"><a href="#show_map-0">show_map/0</a></td><td>Prints out the current mounting map.</td></tr>
+<tr><td valign="top"><a href="#start_link-2">start_link/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#subscribe-2">subscribe/2</a></td><td>Subscribes to a 9p-related event.</td></tr>
+<tr><td valign="top"><a href="#terminate-2">terminate/2</a></td><td></td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="add_connection-3">add_connection/3</a></h3>
+<div class="spec">
+<p><tt>add_connection(TransMod::module(), TransConf::any(), Mounts::[<a href="#type-mount">mount()</a>]) -&gt; {ok, pid()} | {error, term()}</tt><br></p>
+</div><p>Opens a new connection to a 9p server, attaches to remote names, and maps
+  them to the local hierarchy. @see add_connection/4.</p>
+
+<h3 class="function"><a name="add_connection-4">add_connection/4</a></h3>
+<div class="spec">
+<p><tt>add_connection(TransMod::module(), TransConf::any(), Mounts::[<a href="#type-mount">mount()</a>], Opts::[<a href="#type-option">option()</a>]) -&gt; {ok, pid()} | {error, term()}</tt><br></p>
+</div><p>Opens a new connection to a 9p server, attaches to remote names, and maps
+  them to the local hierarchy.
+  Options:
+  - sync - wait for all mounting operation to complete;
+  - submerge - add mounts with the lowest priority;
+  - any '9p':start_link/3 option.</p>
+
+<h3 class="function"><a name="canonicalise-1">canonicalise/1</a></h3>
+<div class="spec">
+<p><tt>canonicalise(Path::<a href="#type-name">name()</a>) -&gt; {ok, <a href="#type-spath">spath()</a>} | {error, term()}</tt><br></p>
+</div><p>Converts absolute or relative paths into a splitted path, which is
+  absolute and does not contain ".." elements.</p>
+
+<h3 class="function"><a name="get_cwd-0">get_cwd/0</a></h3>
+<div class="spec">
+<p><tt>get_cwd() -&gt; {ok, <a href="#type-spath">spath()</a>} | none</tt><br></p>
+</div><p>Get the current working directory.</p>
+
+<h3 class="function"><a name="local_path_element-2">local_path_element/2</a></h3>
+<div class="spec">
+<p><tt>local_path_element(Prio::integer(), N::integer()) -&gt; {ok, binary()} | {error, term()}</tt><br></p>
+</div><p>Retrieves the Nth local path element of the mapping with the priority
+  Prio.</p>
+
+<h3 class="function"><a name="resolve_to_both-1">resolve_to_both/1</a></h3>
+<div class="spec">
+<p><tt>resolve_to_both(SPath::<a href="#type-spath">spath()</a>) -&gt; {walk, [<a href="#type-place">place()</a>]} | {error, term()}</tt><br></p>
+</div><p>Queries the mounting map and returns the walking instructions to get to
+  the named filesystem object. Excludes 'local' fids.</p>
+
+<h3 class="function"><a name="resolve_to_dir-1">resolve_to_dir/1</a></h3>
+<div class="spec">
+<p><tt>resolve_to_dir(SPath::<a href="#type-spath">spath()</a>) -&gt; {walk, [<a href="#type-place">place()</a>]} | {error, term()}</tt><br></p>
+</div><p>Queries the mounting map and returns the walking instructions to get to
+  the directory.</p>
+
+<h3 class="function"><a name="resolve_to_file-1">resolve_to_file/1</a></h3>
+<div class="spec">
+<p><tt>resolve_to_file(SPath::<a href="#type-spath">spath()</a>) -&gt; {walk, [<a href="#type-place">place()</a>]} | {error, term()}</tt><br></p>
+</div><p>Queries the mounting map and return the walking instructions to reach
+  the file referenced by SPath.</p>
+
+<h3 class="function"><a name="set_cwd-1">set_cwd/1</a></h3>
+<div class="spec">
+<p><tt>set_cwd(SPath::<a href="#type-spath">spath()</a>) -&gt; ok | {error, term()}</tt><br></p>
+</div><p>Sets the current working directory.</p>
+
+<h3 class="function"><a name="show_map-0">show_map/0</a></h3>
+<div class="spec">
+<p><tt>show_map() -&gt; any()</tt></p>
+</div><p>Prints out the current mounting map. For debugging only.</p>
+
+<h3 class="function"><a name="start_link-2">start_link/2</a></h3>
+<div class="spec">
+<p><tt>start_link(LocalMap, Opts) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="subscribe-2">subscribe/2</a></h3>
+<div class="spec">
+<p><tt>subscribe(Event::<a href="#type-event">event()</a>, Pid::pid()) -&gt; {ok, reference()} | {error, any}</tt><br></p>
+</div><p>Subscribes to a 9p-related event. The returned reference identifies the
+  subscription. The Pid is guaranteed to receive exactly one {Ref,Event}
+  message when the event happens or a condition is met.
+  Events:
+  	- sync - all mounting operations complete;
+   - {exists,Path} - the path (now) exists;
+   - {gone,Path} - the path does not exist (now).</p>
+
+<h3 class="function"><a name="terminate-2">terminate/2</a></h3>
+<div class="spec">
+<p><tt>terminate(Reason, State) -&gt; any()</tt></p>
+</div>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Aug 9 2013, 01:28:48.</i></p>
+</body>
+</html>

@@ -1,0 +1,118 @@
+%% @author Yariv Sadan <yarivsblog@gmail.com> [http://yarivsblog.com]
+%% @version 0.9.3
+%% @copyright Yariv Sadan 2006-2007
+%%
+%% @doc ErlTL is a simple Erlang template language.
+%% 
+%% == Introduction ==
+%% ErlTL is a template language used for creating Erlang modules that
+%% programatically generate iolists (nested lists of strings and/or binaries)
+%% whose contents are mostly known at compile time.
+%% ErlTL templates are generally less verbose and more readable than
+%% the equivalent hand-written Erlang code.
+%% A common use-case for ErlTL is the generation of
+%% dynamic HTML in web applications.
+%%
+%% ErlTL emphasizes speed, simplicity, reusability and good error reporting.
+%% The ErlTL compiler transforms template files into Erlang modules whose
+%% whose functions are exported so they can be used in other modules.
+%% By compiling to BEAM, ErlTL doesn't add any overhead to writing a template's
+%% logic in pure Erlang.
+%%
+%% == Tag Reference ==
+%%
+%% An ErlTL template can be composed of the following tags:
+%%
+%% `<% [Exprs] %>' <br/>Erlang expression tag. This tag contains one or more
+%% Erlang expressions that are evaluated in runtime.
+%% For the template to return a valid iolist, the results of embedded Erlang
+%% expressions must be strings or binaries.
+%%
+%% `<%@ [FuncDecl] %>' <br/>Function declaration tag.
+%% An ErlTL template compiles into an Erlang module containing one or more
+%% functions. This module always contains a function named 'render'
+%% that accepts a single parameter called 'Data'. The 'render' function
+%% corresponds to the area at the top of an ErlTL file, above all other
+%% function declarations.
+%%
+%% You can use the function declaration tag to add more functions to
+%% an ErlTL template.
+%% ErlTL functions return the iolist described by to the template region
+%% between its declaration and the next function declaration, or the end of
+%% the file. To facilitate pattern-matching, ErlTL translates consecutive
+%% function declarations with the same name and arity into a single function
+%% declaration with multiple clauses, as in the following example:
+%%
+%% ```
+%% <%@ volume_desc(Val) when Val >= 20 %> Big
+%% <%@ volume_desc(Val) when Val >= 10 %> Medium
+%% <%@ volume_desc(Val) %> Small
+%% '''
+%%
+%% Function declarations have 2 possible forms: basic and full.
+%% A full function declaration contains a complete Erlang function
+%% declaration up to the '->' symbol, e.g.
+%% `"<%@ my_func(A, B = [1,2 | _]) when is_integer(A) %>"'.
+%%
+%% A basic function declaration contains only the name of the function,
+%% e.g. "`<%@ my_func %>'". This declaration is equivalent to
+%% `"<%@ my_func(Data) %>"'.
+%%
+%% `<%~ [TopForms] %>' <br/>Top-level forms tag.
+%% This tag, which may appear only at the very top of an ErlTL file, can
+%% contain any legal top-level Erlang form. This includes module attributes,
+%% compiler directives, and even complete functions.
+%%
+%% `<%? [TopExprs] %>' <br/>Top-level expressions tag.
+%% This tag, which may appear only at the top of ErlTL functions, contains
+%% Erlang expressions whose result isn't part of the function's return value.
+%% This is used primarily for "unpacking" the Data parameter and binding
+%% its elements to local variables prior to using them in the body of a
+%% function.
+%%
+%% `<%! [Comment] %>' <br/>Comment tag. The contents of this tag are
+%% used for documentation only. They are discarded in compile-time.
+%%
+%% Following is an sample ErlTL template that uses the ErlTL tags above
+%% (you can find this code under test/erltl):
+%%
+%% ```
+%% <%~
+%% %% date: 10/21/2006
+%% -author("Yariv Sadan").
+%% -import(widgets, [foo/1, bar/2, baz/3]).
+%% %>
+%% <%! This is a sample ErlTL template that renders a list of albums %>
+%% <html>
+%% <body>
+%% <% [album(A) || A <- Data] %>
+%% </body>
+%% </html>
+%%
+%% <%@ album({Title, Artist, Songs}) %>
+%% Title: <b><% Title %></b><br>
+%% Artist: <b><% Artist %></b><br>
+%% Songs: <br>
+%% <table>
+%% <% [song(Number, Name) || {Number, Name} <- Songs] %>
+%% </table>
+%%
+%% <%@ song(Number, Name) when size(Name) > 15 %>
+%% <%? <<First:13/binary, Rest/binary>> = Name %>
+%% <% song(Number, [First, <<"...">>]) %>
+%%
+%% <%@ song(Number, Name) %>
+%% <%?
+%% Class =
+%%   case Number rem 2 of
+%%     0 -> <<"even">>;
+%%     1 -> <<"odd">>
+%%   end
+%% %>
+%% <tr>
+%%   <td class="<% Class %>"><% integer_to_list(Number) %></td>
+%%   <td class="<% Class %>"><% Name %></td>
+%% </tr>
+%% '''
+%%
+%% @end

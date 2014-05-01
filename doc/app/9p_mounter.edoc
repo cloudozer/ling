@@ -1,0 +1,59 @@
+@doc
+
+<p>The 9p mounter maintains connections to 9p servers. Portions of name hierarchies
+exported by the servers are mapped to mounting points in the local hierarchy.
+This information constitutes the mounting map. Several remote names can share a
+local mounting point. Thus a local path may refer to multiple remote locations
+accessible over several 9p connections.</p> 
+
+<p>During the boot sequence, the flexible mounting hepls to recreate a directory
+structure expected by the code_server. Erlang on Xen mostly use standard
+modules of Erlang/OTP with a few exceptions. For instance, an os module of the
+kernel application is modified to be compatible with Erlang on Xen. The modified
+version is injected into the hierarchy using the flexible mounting. Both
+standard and modified versions are mounted at the same point. The code server
+picks up the right (modified) version because of priorities implied by the order of
+mounting operations.</p>
+
+<p>The '9p_mounter' process acts as a supervisor for
+connection processes.</p>
+
+<p>The following two functions add and remove connections from the 9p
+mounter:</p>
+
+<pre>
+        add_connection(TransMod, TransConf, Mounts, Opts) -> {ok,ConnPid} | {error,Error}
+        remove_connection(ConnPid) -> ok | {error,Error}
+</pre>
+
+<p>`Mounts' is a list of pairs that define the mapping between local and remote
+paths. The the mapping paths can not have '..' (parent) element. For
+instance,</p>
+
+<pre>
+        Mounts = [
+           {&lt;&lt;"/erlang/lib">>,&lt;&lt;"/">>},
+           {&lt;&lt;"/amqp/q">>,&lt;&lt;"/queue">>}
+         ].
+</pre>
+
+<p>`Opts' is a list of options. The following options are supported:</p>
+
+<dl>
+<dt>{version,Version}</dt>
+<dd>The version of 9p2000 protocl to use. Possible versions are '9p2000.L' and
+'9p2000.e', which is the default.</dd>
+</dl>
+
+<p>When a new connection is added to the 9p mounter, a series of steps happens in
+sequence. Firstly, a transport link is established to the 9p server. Then a
+version negotiation happens that insures that the server supports the required
+version of the protocol. The maximum message size is negotiated too.
+The server can not decrease the maximum size requested by the client. The
+connection is dropped, if it attempts to.</p>
+
+<p>After successful version negotiation, the 9p mounter performs authentication,
+unless the connection is local. Then it attaches to all mounting points listed
+the add_connection() call. If some attach operations fail, then the
+corresponding mapping is not added to the mounting map.</p>
+

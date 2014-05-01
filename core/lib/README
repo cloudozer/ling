@@ -1,0 +1,68 @@
+
+Dependencies on the external libraries
+======================================
+
+Ling requires the following libraries:
+
+1. lwIP (TCP/IP networking)
+2. Nettle (Low-level crypto)
+3. PCRE (Regular expressions)
+4. uClibc (General low-level functions)
+
+The dependency on the external libraries is minimized. Only the portion of the
+Nettle library that does not use bignums is imported. Just a handful of
+functions are imported from uClibc and the dependency on uClibc can be avoided
+with a little effort. lwIP and PCRE are imported almost fully.
+
+How to obtain and build the libraries
+=====================================
+
+1. lwIP
+-------
+
+Ling is using the current development branch of lwIP. The source code was
+obtained from a Git repo at git://git.savannah.nongnu.org/lwip.git and
+incorporated into Ling sources. There are multiple changes to lwIP sources
+almost exclusively related to debug/error messages. A few files were added under
+lib/lwip/ling directory.
+
+Use 'make' or 'make -C lib/lwip' to build the library.
+
+2. Nettle
+---------
+
+Nettle should be obtained from a Git repo:
+
+git clone git://git.lysator.liu.se/nettle/nettle.git
+
+To configure the library use the following command:
+
+./configure --disable-public-key --disable-shared --disable-pic --disable-openssl
+
+Use 'make' to build libnettle.a.
+Use 'sudo make install' to install the library.
+
+3. PCRE
+-------
+
+Ling uses a particular version of PCRE - 7.6. Obtain the library from
+http://sourceforge.net/projects/pcre/files/pcre/7.6/pcre-7.6.tar.gz/download.
+
+ATTENTION. Copy pcre_assert.h file to pcre directory as assert.h.
+	Copy pcre_globals.c file to pcre directory.
+
+Now build it using the following commands:
+
+./configure --disable-shared --disable-cpp --disable-stack-for-recursion --enable-utf8
+				--enable-unicode-properties CFLAGS=-O2 --no-recursion
+
+Then 'make' the library.
+4. uClibc
+
+Obtain uClibc source from http://www.uclibc.org/downloads/uClibc-0.9.33.2.tar.bz2.
+Copy openling/deps/uClibc_config file to uClibc directory as .config. Use 'make'
+to build the library. You may need to run 'make menuconfig' to adjust the
+target architecture: x86_32 or x86_64.
+
+Use 'sudo make install' to install the library.
+

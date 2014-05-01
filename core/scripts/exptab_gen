@@ -1,0 +1,172 @@
+#!/usr/bin/env escript 
+%%! -pa ../bc gentab
+
+%% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+%% 
+%% Redistribution and use in source and binary forms, with or without
+%% modification, are permitted provided that the following conditions are met:
+%% 
+%% * Redistributions of source code must retain the above copyright notice, this
+%% list of conditions and the following disclaimer.
+%% 
+%% * Redistributions in binary form must reproduce the above copyright notice,
+%% this list of conditions and the following disclaimer in the documentation
+%% and/or other materials provided with the distribution.
+%% 
+%% * Redistributions in any form must be accompanied by information on how to
+%% obtain complete source code for the LING software and any accompanying
+%% software that uses the LING software. The source code must either be included
+%% in the distribution or be available for no more than the cost of distribution
+%% plus a nominal fee, and must be freely redistributable under reasonable
+%% conditions.  For an executable file, complete source code means the source
+%% code for all modules it contains. It does not include source code for modules
+%% or files that typically accompany the major components of the operating
+%% system on which the executable file runs.
+%% 
+%% THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+%% IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+%% DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+%% INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%% (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%% ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%% (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-mode(compile).
+
+-include_lib("bc/ling_code.hrl").
+
+main([PreloadDir,BifTabFile,ExpTabErl]) ->
+
+	BifTab = bifs_tab(BifTabFile),
+
+	BeamFiles = filelib:wildcard(PreloadDir ++ "/*.beam"),
+	Lings = lists:map(fun(BF) ->
+		{ok,L} = ling_code:beam_to_ling(BF),
+		{ok,Ling} = ling_code:ling_to_specs(L),
+		Ling
+	end, BeamFiles),
+
+	{NameTab,ErlIdx} = name_tab(BifTab, Lings),
+
+	PreMods = lists:usort([Ling#m.mod_name || Ling <- Lings]),
+
+	PreImpErrs = lists:concat([[{M,F,A}
+						|| {_,{M1,F,A},undefined} <- NameTab, M1 =:= M]
+								|| M <- PreMods]),
+	if PreImpErrs =/= [] ->
+		erlang:error({undef_refs,PreImpErrs});
+	true ->
+		ok
+	end,
+
+	{ok,Out} = file:open(ExpTabErl, [write]),
+	io:format(Out, "-module(exp_tab).~n", []),
+	io:format(Out, "-compile(export_all).~n~n", []),
+	io:format(Out, "all() -> ~p.~n~n",
+					[[MFA || {_,MFA,_} <- NameTab]]),
+
+	AllMods = lists:usort([M || {I,{M,_,_},_} <- NameTab, I >= ErlIdx]),
+
+	lists:foreach(fun(M) ->
+		Is = [I || {I,{M1,_,_},_} <- NameTab, M1 =:= M, I >= ErlIdx],
+		Min = lists:min(Is),
+		Max = lists:max(Is),
+		io:format(Out, "mod_range(~w) -> {~w,~w};~n", [M,Min,Max])
+	end, AllMods),
+	io:format(Out, "mod_range(X) -> erlang:error({range,X}).~n~n", []),
+
+	lists:foreach(fun({Index,MFA,_}) ->
+		io:format(Out, "entry_index(~w) -> ~w;~n", [MFA,Index])
+	end, NameTab),
+	io:format(Out, "entry_index(X) -> erlang:error({index,X}).~n~n", []),
+
+	lists:foreach(fun({_,MFA,L}) ->
+		io:format(Out, "entry_label(~w) -> ~p;~n", [MFA,L])
+	end, NameTab),
+	io:format(Out, "entry_label(X) -> erlang:error({label,X}).~n~n", []),
+
+	file:close(ExpTabErl);
+
+main(_) ->
+	io:format("usage: exptab_gen preload bif.tab exp_tab.erl", []).
+
+name_tab(BifTab0, Lings) ->
+	BifTab = [BifSpec || {_,_,_,Impl}=BifSpec <- BifTab0, Impl =/= "@"],
+
+	MTs = [[{{M,F,length(As)},Impl}]
+						|| {M,F,As,Impl} <- BifTab]		
+				++
+
+		[[{{Ling#m.mod_name,F,A},L}
+				|| {F,A,L} <- Ling#m.exports]
+								 || Ling <- Lings]
+				++
+		[[{MFA,undefined}
+				|| MFA <- Ling#m.imports]
+						|| Ling <- Lings]
+				++
+		[[{MFA,undefined}] || {e,MFA} <- lists:concat([ling_iopvars:var_args(Op, No)
+									|| {Op,No} <- ling_iopvars:var_order()])],
+
+	MTs2 = keyjumble(1, lists:concat(MTs)),
+
+	{NameTab,_} = lists:mapfoldl(fun({MFA,L}, Index) ->
+		{{Index,MFA,L},Index+1}
+	end, 0, MTs2),
+
+	{NameTab,length(BifTab)}.
+
+keyjumble(N, Ls) ->
+	keyjumble(N, Ls, []).
+
+keyjumble(_, [], Acc) ->
+	lists:reverse(Acc);
+keyjumble(N, [L|Ls], Acc) ->
+	Key = element(N, L),
+	case lists:keymember(Key, N, Acc) of
+	true ->
+		keyjumble(N, Ls, Acc);
+	false ->
+		keyjumble(N, Ls, [L|Acc])
+	end.
+
+bifs_tab(BifTabFile) ->
+	{ok,In} = file:open(BifTabFile, [read]),
+	BifTab = bifs_tab_1(In, []),
+	check_dups(BifTab),
+	BifTab.
+
+bifs_tab_1(In, Acc) ->
+	case io:get_line(In, []) of
+	eof -> Acc;
+	"#" ++ _ -> bifs_tab_1(In, Acc);
+	"\n" -> bifs_tab_1(In, Acc);
+	Line ->
+		{match,[_,M,F,As,Impl]} = 
+			re:run(Line,
+				"([^:]+):([^(]+)\\((.*)\\)[ \t]+(.*)",
+				[{capture,all,list}]),
+		As1 = if As =:= [] -> [];
+			true -> re:split(As, ",", [{return,list}]) end,
+		BifSpec = {list_to_atom(M),
+				   list_to_atom(F),
+				   lists:map(fun erlang:list_to_atom/1, As1),
+				   Impl},
+		bifs_tab_1(In, [BifSpec|Acc])
+	end.
+
+check_dups(BifTab) ->
+	D = lists:foldl(fun({M,F,A,_Impl}, D) ->
+		dict:update_counter({M,F,A}, 1, D)
+	end, dict:new(), BifTab),
+	case [MFA || {MFA,N} <- dict:to_list(D), N > 1] of
+	[] ->
+		ok;
+	Xs ->
+		erlang:error({bif_dups,Xs})
+	end.
+
+%%EOF

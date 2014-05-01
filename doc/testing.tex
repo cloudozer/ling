@@ -1,0 +1,266 @@
+\documentclass{article}
+\usepackage{fontspec}
+\usepackage{multicol}
+
+\title{Testing Ling}
+
+\setmainfont[Mapping=tex-text]{NeoSans}
+\newfontfamily{\FallbackFont}{DejaVu Sans}
+\XeTeXinterchartokenstate=1
+\newXeTeXintercharclass\Fallback
+\XeTeXcharclass"2B=\Fallback
+\XeTeXcharclass"3A=\Fallback
+\XeTeXcharclass"3B=\Fallback
+\XeTeXcharclass"2022=\Fallback
+\XeTeXinterchartoks 0 \Fallback = {\begingroup\FallbackFont}
+\XeTeXinterchartoks 255 \Fallback = {\begingroup\FallbackFont}
+\XeTeXinterchartoks \Fallback 0 = {\endgroup}
+\XeTeXinterchartoks \Fallback 255 = {\endgroup}
+
+\begin{document}
+\maketitle
+
+Ling is a reincarnation of Erlang VM and as such should exhibit behaviour
+sufficiently similar to its widely used predecessor, BEAM. An extensive testing
+was conducted to demonstrate the similarity. The overview of the results of the
+testing are summarized in the present document.
+
+A subset of 25 test suites were selected from the BEAM emulator testing
+framework:
+\begin{multicols}{2}
+\begin{itemize}
+\item lists\_SUITE
+\item tuple\_SUITE
+\item list\_bif\_SUITE
+\item binary\_SUITE
+\item bs\_bincomp\_SUITE
+\item bs\_bit\_binaries\_SUITE
+\item bs\_construct\_SUITE
+\item bs\_match\_bin\_SUITE
+\item bs\_match\_int\_SUITE
+\item bs\_match\_misc\_SUITE
+\item bs\_match\_tail\_SUITE
+\item bs\_utf\_SUITE
+\item exception\_SUITE
+\item big\_SUITE
+\item float\_SUITE
+\item fun\_SUITE
+\item guard\_SUITE
+\item num\_bif\_SUITE
+\item ref\_SUITE
+\item ets\_SUITE
+\item file\_SUITE
+\item gen\_tcp\_api\_SUITE
+\item gen\_tcp\_echo\_SUITE
+\item re\_SUITE
+\item decode\_packet\_SUITE
+\end{itemize}
+\end{multicols}
+
+The subset addresses functions of a generic Erlang VM. Certain functions, such
+as driver subsystem, call tracing, etc are intentionally were left out as these
+functions are implemented differently in Ling or excluded completely.
+
+The source code of the test suites was not modified, except for file\_SUITE and
+gen\_tcp\_echo\_SUITE. All modifications to the source code are noted in the
+corresponding section below. The summary of the results can be found in the
+Table 1.
+
+\begin{table}[!ht]
+\begin{tabular}{lccccl}
+Test suite & Total & Ok & Failed & Skipped \\
+\hline
+lists\_SUITE & 68 & 68 & - & - \\
+tuple\_SUITE & 12 & 12 & - & - \\
+list\_bif\_SUITE & 6 & 6 & - & - \\
+binary\_SUITE & 32 & 27 & 2 & 3 \\
+bs\_bincomp\_SUITE & 6 & 5 & - & 1 \\
+bs\_bit\_binaries\_SUITE & 11 & 10 & - & 1 \\
+bs\_construct\_SUITE & 21 & 19 & 1 & 1 \\
+bs\_match\_bin\_SUITE & 3 & 3 & - & - \\
+bs\_match\_int\_SUITE & 8 & 8 & - & - \\
+bs\_match\_misc\_SUITE & 16 & 16 & - & - \\
+bs\_match\_tail\_SUITE & 3 & 3 & - & - \\
+bs\_utf\_SUITE & 7 & 7 & - & - \\
+exception\_SUITE & 10 & 10 & - & - \\
+big\_SUITE & 14 & 13 & - & 1 \\
+float\_SUITE & 11 & 8 & 1 & 2 \\
+fun\_SUITE & 18 & 10 & 1 & 7 \\
+guard\_SUITE & 6 & 5 & 1 & - \\
+num\_bif\_SUITE & 9 & 9 & - & - \\
+ref\_SUITE & 1 & 1 & - & - \\
+\hline
+ets\_SUITE & 108 & 79 & 12 & 17 \\
+file\_SUITE & 65 & 50 & 5 & 10 \\
+gen\_tcp\_api\_SUITE (9p) & 10 & 6 & 4 & - \\
+gen\_tcp\_echo\_SUITE (9p) & 9 & 9 & - & - \\
+gen\_tcp\_api\_SUITE (lwIP) & 10 & 9 & 1 & - \\
+gen\_tcp\_echo\_SUITE (lwIP) & 9 & 9 & - & - \\
+re\_SUITE & 15 & 15 & - & - \\
+decode\_packet\_SUITE & 9 & 9 & - & - \\
+\hline
+\end{tabular}
+\caption{The summary of test results.}
+\end{table}
+
+\textbf{binary\_SUITE}
+\begin{enumerate}
+\item \texttt{bad\_binary\_to\_term\_2} attempts to start a new node (skipped).
+\item \texttt{obsolete\_funs} tests obsolete funs represented as binaries (skipped).
+\item \texttt{gc\_test} uses undocumented process\_info(Pid, binary) call (skipped).
+\item \texttt{terms\_float} relies on snprintf() when converting a double to an
+external term format. The Ling's snprintf() implementation produces a slightly
+different string that results in mismatch after unpacking. The possible cause
+are compiler options related to the floating-point math (fails).
+\item \texttt{deep} creates a structure a million levels deep. The routine
+copying terms between heaps is recursive and thus unable to handle the
+structure. A system\_limit exception is thrown (fails).
+\end{enumerate}
+
+\textbf{bs\_bincomp\_SUITE}
+\begin{enumerate}
+\item \texttt{tracing} uses call tracing not supported in Ling. A simpler call tracing
+is possible in the new VM (skipped).
+\end{enumerate}
+
+\textbf{bs\_bit\_binaries\_SUITE}
+\begin{enumerate}
+\item \texttt{append} uses undocumented and unsupported erts\_debug() calls (skipped).
+\end{enumerate}
+
+\textbf{bs\_construct\_SUITE}
+\begin{enumerate}
+\item \texttt{bs\_add} uses a compiler. While it is possible to import all
+compiler modules into Ling, it seems an overkill to make a few tests run. All
+iterpreter modules are imported as many more tests use them (skipped).
+\item \texttt{huge\_binary} is unable to build a binary because the maximum
+number of bits for a binary in Ling is 7 bits smaller than in BEAM (4294967288
+vs 4294967295). Smaller maximum bit size means the ability to use 32-bit size
+representation in many places (fails).
+\end{enumerate}
+
+\textbf{big\_SUITE}
+\begin{enumerate}
+\item \texttt{big\_literals} uses compiler (skipped).
+\end{enumerate}
+
+\textbf{float\_SUITE}
+\begin{enumerate}
+\item \texttt{fp\_drv} uses driver subsystem (skipped).
+\item \texttt{fp\_drv\_thread} uses driver subsystem (skipped).
+\item \texttt{cmp\_bignum} exhibits different rounding behaviour not related to
+Erlang VM. For instance, an integer value of 288230376151711744 is (automatically)
+rounded in C to 288230376151711750.0 in Ling and to \\288230376151711740.0 in
+BEAM. It may be dependent on the compiler options (fails).
+\end{enumerate}
+
+\textbf{fun\_SUITE}
+\begin{enumerate}
+\item \texttt{fun\_to\_port} uses unsupported port\_command() call (skipped).
+\item \texttt{refc} uses undocumented fun\_info(Fun, refc) call. It may
+represent an implementation detail related to funs (skipped).
+\item \texttt{refc\_ets} see \texttt{refc} (skipped).
+\item \texttt{refc\_dist} see \texttt{refc} (skipped).
+\item \texttt{const\_propagation} see \texttt{refc} (skipped).
+\item \texttt{t\_arity} starts a new node (skipped).
+\item \texttt{t\_fun\_info} see \texttt{refc} (skipped).
+\item \texttt{t\_is\_function2} treats certain 2-tuples as funs. Ling does not
+support obsolete funs (fails).
+\end{enumerate}
+
+\textbf{guard\_SUITE}
+\begin{enumerate}
+\item \texttt{guard\_bifs} directly tests two floating-point values for
+equality. The values appear to be (slightly) different (fails).
+\end{enumerate}
+
+\textbf{ets\_SUITE}
+\begin{enumerate}
+\item \texttt{t\_delete\_object} uses undocumented \verb$ets:info(T, stats)$ call to
+make an implementation-dependent check$;$ works if the check is removed.
+\item \texttt{t\_delete\_all\_objects} see t\_delete\_object.
+\item \texttt{smp\_insert} uses undocumented \verb$ets:info(T,stats)$ call.
+\item \texttt{smp\_select\_delete} same as smp\_insert.
+\item \texttt{memory} is a joke$;$ it uses hardcoded values for various undocumented
+parameters.
+\item \texttt{heir} uses undocumented \verb$erts_debug:get_internal_state()$ to
+reset the pid numbering to ease reuse of pids$;$ hangs because the function is not
+supported$;$ other bits of the case work.
+\item \texttt{t\_match\_spec} starts a node to get external things, works if
+these small dependencies are removed.
+\item \texttt{types} starts a node to make external things$;$ this useful case
+should be reimplemented without the dependency.
+\item \texttt{fixtable\_insert} fails only the last small case that verifies
+that semi-deleted entries should be deleted immediately when the table is
+unfixed. This requires additional full-scan through the table or maintaining a
+list of semi-deleted entries. Ling uses keeps semi-deleted entries when the
+table is unfixed and removes them opportunistically.
+\item \texttt{partly\_bound} verifies the perfromance gain for key bound match
+specs; faster code for such match specs are not implemented yet - they still use
+the full scan.
+\item \texttt{t\_whitebox} uses a continuation generated by \verb$ets:match/3$ in the
+call to \verb$ets:select/1$$;$ such use is not supported.
+\item \texttt{t\_repair\_continuation} tests a function that is not required for
+Ling as a match spec gets compiled every time before use$;$ to be stubbed later to
+make Mnesia, etc happy.
+\end{enumerate}
+
+\textbf{file\_SUITE}
+\begin{enumerate}
+\item \texttt{exclusive} O\_EXCL mode is not supported by diod (fails).
+\item \texttt{truncate} Ling allows truncating a file opened read-only. It may
+be possible to implement the restriction but the potential gain vs the overhead
+involved is small (fails).
+\item \texttt{file\_info\_times} the access and modification times need timezone
+information that is not yet handled in Ling properly (fails).
+\item \texttt{delayed\_write} delayed\_write option is not supported by Ling
+(fails).
+\item \texttt{read\_ahead} read\_ahead option is not supported by Ling (fails).
+\item \texttt{read\_line\_} see \texttt{read\_ahead} (fails).
+
+The modifications to the source code of file\_SUITE.erl are mostly related to
+the fact that Ling allows deleting the current directory (if empty) and that
+\verb$os:type()$ returns 'ling'. Also 'enotempty' is returned instead of
+'eexist' when renaming a directory to an existing non-empty directory. Several
+modifications were made to decrease the number of iterations and operate on smaller data
+segments to avoid 'no memory' exceptions. The test suite was also modified to
+avoid use of regular expressions that are not supported by Ling yet.
+
+\end{enumerate}
+
+\textbf{gen\_tcp\_api\_SUITE (9p)}
+\begin{enumerate}
+\item \texttt{t\_shutdown\_write, t\_shutdown\_both, t\_shutdown\_error} test
+unsupported inet:shutdown() function (fails).
+\item \texttt{t\_fdopen} tries to retrieve a file descriptor to base a socket on
+(fails).
+\end{enumerate}
+
+\textbf{gen\_tcp\_echo\_SUITE (9p)}
+
+The source code of the test suite was modified to exclude checks for the correct
+packing/unpacking for the following packet types: sunrm, cdr, line, http,
+http\_bin, asn1. The support for some of the excluded packet types, such as
+http/http\_bin, will be added later.
+
+\textbf{gen\_tcp\_api\_SUITE (lwIP)}
+\begin{enumerate}
+\item \texttt{t\_fdopen} creates a socket from a file desriptor. Ling does not
+have file descriptors (fails).
+\end{enumerate}
+
+\textbf{gen\_tcp\_echo\_SUITE (lwIP)}
+
+The source code of the test suite to exclude larger packet sizes (65531, 65535,
+and 70000). In lwIP the len parameter of various API calls has uint16\_t type.
+Therefore, the maximum packet size tested is 65000.
+
+\textbf{re\_SUITE}
+
+The source code of the test suite was modified to exclude the checks for
+locale-dependent regular expressions. Such regular expressions are unsupported
+by Ling as there is no concept of locale. Another small modification deals with
+easing of a check for an error returned when compilation space overflows.
+
+\end{document}
+

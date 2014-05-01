@@ -1,0 +1,24 @@
+
+Base case:
+
+Naive1:	Run GC every time there is not enough space or on yield and the size of
+the heap is more than 65536 words
+
+Run: 16768
+
+Gap1: Run GC every time there is not enough space or on yield and the total size
+of allocations since last gc is greater than 8192 words
+
+Run: 1381
+Run: 1372
+
+Gap2: Same but the constant is 4096
+
+Run: 700
+Run: 689
+Run: 712
+
+Gap3: Same but the constant is 2048
+
+Run: 925
+Run: 864

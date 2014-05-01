@@ -1,0 +1,151 @@
+#!/usr/bin/env escript
+
+%% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+%% 
+%% Redistribution and use in source and binary forms, with or without
+%% modification, are permitted provided that the following conditions are met:
+%% 
+%% * Redistributions of source code must retain the above copyright notice, this
+%% list of conditions and the following disclaimer.
+%% 
+%% * Redistributions in binary form must reproduce the above copyright notice,
+%% this list of conditions and the following disclaimer in the documentation
+%% and/or other materials provided with the distribution.
+%% 
+%% * Redistributions in any form must be accompanied by information on how to
+%% obtain complete source code for the LING software and any accompanying
+%% software that uses the LING software. The source code must either be included
+%% in the distribution or be available for no more than the cost of distribution
+%% plus a nominal fee, and must be freely redistributable under reasonable
+%% conditions.  For an executable file, complete source code means the source
+%% code for all modules it contains. It does not include source code for modules
+%% or files that typically accompany the major components of the operating
+%% system on which the executable file runs.
+%% 
+%% THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+%% IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+%% DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+%% INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%% (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%% ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%% (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+%% 03/27/2014 This is probably the oldest code in LING, copied from teeterl
+
+-import(lists, [foreach/2,map/2]).
+-import(string, [tokens/2,strip/3]).
+
+main([BifTabFile,BifHdrFile]) ->
+	builtins(BifTabFile, BifHdrFile);
+main(_) ->
+	io:format("usage: bifs_gen bif.tab bif.h~n", []).
+
+builtins(BifTabFile, BifHdrFile) ->
+	{ok,In} = file:open(BifTabFile, [read]),
+	Bifs = bifs(In),
+	file:close(In),
+
+	{Bifs1,_} = lists:mapfoldl(fun({M,F,As,Impl}, N) ->
+		{{N,M,F,As,Impl},N+1}
+	end, 0, Bifs),
+	%% io:format("~p~n", [Bifs1]),	
+	
+	%% #ifndef BIF_H
+	%% #define BIF_H
+	%% 
+	%% #include "proc.h"
+	%% #include "term.h"
+	%%
+	%% ...
+	%%
+	%% #endif
+	
+	{ok,Hdr} = file:open(BifHdrFile, write),
+	io:format(Hdr, "~s~n", [bif_h_header()]),
+	foreach(fun({_,_,_,_,'@'}) ->
+		ok;	%% no prototype
+	({N,M,F,As,Impl}) ->
+		Args = case bif_type(Impl) of
+		normal ->
+			["term_t " ++ atom_to_list(A) || A <- As]
+							++ ["proc_t *proc"];
+		gc ->
+			["term_t " ++ atom_to_list(A) || A <- As]
+							++ ["proc_t *proc","term_t *regs","int live"];
+		call ->
+			["proc_t *proc","term_t *regs"]
+		end,
+		io:format(Hdr, "// ~w:~w/~w [~w]~n", [M,F,length(As),N]),
+		io:format(Hdr, "term_t ~w(~s);~n", [Impl,string:join(Args, ", ")])
+	end, Bifs1),
+	io:nl(Hdr),
+	io:format(Hdr, "//EOF~n", []),
+	file:close(Hdr).
+
+bif_h_header() ->
+	"#pragma once\n"
+	"\n"
+	"#include \"proc.h\"\n"
+	"#include \"term.h\"\n"
+	"\n"
+	"typedef term_t (*bif_func_t)();\n"
+	"typedef term_t (*bif_func0_t)(proc_t *proc);\n"
+	"typedef term_t (*bif_func1_t)(term_t Arg, proc_t *proc);\n"
+	"typedef term_t (*bif_func2_t)(term_t Arg1, term_t Arg2, proc_t *proc);\n"
+	"\n"
+	"typedef term_t (*gc_bif_func1_t)(term_t Arg, proc_t *proc, term_t *regs, int live);\n"
+	"typedef term_t (*gc_bif_func2_t)(term_t Arg1, term_t Arg2, proc_t *proc, term_t *regs, int live);\n"
+	"typedef term_t (*gc_bif_func3_t)(term_t Arg1, term_t Arg2, term_t Arg3, proc_t *proc, term_t *regs, int live);\n"
+	"\n"
+	"typedef term_t (*cbif_func_t)(proc_t *proc, term_t *regs);\n".
+
+bif_type(Impl) ->
+	bif_type_1(atom_to_list(Impl)).
+
+bif_type_1("gc_" ++ _) -> gc;
+bif_type_1("cbif_" ++ _) -> call;
+bif_type_1("bif_" ++ _) -> normal.
+
+bifs(In) -> bifs(In, []).
+bifs(In, Bifs) ->
+	case io:get_line(In, '') of
+	  eof -> Bifs;
+	  [$#|_] -> bifs(In, Bifs);
+	  "\n" -> bifs(In, Bifs);
+	  L -> bifs(In, [bif_spec(strip(L, right, $\n))|Bifs])
+	end.
+
+%% erlang:is_integer(T)		bif_is_integer1
+
+bif_spec(L) ->
+	%% io:format("spec: ~p~n", [L]),
+	[L1,Impl] = tokens(L, " \t"),
+	{M,F,As} = case tokens(L1, "(") of
+	  [L2,L3] ->
+		%%
+		%% erlang:=:=(A,B) -> two colons
+		%%
+		%% TODO: use re
+		%%
+		Pos = string:chr(L2, $:),
+		X = string:substr(L2, 1, Pos-1),
+		Y = string:substr(L2, Pos+1),
+		{X,Y,tokens(strip(L3, right, $)), ",")};
+	  [L2] ->
+		Pos = string:chr(L2, $:),
+		X = string:substr(L2, 1, Pos-1),
+		Y = string:substr(L2, Pos+1),
+		{X,Y,[]}
+	end,
+	
+	M1 = erlang:list_to_atom(M),
+	F1 = erlang:list_to_atom(F),
+	As1 = map(fun erlang:list_to_atom/1, As),
+	Impl1 = list_to_atom(Impl),
+	
+	{M1,F1,As1,Impl1}.
+
+%%EOF

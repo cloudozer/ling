@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<meta name="latexinput" content="mmd-article-header"/>
+	<title>A vision of ephemeral cloud
+v0.1</title>
+	<meta name="author" content="Maxim Kharchenko"/>
+	<meta name="date" content="March 2, 2013"/>
+	<meta name="copyright" content="2013, Cloudozer LLP. All Rights Reserved."/>
+	<meta name="latexmode" content="memoir"/>
+	<meta name="latexinput" content="mmd-article-begin-doc"/>
+	<meta name="latexfooter" content="mmd-memoir-footer"/>
+	<link type="text/css" rel="stylesheet" href="mmd.css"/>
+</head>
+<body>
+
+<h2 id="rediscoveringatrulyelasticcloud">Rediscovering a truly elastic cloud</h2>
+
+<p>Today&#8217;s computing clouds, often advertised as elastic, are rather rigid. When
+compared to stiffness of iron, they achieve elasticity of wood. Rubber-like
+clouds are still on drawing boards.</p>
+
+<p>Let us have a peek at the sketch of the future cloud we, the Erlang on Xen
+creators, have on our drawing board.</p>
+
+<p>There is a list of statements in the center. The top three say:</p>
+
+<ul>
+<li>Smaller cheap-to-create OS-less instances <em>provisioned on demand</em></li>
+<li>Reduced cloud stack, sharing infrastructure with user applications</li>
+<li>System administrators not necessary</li>
+</ul>
+
+<p>There are a few more items on the list. Some are trivial, some, we believe, are
+too valuable to spoil. So I am clipping the rest, including the one that
+mentions &#8216;robotics&#8217;.</p>
+
+<p>OS-less instances is what Erlang on Xen all about. Such instances start so fast
+you do not need to have anything pre-started. When your running application
+wants to use, for example, a message queue, one of these happens:</p>
+
+<ul>
+<li>no message queue started &mdash; start it, then use it</li>
+<li>message queue is available &mdash; use it</li>
+<li>message queue is busy &mdash; spawn a copy and use it</li>
+</ul>
+
+<p>Note that instances are only spawned by other instances just like Unix process
+forked from existing processes. On as-needed basis.</p>
+
+<p>The startling outcome of the on-demand provisioning is that an application that
+does not do a useful work consumes no resources. Ten physical servers
+may now host a million client applications. A single Facebook-scale
+infrastructure may host a Facebook-like application for each human on Earth.</p>
+
+<p>How is that for <em>efficiency</em>?</p>
+
+<p>***</p>
+
+<p>In the year 3000, everything will be instant&#8230; but the cloud stack will still
+take, like, nine f**king seconds. Our <a href="http://try.erlangonxen.org/zerg">instance-per-request
+demo</a> hints that this might just be the case.</p>
+
+<p>Why not to apply the on-demand provisioning principle to the components of the
+cloud stack? It must be elastic too after all.</p>
+
+<p>***</p>
+
+<p>The bottom of the drawing board is all about how to make clouds a welcoming home
+for a database. Databases need a finer grain of control over their instances.
+First, a database may request two instances never to share a single
+physical node. These instance may contain replicas of an in-memory database
+and hosting them side by side negates their purpose of existence. Second, a
+database may stumble upon a query that requires scanning almost all its data
+scattered over several physical disks. The best strategy for such query is to
+spawn instances of the nodes that have these disks attached and skim the data
+without shoveling everything through the network.</p>
+
+<p>I imagine, a cloud provider may charge extra for such &#8216;separate nodes&#8217; and &#8216;disk
+node only&#8217; instances. It may do so exactly because they are so valuable for
+performant cloud databases.</p>
+
+<p>***</p>
+
+<p>Virtualization is featured profoundly throughout our vision. Same goes for
+OpenFlow-aware network switches. Everything else is taken with a grain of salt -
+is it there to replicate a homely computing world of the 90s or it truly helps
+to weave a fabric of the future cloud?</p>
+
+<p>***</p>
+
+<p>On the left of the drawing board is a mockup of the cloud&#8217;s GUI. Frankly
+speaking, it resembles Visual Studio-style IDE more than anything else. The bulk
+of it is about editing source code. It also allows selection of
+services/components the cloud application needs. The trick is that all these
+services are <em>ephemeral</em>. None of them exist. They get created when first used.</p>
+
+<p>The dark machinery behind the IDE bakes instance images and deploy them to the
+cloud the moment the user clicks the &#8216;Run&#8217; button. The running application can
+be paused, variable values inspected, breakpoints set. All the usual debugging
+stuff is possible.</p>
+
+<p>The remarkable observation is that there is no separate &#8216;administrator&#8217; GUI, as
+well as no mention of Chef or Puppet. Instances are provisioned and configured
+by the application code. The monitoring is done by a logging/monitoring
+component added to the application. What other tasks justify a separate
+interface for an administrator? While you are inventing such task, we move on
+without.</p>
+
+<p>***</p>
+
+<hr />
+
+<p>BELOW ARE OLD NOTES &#8211; DISREGARD</p>
+
+<hr />
+
+<p>Virtual instances will be somewhat smaller but there will be plenty of them.</p>
+
+<p>The components of cloud stack and components of user applications will share the
+same infrastructure. </p>
+
+<h3 id="cloud-awareapplications">Cloud-aware applications</h3>
+
+<ul>
+<li>NewStack</li>
+<li>Cloud 2.0</li>
+<li>[DEFUC: Destination future cloud]</li>
+</ul>
+
+<p>In the year 3000, everything will be instant&#8230; but the cloud stack will still
+take, like, nine freaking milliseconds.</p>
+
+<p>The transition to the cloud makes us rethink the architecture of software. Most
+cloud applications today mimick traditional software. The driving force behind
+this is desire to reuse existing source code, skills, even, software licences to
+the largest extent. The modern cloud stacks mostly caters to this desire.</p>
+
+<p>The inertia is there yet we have to be prepared to redesign our application
+spefically to truly unlock the advantage of cloud environments. These
+cloud-aware applications &ndash; or cApps &ndash; should have an new, yet
+unknown, architecture.</p>
+
+<p>The following are a few highlights of how a cloud running cApps may look like.</p>
+
+<h3 id="cloudinstancesarespawnedexclusivelybyothercloudinstances">Cloud instances are spawned exclusively by other cloud instances</h3>
+
+<p>The same concept as forking a process in Unix. For any Unix process there is a
+parent process. For any instance there should be a parent instance. Instances
+are spawned not by an almighty administator&#8217;s hand in the sky but by the
+application code.</p>
+
+<p>The application logic is the best place to make a decision that a new instance
+is needed. A web server instance may spawn a sibling instance when it already
+handles too many concurrent requests. A database server instance may decide that
+a particular query requires many transient workers to handle it efficiently.</p>
+
+<p>[mention robotics]</p>
+
+<h3 id="thebedrockofthefuturecloud">The bedrock of the future cloud</h3>
+
+<p>The necessary foundation for a cloud are physical nodes (some of them with disks
+attached), virtualization layer, and OpenFlow-aware switches. Everything else
+are cApps. Monitoring, Resource Management, Security, Network Configuration,
+Data Storage are all cloud-aware elastic applications sharing infrastructure
+with user cApps.</p>
+
+<p>We are not starting with a clean slate. Virtualization is a necessary ingredient
+of the future cloud. There are also OpenFlow controllers that let you redefine
+the network configuration rapidly. Anything else, should be taken with a grain
+of salt - does it exist to replicate a homely computing world of the 90s in the
+cloud or it helps to weave a farbic of the future cloud?</p>
+
+<h3 id="commoncloudservicesarecappstoo">Common cloud services are cApps too</h3>
+
+<p>The common cloud services should also be elastic and it is only logical to
+implement them as cApps not as supposedly available/elastic/redundant external
+entities.</p>
+
+<p>A network configuration engine may decide to spawn a hundred instances of dhcp
+servers when thousands client instances are about to fire up.</p>
+
+<p>[Mapping between applications and administative domains - clear separation of
+clients.]</p>
+
+<h3 id="runningdatabasequeriesneardata">Running database queries near data</h3>
+
+<p>The outcome of structuring a cloud around cApps is that the data access layer
+belongs to the client administrative domain. An elastic database application
+creates a set of instances that run on hosts with physical disks (spin-disks or
+SSDs) attached. Then the database servers knows everything there is to know
+about data location. It may decide to spawn (unmovable) instances on the
+physical nodes that controls the phyical storage devices and run code that scans
+the data efficiently.</p>
+
+<p>Currently a database server is presented with a virtual block device with
+largely unpredictable properties. The device may be mapped to a SAN disk array,
+or it may be mapped to a file in a filesystem hosted on remote SMB server. Who
+knows. Such setup is good enough in many cases, but it does not fly in case of a
+database.</p>
+
+<p>[Code mobility, fast network, relatively cheap CPU]</p>
+
+<p>[New stored procedures]</p>
+
+<h3 id="zero-footprintapplications">Zero-footprint applications</h3>
+
+<p>App that does nothing consumes no resources.</p>
+
+<p>The cApp that does not do any useful work should consume no resources. The whole
+application should be started as soon as new request arrives. The critical
+parameter here is a startup latency. It must be much lower when the have today.
+OS-less instances such as Erlang on Xen does get rid of the startup latency
+inside the instance. The remaining bit is the latency of the cloud stack. The
+NewStack should be orders of magnitude faster to provide for zero-footprint
+clouds.</p>
+
+<p>Zero-footprint clouds have a far-reaching economic implications. A ten physical
+server have host a million cApps. A single Facebook-scale infrastructure can
+host a Facebook-like app for each human on Earth.</p>
+
+<h3 id="configurationmanagement">Configuration management</h3>
+
+<p>Chef/Puppet are interim solutions mimicking actions of human beings.</p>
+
+<p>Right size of instances. No mega servers. Instance migration.</p>
+
+<h3 id="adiagram-mappingbetweemoldandnewarchitectures">A diagram - mapping betweem old and new architectures</h3>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Cloud 1.0</th>
+	<th style="text-align:left;">Cloud 2.0</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">Process</td>
+	<td style="text-align:left;">Instance</td>
+</tr>
+<tr>
+	<td style="text-align:left;">Thread</td>
+	<td style="text-align:left;">Green thread (goroutine, Erlang process)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="missingexistingbits.">Missing/existing bits.</h3>
+
+<p>Erlang on Xen is the harbinger of the future clouds.</p>
+
+<h3 id="linksquotes">Links/Quotes</h3>
+
+<ul>
+<li>A relevant blog post:
+<a href="http://gould.cx/ted/blog/Cloud_2.0">0</a></li>
+</ul>
+
+<blockquote>
+<p>And that, not knowing how many servers you&#8217;re actually running, that is Cloud
+2.0</p>
+</blockquote>
+
+<ul>
+<li><p>A presentation from HP Labs on Apache CloudStack:
+<a href="http://www.slideshare.net/steve_l/application-architecture-for-the-cloud">1</a></p></li>
+<li><p>Architectures for data security:
+<a href="http://www.infoq.com/articles/regulatory-compliant-cloud-computing">2</a></p></li>
+<li><p>A post from a same-minded person:
+<a href="http://robhirschfeld.com/2011/11/02/451-cloudscape-report-strikes-chord">3</a></p></li>
+<li><p>A blog post on swarm computing mentions cloud 2.0:
+<a href="https://ralfschnell.wordpress.com/2013/02/11/swarm-computing-cloud-2-0">4</a></p></li>
+</ul>
+
+<blockquote>
+<p>Imagine Swarm Computing applied to Infrastructure Management, Automation,
+Monitoring, Performance and Capacity Management. Rather than following the
+traditional approach of defining, provisioning and registering instances, we’d
+have those instances established with some basic self-awareness and the ability
+to communicate and react to other instances.</p>
+</blockquote>
+
+</body>
+</html>

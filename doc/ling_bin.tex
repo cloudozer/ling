@@ -1,0 +1,95 @@
+\documentclass{article}
+\usepackage{fontspec}
+
+\title{Ling binary module format}
+
+\setromanfont[Mapping=tex-text]{NeoSans}
+
+\begin{document}
+\maketitle
+
+The document describes a binary compression scheme specifically designed for the
+``specs'' representation of the module.  A module represented as specs consists
+of a stream of elements given in the Table \ref{tab:elts}.
+
+\begin{table}[!ht]
+\begin{tabular}{ll}
+Element & Constraints \\
+\hline
+N & $4294967296 > N >= 0$ \\
+\{opcode,N\} & $1024 > N >= 0$ \\
+\{atom,N\} & $1048576 > N >= 0$ \\
+\{bif,N\} & $65536 > N >= 0$ \\
+\{catch,N\} & $65536 > N >= 0$ \\
+\{export,N\} & $16777216 > N >= 0$ \\
+\{reg\_as\_term,X\} & $256 > X >= 0$ \\
+\{slot\_as\_term,Y\} & $16777216 > Y >= 0$ \\
+\{tag\_int,I\} & $268435455 > I >= -268435456$ \\
+\{literal,N\} & $16777216 > N >= 0$ \\
+\{f,none\} & - \\
+\{f,O\} & $4294967296 > N >= 0$ \\
+nil & - \\
+\{fu,N\} & $16777216 > N >= 0$ \\
+\end{tabular}
+\caption{Elements of the module specs stream\label{tab:elts}.}
+\end{table}
+
+Note that BIF references are always in the beginning of the import table and
+thus the index cannot exceed the total number of BIFs supported by the system.
+
+\section*{Algorithm 0}
+
+TODO: See source code.
+
+\section*{Algorithm 1}
+
+The entities are encoded as either a regular or an extended octet sequence. The
+regular sequence starts with the octet of the following format$:$
+
+tttsssss
+
+ttt is a tag and sssss is an immediate value or a size of a trailer. Meanings of the tag
+are$:$
+
+\begin{tabbing}
+\hspace{40pt} /= \kill
+000 /> opcode
+001 /> f (see notes)
+010 /> reg\_as\_term
+011 /> slot\_as\_term
+100 /> atom
+101 /> tag\_int (see notes)
+110 /> uint
+111 /> (extended sequence)
+\end{tabbing}
+
+size field is interpreted as follows. Values 0--27 are immediate. Values greater
+than 27 encode the number of bytes in the value that follow$:$ 28 - 1, 29 - 2,
+30 - 3, 31 - 4 bytes.
+
+For the f tag the immediate 0--27 value is interpreted as unsigned offset from
+the current position. The trailer values are relative from the beginning of the
+module code.
+
+For the tag\_int tag the immediate 0--27 are interpreted as -9--18 range.
+
+The extended sequence starts with the following octet$:$
+
+111tttss
+
+ttt is an extended tag and ss is a size of a trailer. Meanings of the extended
+tag are$:$
+
+\begin{tabbiing}
+\hspace{40pt} /= \kill
+000 export
+001 bif
+010 literal
+011 fu
+100 catch
+101 str
+110 {f,none} (ss must be 00)
+111 nil (ss must be 00)
+\end{tabbing}
+
+\end{document}

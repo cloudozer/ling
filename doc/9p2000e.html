@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<meta name="latexinput" content="mmd-article-header"/>
+	<title>9P2000 Protocol Erlang Extention    
+v0.1</title>
+	<meta name="author" content="Maxim Kharchenko"/>
+	<meta name="date" content="December 17, 2012"/>
+	<meta name="copyright" content="2012, Cloudozer LLP. All Rights Reserved."/>
+	<meta name="latexmode" content="memoir"/>
+	<meta name="latexinput" content="mmd-article-begin-doc"/>
+	<meta name="latexfooter" content="mmd-memoir-footer"/>
+	<link type="text/css" rel="stylesheet" href="mmd.css"/>
+</head>
+<body>
+
+<h2 id="notation">Notation</h2>
+
+<p>The key words &#8220;MUST&#8221;, &#8220;MUST NOT&#8221;, &#8220;REQUIRED&#8221;, &#8220;SHALL&#8221;, &#8220;SHALL NOT&#8221;, &#8220;SHOULD&#8221;,
+&#8220;SHOULD NOT&#8221;, &#8220;RECOMMENDED&#8221;, &#8220;MAY&#8221;, &#8220;OPTIONAL&#8221; in this document should be
+interpreted as described in <a class="citation" href="#fn:1" title="Jump to citation">[1]<span class="citekey" style="display:none">RFC2119</span></a>.</p>
+
+<h2 id="introduction">Introduction</h2>
+
+<p>Erlang on Xen makes extensive use of 9p protocol for a multitude of tasks,
+including code loading, storage access, node monitoring, message passing, etc.
+In most cases, the standard semantics of the protocol is enough. However, in a
+few cases limitations of the protocol gets in the way.</p>
+<dl>
+<dt>Dropped transport connections</dt>
+<dd>9p connections are tightly coupled to the underlying transport (TCP)
+ connections. The loss of TCP connection &#8212; a frequent occurence during
+ instance migration &#8212; means that all Fids are lost.</dd>
+
+<dt>Simple operations too chatty</dt>
+<dd>A simple operation, such as writing &#8220;0&#8221; to a synthetic file, require
+ multiple network roundtrips: walk to file, open Fid, write data, clunk Fid.
+ This makes many administrative tasks noticably slow.</dd>
+</dl>
+
+
+<p>The 9p protocol extension &#8212; 9P2000.e &#8212; is introduced to address these two
+issues. Erlang on Xen use this protocol version for internode communications.</p>
+
+<h2 id="overview">Overview</h2>
+
+<p>9P2000.e is the extension of 9P2000 protocol <a class="citation" href="#fn:2" title="Jump to citation">[2]<span class="citekey" style="display:none">9P2000</span></a>. It adds several new
+protocol operations as described below. Semantics of standard protocol
+operations are left unchanged.</p>
+
+<p>A new operation &#8212; session &#8212; reestablishes a session upon after reconnecting
+a transport. All Fids are preserved in the reestablished session.</p>
+
+<p>Also the protocol extension adds a few new operations that act as
+macro-operations of frequently used sequences.</p>
+
+<p>The server that implements 9P2000.e should fall back gracefully to use 9P2000
+protocol by disabling the newly introduced operations.</p>
+
+<h2 id="newmessages">New messages</h2>
+
+<pre><code>size[4] Tsession tag[2] key[8]
+size[4] Rsession tag[2] 
+
+size[4] Tsread tag[2] fid[4] nwname[2] nwname*(wname[s])
+size[4] Rsread tag[2] count[4] data[count]
+
+size[4] Tswrite tag[2] fid[4] nwname[2] nwname*(wname[s]) count[4] data[count]
+size[4] Rswrite tag[2] count[4]
+</code></pre>
+
+<p>The proposed numeric values for the new commands are as follows:</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Value</th>
+	<th style="text-align:left;">Commmand</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">150</td>
+	<td style="text-align:left;">Tsession</td>
+</tr>
+<tr>
+	<td style="text-align:left;">151</td>
+	<td style="text-align:left;">Rsession</td>
+</tr>
+<tr>
+	<td style="text-align:left;">152</td>
+	<td style="text-align:left;">Tsread</td>
+</tr>
+<tr>
+	<td style="text-align:left;">153</td>
+	<td style="text-align:left;">Rsread</td>
+</tr>
+<tr>
+	<td style="text-align:left;">154</td>
+	<td style="text-align:left;">Tswrite</td>
+</tr>
+<tr>
+	<td style="text-align:left;">155</td>
+	<td style="text-align:left;">Rswrite</td>
+</tr>
+</tbody>
+</table>
+<h2 id="newoperations">New operations</h2>
+
+<h3 id="session-reestablishasession">session - reestablish a session</h3>
+
+<pre><code>size[4] Tsession tag[2] key[8]
+size[4] Rsession tag[2] 
+</code></pre>
+
+<p>When a client performs authentication it may establish a session key. If
+transport connection is lost and reconnected the client may decide to use the
+session message to request reestablishing of the session. A successful reply
+means that the session is reestablished and all connection Fids are still valid.</p>
+
+<p>An error reply means that the session can not be reestablished. The client may
+decide to continue, treating the connection as completely new.</p>
+
+<p>The session message must be the first message must be the first message that
+follows a successful version negotiation. The tag of the session message must be
+set to NOTAG (~0). A rerror message is returned if the session can not be
+recovered.</p>
+
+<p>9P2000.e protocol uses MUMBLE messages for authentication <a class="citation" href="#fn:3" title="Jump to citation">[3]<span class="citekey" style="display:none">mumble</span></a>. A MUMBLE
+message contains the session key for the new session.</p>
+
+<h3 id="sread-readentirefilecontents">sread - read entire file contents</h3>
+
+<pre><code>size[4] Tsread tag[2] fid[4] nwname[2] nwname*(wname[s])
+size[4] Rsread tag[2] count[4] data[count]
+</code></pre>
+
+<p>The operation reads the entire contents of a file. A file is identifier by
+walking to a series of wnames starting with fid. The operation combines walking
+to a file, opening it, reading its content, and clunking a fid. The new
+operation minimizes network roundtrips when reading small files.</p>
+
+<h3 id="swrite-overwritefilecontents">swrite - overwrite file contents</h3>
+
+<pre><code>size[4] Tswrite tag[2] fid[4] nwname[2] nwname*(wname[s]) count[4] data[count]
+size[4] Rswrite tag[2] count[4]
+</code></pre>
+
+<p>The operation overwrites the file contents with data. The file is created if it
+does not exist.</p>
+
+<h2 id="discussion">Discussion</h2>
+
+<p>The session key should be kept secret as knowing it may allow hijacking of a 9p
+connection.</p>
+
+<p>The Erlang extension does not change the semantics of the standard 9P2000
+operations. This should facilitate a graceful fallback to plain 9P2000 protocol
+if the server does not support the extension.</p>
+
+<div class="footnotes">
+<hr />
+<ol>
+
+<li id="fn:1" class="citation"><span class="citekey" style="display:none">RFC2119</span><p>Bradner, S., &#8220;Key words for use in RFCs to Indicate Requirement
+Levels,&#8221; BCP 14, RFC 2119, March 1997.</p>
+</li>
+
+<li id="fn:2" class="citation"><span class="citekey" style="display:none">9P2000</span><p>9P2000 Protocol Specification, Plan 9 Manual Section 5
+(http://man.cat-v.org/plan_9/5/).</p>
+</li>
+
+<li id="fn:3" class="citation"><span class="citekey" style="display:none">mumble</span><p>MUMBLE authentication scheme, Cloudozer LLP, 2012.</p>
+</li>
+
+</ol>
+</div>
+
+
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Module 9p_auth</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module 9p_auth</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Authentication/authorization for 9p connections.
+
+
+<h2><a name="description">Description</a></h2>Authentication/authorization for 9p connections. The module implements
+   two auhtentication schemes: MUNGE and MUMBLE. Both schemes are based on a
+   pre-shared secrets. The module uses <code>auth:secret1()</code> and <code>auth:secret2()</code>
+   calls to retrieve the secrets. The definition of #munge{} and #mumble{}
+   records is given in 9p_auth.hrl.
+  
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#generate_session_key-0">generate_session_key/0</a></td><td>Generates a random session key.</td></tr>
+<tr><td valign="top"><a href="#mumble-1">mumble/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#mumble-2">mumble/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#mumble-3">mumble/3</a></td><td>Produce an authenticated MUMBLE message.</td></tr>
+<tr><td valign="top"><a href="#munge-2">munge/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#munge-3">munge/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#munge-4">munge/4</a></td><td>Encodes an authenticated MUNGE message.</td></tr>
+<tr><td valign="top"><a href="#unmumble-1">unmumble/1</a></td><td>Verifies and decodes a MUMBLE message.</td></tr>
+<tr><td valign="top"><a href="#unmunge-1">unmunge/1</a></td><td>Verifies and decodes a MUNGE message.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="generate_session_key-0">generate_session_key/0</a></h3>
+<div class="spec">
+<p><tt>generate_session_key() -&gt; binary()</tt><br></p>
+</div><p>Generates a random session key. The session key may be used for
+  recovering a session after a lost transport connection.</p>
+
+<h3 class="function"><a name="mumble-1">mumble/1</a></h3>
+<div class="spec">
+<p><tt>mumble(SessionKey) -&gt; Mumble</tt>
+<ul class="definitions"><li><tt>SessionKey = binary()</tt></li><li><tt>Mumble = binary()</tt></li></ul></p>
+</div>
+
+<h3 class="function"><a name="mumble-2">mumble/2</a></h3>
+<div class="spec">
+<p><tt>mumble(SessionKey, Extra) -&gt; Mumble</tt>
+<ul class="definitions"><li><tt>SessionKey = binary()</tt></li><li><tt>Extra = binary()</tt></li><li><tt>Mumble = binary()</tt></li></ul></p>
+</div>
+
+<h3 class="function"><a name="mumble-3">mumble/3</a></h3>
+<div class="spec">
+<p><tt>mumble(SessionKey, Extra, TTL) -&gt; Mumble</tt>
+<ul class="definitions"><li><tt>SessionKey = binary()</tt></li><li><tt>Extra = binary()</tt></li><li><tt>TTL = integer</tt></li><li><tt>Mumble = binary()</tt></li></ul></p>
+</div><p>Produce an authenticated MUMBLE message. The <code>SessionKey</code> identifies the
+  current session and is needed for session recovery when a transport
+  connection is reestablished. The <code>SessionKey</code> must be a binary of length
+  <b>8</b>. <code>Extra</code> is arbitrary data embedded into the MUMBLE message. Defaults
+  to <code>&lt;&lt;&gt;&gt;</code>. <code>TTL</code> is the number of seconds the message is valid after
+  encoding. Defaults to 0 (infinity).</p>
+
+<h3 class="function"><a name="munge-2">munge/2</a></h3>
+<div class="spec">
+<p><tt>munge(UnixUid, UnixGid) -&gt; Munge</tt>
+<ul class="definitions"><li><tt>UnixUid = integer()</tt></li><li><tt>UnixGid = integer()</tt></li><li><tt>Munge = binary()</tt></li></ul></p>
+</div>
+
+<h3 class="function"><a name="munge-3">munge/3</a></h3>
+<div class="spec">
+<p><tt>munge(UnixUid, UnixGid, Payload) -&gt; Munge</tt>
+<ul class="definitions"><li><tt>UnixUid = integer()</tt></li><li><tt>UnixGid = integer()</tt></li><li><tt>Payload = binary()</tt></li><li><tt>Munge = binary()</tt></li></ul></p>
+</div>
+
+<h3 class="function"><a name="munge-4">munge/4</a></h3>
+<div class="spec">
+<p><tt>munge(UnixUid, UnixGid, Payload, TTL) -&gt; Munge</tt>
+<ul class="definitions"><li><tt>UnixUid = integer()</tt></li><li><tt>UnixGid = integer()</tt></li><li><tt>Payload = binary()</tt></li><li><tt>TTL = integer()</tt></li><li><tt>Munge = binary()</tt></li></ul></p>
+</div><p>Encodes an authenticated MUNGE message. UnixUid and UnixGid are
+  credentials embedded into the message.</p>
+
+<h3 class="function"><a name="unmumble-1">unmumble/1</a></h3>
+<div class="spec">
+<p><tt>unmumble(Message) -&gt; #mumble{} | invalid | not_authenticated | expired</tt>
+<ul class="definitions"><li><tt>Message = binary()</tt></li></ul></p>
+</div><p>Verifies and decodes a MUMBLE message. Returns <code>not_authenticated</code> if
+  the computed MAC does not match the one included with the message. A MUMBLE
+  message may contain an expiry time. Accordingly, <code>expired</code> may be returned by
+  the call. Uses <code>auth:secret1()</code> only.</p>
+
+<h3 class="function"><a name="unmunge-1">unmunge/1</a></h3>
+<div class="spec">
+<p><tt>unmunge(Message) -&gt; #munge{} | invalid | not_authenticated | bad_padding | expired</tt>
+<ul class="definitions"><li><tt>Message = binary()</tt></li></ul></p>
+</div><p>Verifies and decodes a MUNGE message. Returns <code>not_authenticated</code> if the
+  computed Mac does not match. <code>bad_padding</code> may be returned if unencrypted
+  message does not follow PKCS#5 padding scheme. The implementation accepts only
+  MUNGE messages that use SHA-1 as a hash function and AES-CBC-128 as a cipher.
+  Uses both <code>auth:secret1()</code> and <code>auth:secret2()</code>.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Aug 9 2013, 01:28:48.</i></p>
+</body>
+</html>

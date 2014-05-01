@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<meta name="latexinput" content="mmd-article-header"/>
+	<title>9p-based filesystems    
+Implementation Notes    
+v1.5</title>
+	<meta name="author" content="Maxim Kharchenko"/>
+	<meta name="date" content="December 12, 2012"/>
+	<meta name="copyright" content="2012, Cloudozer LLP. All Rights Reserved."/>
+	<meta name="latexmode" content="memoir"/>
+	<meta name="latexinput" content="mmd-article-begin-doc"/>
+	<meta name="latexfooter" content="mmd-memoir-footer"/>
+	<link type="text/css" rel="stylesheet" href="mmd.css"/>
+</head>
+<body>
+
+<h2 id="background">Background</h2>
+
+<h3 id="theprotocol">The protocol</h3>
+
+<p>&#8216;9p&#8217; is a family of protocols. Erlang on Xen uses two standard flavours of the
+9p protocol: 9P2000.u <a class="citation" href="#fn:1" title="Jump to citation">[1]<span class="citekey" style="display:none">9p2000u</span></a> and 9P2000.L <a class="citation" href="#fn:2" title="Jump to citation">[2]<span class="citekey" style="display:none">9p2000L</span></a>. It also adds yet
+another flavour &#8212; 9P2000.e &#8212; the Erlang extension of 9p2000 <a class="citation" href="#fn:3" title="Jump to citation">[3]<span class="citekey" style="display:none">9p2000e</span></a>.</p>
+
+<h3 id="evolutionofthefilesystemlayer">Evolution of the filesystem layer</h3>
+
+<p>The view of a filesystem in Erlang on Xen have gone through a few major
+revisions. A brief overview of these revisions may help to understand the
+rationale behind the current approach and its future directon.</p>
+
+<p>When a Ling image gets compiled many named blobs of data are baked into it.
+These blobs may contain Erlang code modules, a boot script, etc. The earliest
+approach was to represent the blobs as &#8216;files&#8217; all belonging to the same
+&#8216;directory&#8217; called _embed. A series of small changes throughout prim_file,
+erl_prim_loader, and other modules, overlayed _embed over the &#8216;true&#8217; filesystem
+accessed via diod server. It was not possible to emulate directories of embedded
+files or mount (multiple) subtrees from the diod server. Embedded files had no
+file descriptors limiting their use to functions, such as file:read_file().</p>
+
+<p>The current approach to 9p-based filesystems in Erlang on Xen is more advanced.
+The biggest enhancement is the introduction of the mounting server &#8212; 9p_mounter.
+The mounting server made the filesystem interface flexible and uniform. It is
+discussed extensively later. Another enhancement is introduction of &#8216;synthetic&#8217;
+files not mapped to named data blobs or Linux files. The <a href="#nameddatablobs">named data blobs</a>
+interface was reworked.</p>
+
+<p>The next (planned) stage of the evolution of 9p-based filesystems includes
+addition of reestablishing transport connections, multi-mount policies,
+incomplete operations, auhtentication/authorization. These changes are marked as
+&#8216;NEW&#8217; throughout the document.</p>
+
+<h3 id="networkfilesystemsandperformance">Network filesystems and performance</h3>
+
+<p>In general, when performance and throughput is an issue, the filesystem
+interface should be avoided. The primary intention of using and extending the
+filesystem interface is compatibility with Erlang libraries, meeting
+expectations of the current application code, gathering and distribution of
+configuration data. The current implementation of the code_server module relies
+heavily on the filesystem. The throughput is not usually an issue for code
+loading. The initial code loading may affect the startup latency though. The
+question is addressed by bypassing file operations in a custom version of
+erl_prim_loader module, which is used by Erlang before the code_server is
+operational.</p>
+
+<p>The filesystem interface may prove to be convenient for exposing configuration
+information to other operating systems and tools. In a typical scenario, a bash
+script may read status information of a certain application by mounting a
+node filesystem and accessing the corresponding file. The rudimentary control
+over entities of the application layers may be implemented by writes to
+synthetic files.</p>
+
+<p>The new clustering layer envisioned for Erlang on Xen relies heavily on the
+functionality provided by the 9p layer described here.</p>
+
+<h3 id="notationandassumptions">Notation and assumptions</h3>
+
+<p>Throughout the document &#8216;fid&#8217; refers to a integer value returned by certain 9p
+operations that identifies a name in the remote hierarchy &#8211; a directory or a
+file. &#8216;cid&#8217; identifies a 9p connection. Composite fids introduced in the
+document are sometimes referred to as &#8216;cfids&#8217;.</p>
+
+<h2 id="pserver">9p server</h2>
+
+<p>Each Erlang on Xen node has a running local 9p server. The 9p server serves a series of
+synthetic and/or not-so-synthetic files organized into a two-level hierarchy.
+Explanations below assumes the following sample hierarchy:</p>
+
+<pre><code>/
+/boot
+/boot/local.map
+/boot/start.boot
+/stdlib
+/stdlib/dict.ling
+/proc
+/proc/1
+/proc/2
+</code></pre>
+
+<p>The first level names (<code>/boot</code>, <code>/stdlib</code>, and <code>/proc</code>) are <em>always</em>
+directories. Such directories are called &#8216;export&#8217; directories. The second level
+names, e.g. <code>/proc/1</code>, are <em>always</em> files. Thus the root directory <code>/</code> cannot
+contain files and export directories cannot contain other directories. These
+limitations of the 9p server hierarchy are not carried over to applications
+consuming the exported tree as the exported names can be mounted at arbitrary
+locations.</p>
+
+<h3 id="callbackmoduledissected">Callback module dissected</h3>
+
+<p>Each export directory is associated with a callback module. The 9p server
+invokes the callback module when an operation is requested on the directory or
+any file it contains. A single callback module may be responsible for multiple
+directories. For example, both <code>/boot</code> and <code>/stdlib</code> are associated with
+<code>embedded_export</code> module. Callbacks receive an additional parameter that allow
+them to distinguish between directories in such cases.</p>
+
+<p>9p server tries to collect and provide as much information as possible by itself
+without asking the callback module. For example, all walk operations are mostly
+handled by 9p server. The callback module may be asked to verify permissions.</p>
+
+<p>Each callback module implements a predefined set of functions. If certain
+function is not exported by the module, a default implementation is used
+instead.</p>
+
+<p>All calls receive Conn and ModConf parameters. Conn is an opaque structure that
+can be queried using &#8216;9p_info&#8217;:* calls. See <a href="#p_infointerface">below</a>.
+ModConf parameter contains the callback module configuration. It can be used to
+distinguish between directories when the callback module serves several of them.</p>
+
+<p>Names and aliases can be used interchangably. Passing an alias instead of a name
+is often faster.</p>
+
+<p>Predefined functions of an export module:</p>
+
+<ul>
+<li>top_granted(User, Conn, ModConf) -&gt; true | false</li>
+<li>file_granted(Name, User, Conn, ModConf) -&gt; true | false</li>
+<li>list_dir(Conn, ModConf) -&gt; Files</li>
+<li>find(Name, Conn, ModConf) -&gt; {found,Alias} | false</li>
+<li>create(Name, Conn, ModConf) -&gt; true | false</li>
+<li>remove(Name, Conn, ModConf) -&gt; true | false</li>
+<li>rename(Name, Conn, ModConf) -&gt; true | false</li>
+<li>read(Name, Offset, Count, Conn, ModConf) -&gt; {cache,Data} | Data</li>
+<li>write(Name, Offset, Data, Conn, ModConf) -&gt; Count</li>
+<li>truncate(Name, Size, Conn, ModConf) -&gt; true</li>
+<li>top_stat(Conn, ModConf) -&gt; #stat{}</li>
+<li>file_stat(Name, Conn, ModConf) -&gt; #stat{}</li>
+</ul>
+
+<p>Detailed description of predefined functions of a callback module follow.</p>
+
+<pre><code>top_granted(User, Conn, ModConf) -&gt; true | false
+</code></pre>
+
+<p>Authorizes attach/walk operation for the entire export directory. <em>User</em> is a
+user name or a <code>{UserName,UserId}</code> tuple taken from attach parameters. <em>User</em> is
+set to <code>undefined</code> for walk operations. Defaults to <code>true</code>.</p>
+
+<pre><code>file_granted(Name, User, Conn, ModConf) -&gt; true | false
+</code></pre>
+
+<p>Authorizes attach/walk operation for a named file in the exported directory.
+<em>User</em> is a user name or a <code>{UserName,UserId}</code> tuple taken from attach
+parameters. <em>User</em> is set to <code>undefined</code> for walk operations. Defaults to
+<code>true</code>.</p>
+
+<pre><code>list_dir(Conn, ModConf) -&gt; Files
+</code></pre>
+
+<p>Returns the list of {Name,Alias} tuples for all files in the directory. Names
+are represented as binaries. No default.</p>
+
+<pre><code>find(Name, Conn, ModConf) -&gt; {found,Alias} | false
+</code></pre>
+
+<p>Checks if the named file exists and returns its alias. The alias may be the same
+as Name. No default.</p>
+
+<pre><code>create(Name, Conn, ModConf) -&gt; true | false
+</code></pre>
+
+<p>Creates the named file. Returns <code>true</code> if successful, and <code>false</code> otherwise.
+Defaults to <code>false</code>.</p>
+
+<pre><code>remove(Name, Conn, ModConf) -&gt; true | false
+</code></pre>
+
+<p>Remove the named file. Returns <code>true</code> if successful. Defaults to <code>false</code>. Note
+that it is not possible to <code>remove</code> the exported directory.</p>
+
+<pre><code>rename(Name, NewName, Conn, ModConf) -&gt; true | false
+</code></pre>
+
+<p>Renames the file to NewName. Returns <code>true</code> if successful. Defaults to <code>false</code>.</p>
+
+<pre><code>read(Name, Offset, Count, Conn, ModConf) -&gt; {cache,Data} | Data
+</code></pre>
+
+<p>Reads (maximum) <em>Count</em> bytes from the named file starting at <em>Offset</em> and
+returns them as a binary. Note that the size of <em>Data</em> may be less than <em>Count</em>.
+Defaults to <code>&lt;&lt;&gt;&gt;</code>.</p>
+
+<p><code>{cache,Data}</code> return value contains the whole contents of the file. The caller
+may save the value and serve this and any subsequent read requests by slicing
+the cached value. If <code>Offset</code> is 0, then <code>read()</code> should be queried even if the
+cached contents is available. This creates a chance for refreshing the cached
+file contents. The cached data may be either a binary or a list of binaries. In
+the latter case, when slicing the cached value the boundaries of binaries should
+not be crossed. Such behaviour is needed for serving data represented as
+records, for example, when reading directories.</p>
+
+<pre><code>write(Name, Offset, Data, Conn, ModConf) -&gt; Count
+</code></pre>
+
+<p>User, Write <em>Data</em> to the named file starting at <em>Offset</em>. Returns number of bytes
+actually written. Defaults to <code>0</code>.</p>
+
+<pre><code>truncate(Name, Size, Conn, ModConf) -&gt; true
+</code></pre>
+
+<p>Truncate the size of the named file to <em>Size</em>.</p>
+
+<pre><code>top_stat(Name, Conn, ModConf) -&gt; #stat{}
+</code></pre>
+
+<p>Fills in the stat structure with information about the export directory itself.
+The only field that must be set is &#8216;name&#8217;. No default. See file_stat/3.</p>
+
+<pre><code>file_stat(Name, Conn, ModConf) -&gt; #stat{}
+</code></pre>
+
+<p>Fills in the stat structure with information about the file. Fields &#8216;name&#8217; and
+&#8216;legth&#8217; must be set. No default. The following properties are recognised:</p>
+
+<ul>
+<li>qid (a 13-byte binary that contains type, version and identity)</li>
+<li>mode</li>
+<li>atime (access time, Unix timestamp)</li>
+<li>mtime (modification time, Unix timestamp)</li>
+<li>length</li>
+<li>name</li>
+</ul>
+
+<h4 id="p_infointerface">9p_info interface</h4>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Function</th>
+	<th style="text-align:left;">Returns</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">version(Conn)</td>
+	<td style="text-align:left;">negotiated version number, e.g. <code>&lt;&lt;&quot;9P2000.e&quot;&gt;&gt;</code></td>
+</tr>
+<tr>
+	<td style="text-align:left;">peer_node(Conn)</td>
+	<td style="text-align:left;">node id of the peer node</td>
+</tr>
+<tr>
+	<td style="text-align:left;">peer_group(Conn)</td>
+	<td style="text-align:left;">group id of the peer node</td>
+</tr>
+<tr>
+	<td style="text-align:left;">auth_path(Conn)</td>
+	<td style="text-align:left;">aname passed with auth message</td>
+</tr>
+<tr>
+	<td style="text-align:left;">auth_user(Conn)</td>
+	<td style="text-align:left;">uname passed with auth message</td>
+</tr>
+<tr>
+	<td style="text-align:left;">auth_user_id(Conn)</td>
+	<td style="text-align:left;">n_uname passed with auth message (Unix clients only)</td>
+</tr>
+<tr>
+	<td style="text-align:left;">unix_user(Conn)</td>
+	<td style="text-align:left;">user id (Unix clients only)</td>
+</tr>
+<tr>
+	<td style="text-align:left;">unix_group(Conn)</td>
+	<td style="text-align:left;">group id (Unix clients only)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="linuxmountspossible">Linux mounts possible</h3>
+
+<p>Linux clients are distinguished from Erlang clients by the version of the
+protocol they request. For Unix client the expected protocol version is 9P2000.u
+<a class="citation" href="#fn:1" title="Jump to citation">[1]<span class="citekey" style="display:none">9p2000u</span></a>. Unix clients must authenticate themselves before attaching to the
+exported tree. Such clients must use MUNGE authentication scheme <a class="citation" href="#fn:4" title="Jump to citation">[4]<span class="citekey" style="display:none">munge</span></a>.
+User and group ids from the accepted MUNGE message are included into connection
+parameters and can be retrieved using &#8216;9p_info&#8217;:unix_user() and
+&#8216;9p_info&#8217;:unix_group() calls respectively.</p>
+
+<p>Unfortunately, the standard kernel driver &#8211; v9fs &#8211; does not provide for MUNGE
+authenication. There is a wrapper over the mount command that fixes this
+<a class="citation" href="#fn:5" title="Jump to citation">[5]<span class="citekey" style="display:none">eoxmount</span></a>.</p>
+
+<h3 id="localconnectionsauto-authenticated">Local connections auto-authenticated</h3>
+
+<p>9p server may listen on a loopback interface and accept connections from the
+same node. Such connections are authenticated automatically. The auth message
+should not be sent over a local connection and afid in attach requests should be
+set to (~0). The connection data is automatically filled in with the local node
+and group ids. Local connections are distinguished by calling
+<code>TransMod:is_local(TransConf)</code>. See <a href="#ptransports">9P transports</a>.</p>
+
+<h3 id="basicauthorizationfirst">Basic authorization first</h3>
+
+<p>Authenticated Erlang clients must pass the basic authorization. The basic
+authorization ensures the deliberate limitation imposed on internode
+communications. The group of the connecting node must match the group of the
+receiving node or the connecting node must be the parent of the receiving node.
+Otherwise, the basic authorization fails.</p>
+
+<p>Unix clients are not subject to the basic authorization.</p>
+
+<p>Access rights are further checked on per-directory/per-file basis using
+<code>top_granted()</code> and <code>file_granted()</code> callbacks.</p>
+
+<h3 id="samplesessionexplained">Sample session explained</h3>
+
+<pre><code>---&gt; Tversion msize=4294967295 version=&quot;9P2000.e&quot;
+&lt;--- Rversion msize=4294967295 version=&quot;9P2000.e&quot;
+</code></pre>
+
+<p>The connecting client is another node talking 9P2000.e &#8212; an Erlang extension
+of 9P2000 protocol <a class="citation" href="#fn:3" title="Jump to citation">[3]<span class="citekey" style="display:none">9p2000e</span></a>. The higher clustering layer uses 9p protocol to
+pass messages between processes of different nodes. The messages are not split
+into parts. The clustering layer relies on the 9p message framing. Thus <code>msize</code>
+must be set to the maximum possible value.</p>
+
+<p>A Tsession message may follow if the client wishes to reconnect the session
+after a lost transport connection. The subsequent commands will not appear for a
+reestablished session.</p>
+
+<pre><code>---&gt; Tauth afid=0 aname=&quot;/&quot; uname=&quot;&quot;
+&lt;--- Rauth aqid
+</code></pre>
+
+<p><code>aname</code> and <code>uname</code> values are saved and callbacks may retrieve them. Skipped
+for local connections.</p>
+
+<pre><code>---&gt; Twrite afid=0 offset=0 data=(MUMBLE message)
+&lt;--- Rwrite count
+</code></pre>
+
+<p>A single MUMBLE message <a class="citation" href="#fn:6" title="Jump to citation">[6]<span class="citekey" style="display:none">mumble</span></a> is written to afid authenticating the
+connecting node. The message should use the textual format. The message
+establishes node and group ids of the connecting node.</p>
+
+<pre><code>---&gt; Tattach afid=0 uname=&quot;&quot; aname=&quot;/proc&quot;
+&lt;--- Rattach aqid
+</code></pre>
+
+<p>The connecting client attaches to <code>/proc</code> creating a starting point for
+subsequent requests. <code>uname</code> value is ignored. Suppose, a module <code>proc_export</code> is
+the callback module for the <code>/proc</code> directory. <code>proc_export:top_granted()</code> is
+called to verify access rights. <code>proc_export:file_granted()</code> would be called if
+<code>aname</code> is set to <code>/proc/1</code> or similar. More attach request may follow.</p>
+
+<pre><code>---&gt; Tclunk fid=0
+&lt;--- Rclunk
+</code></pre>
+
+<p>Clunk the authentication fid.</p>
+
+<h3 id="howtoaddanexport">How to add an export?</h3>
+
+<p>When started the 9p server has nothing to serve. The filesystem information is
+added to 9p server on a per-directory basis. The interface is following:</p>
+
+<pre><code>'9p_server':add_export(Name, DirMod, ModConf)
+'9p_server':remove_export(Name)
+</code></pre>
+
+<p>The <em>Name</em> is the name of the exported directory, e.g. &lt;&lt;&#8220;stdlib&#8221;&gt;&gt;. The
+<em>Module</em> is the callback module for the directory. <em>ModConf</em> will be passed &#8216;as is&#8217;
+to all <em>Module</em>:* calls.</p>
+
+<p>The initial configuration of the 9p server is stored in the /boot/app.conf file
+as described in the section <a href="#erlangonxenbootsequence">Erlang on Xen boot sequence</a>.</p>
+
+<h2 id="ptransports">9p transports</h2>
+
+<p>Both 9p client and server should be able to use multiple protocols to transport
+9p messages. The 9p infrastructure emphasizes flexibility over performance,
+thus TCP/IP transport will suffice in most cases, especially, as public clouds
+restrict other transports.</p>
+
+<p>For starters, the 9p infrastructure will be limited to TCP/IP transport but
+the transport is abstracted out to add other transports (SCTP) later. The
+name of the module implementing the TCP/IP transport for 9p is &#8216;9p_tcp&#8217;.</p>
+
+<p>The type of the transport is determined by the name of the module that
+implements it. The behaviour of the transport module is closely follows that of
+gen_tcp module.</p>
+
+<pre><code>connect(TransConf) -&gt; {ok,Sock} | {error,Error}
+connect(TransConf, Timeout) -&gt; {ok,Sock} | {error,Error}
+send(Sock, Data, TransConf) -&gt; ok | {error,Error}
+recv(Sock, TransConf) -&gt; ok | {error,Error}
+recv(Sock, TransConf, Timeout) -&gt; ok | {error,Error}
+set_maximum_size(Sock, MSize, TransConf) -&gt; ok | {error,Error}
+activate(Sock, TransConf) -&gt; ok | {error,Error}
+is_local(TransConf) -&gt; true | false
+close(Sock, TransConf) -&gt; ok | {error,Error}
+</code></pre>
+
+<p>All entries of the transport module are self-explanatory. The activate() call
+switches the socket into active mode and it starts to deliver messages
+asynchronously to the controlling process. The active mode is facilitated by the
+non-standard {packet,&#8217;9p&#8217;} type that understands the framing of 9p packets. The
+standard {packet,4} type cannot be used as the size of 9p messages includes the
+size field itself. The size field is stripped off for &#8216;9p&#8217; packets.</p>
+
+<p>The is_local() function lets the <a href="#pmounter">9p mounter</a> and <a href="#pserver">9p server</a> to distinguish
+between local and remote connections.</p>
+
+<p>The traffic encryption can be added by implementing a special transport module.</p>
+
+<h2 id="pmounter">9p mounter</h2>
+
+<p>9p mounter maintains connections to 9p servers. Portions of name hierarchies
+exported by the servers are mapped to <em>mounting points</em> in the local hierarchy.
+This information is kept in the mounting map. Several remote name can share a
+local mounting point. Thus a local path may refer to multiple remote locations
+accessible over several 9p connections. </p>
+
+<p>During the boot sequence, the flexible mounting hepls to recreate a directory
+structure expected by the code_server. Erlang on Xen mostly use standard
+modules of Erlang/OTP with a few exceptions. For instance, an os module of the
+kernel application is modified to be compatible with Erlang on Xen. The modified
+version is injected into the hierarchy the flexible mounting. First
+/usr/lib/erlang/lib directory of the Linux filesystem exported by diod server is
+mounted at /erlang/lib. Then 9p mounter establishes a connection to the local
+9p server and mounts its /kernel directory at /erlang/lib/kernel. Thus the
+second mounting operation <em>shadows</em> files with the same name mounted initially,
+including /erlang/lib/kernel/os.ling. The code_server searching for the code of
+the os module finds the modified version.</p>
+
+<p>9p mounter introduces a concept of composite fids. A scope of a single fid is
+limited to cid &#8211; a single 9p connection. A composite fid contains a list of (cid,fid)
+pairs.</p>
+
+<p>The mounting information is encapsulated by the &#8216;9p_mounter&#8217; process. Each
+connection is managed by a separate connection process. File operations, as
+implemented by prim_file module, inquire &#8216;9p_mounter&#8217; process to retrieve Pids
+of relevant connections. The &#8216;9p_mounter&#8217; process acts as a supervisor for
+connection processes.</p>
+
+<p>In addition to maintaining the mounting information &#8216;9p_mounter&#8217; process
+responds to 9p requests that refer to the local portions of mounting points.</p>
+
+<p>The primary functions provided by the 9p mounter are:</p>
+
+<ol>
+<li><p>Open/close a 9p connection and add/remove associated mounts to/from the
+mounting map.</p></li>
+<li><p>Manage the current working directory.</p></li>
+<li><p>Resolve local paths to composite fids.</p></li>
+<li><p>Accept subscriptions/notify subscribers when a given local path
+appears/vanishes due to new/lost/closed 9p connections.</p></li>
+</ol>
+
+<h3 id="new9pconnections">New 9p connections</h3>
+
+<p>The following two functions add and remove connections from the 9p mounter:</p>
+
+<pre><code>add_connection(TransMod, TransConf, Mounts, Opts) -&gt; {ok,ConnPid} | {error,Error}
+remove_connection(ConnPid) -&gt; ok | {error,Error}
+</code></pre>
+
+<p><em>Mounts</em> is a list of pair that define the mapping between local and remote
+paths. The the mapping paths can not have &#8216;..&#8217; (parent) element. For instance,</p>
+
+<pre><code>Mounts = [
+       {&lt;&lt;&quot;/erlang/lib&quot;&gt;&gt;,&lt;&lt;&quot;/&quot;&gt;&gt;},
+       {&lt;&lt;&quot;/amqp/q&quot;&gt;&gt;,&lt;&lt;&quot;/queue&quot;&gt;&gt;}
+     ].
+</code></pre>
+
+<p><em>Opts</em> is a list of options. The following options are supported:</p>
+
+<pre><code>{version,Version}
+</code></pre>
+
+<p>The version of 9p2000 protocl to use. Possible versions are &#8216;9p2000.L&#8217; and
+&#8216;9p2000.e&#8217;, which is the default.</p>
+
+<p>When a new connection is added to the 9p mounter, a series of steps happens in
+sequence. Firstly, a transport link is established to the 9p server. Then a
+version negotiation happens that insures that the server supports the required
+version of the protocol. The maximum message size is negotiated too.
+The server can not decrease the maximum size requested by the client. The
+connection is dropped, if it attempts to.</p>
+
+<p>After successful version negotiation, the 9p mounter performs authentication,
+unless the connection is local. Then it attaches to all mounting points listed
+the add_connection() call. If some attach operations fail, then the
+corresponding mapping is not added to the mounting map.</p>
+
+<h3 id="currentworkingdirectory">Current working directory</h3>
+
+<p>The concept of the current working directory is a legacy and has a limited value
+for Erlang on Xen. It is expected that the current directory will be set once
+during the boot sequence.</p>
+
+<pre><code>get_cwd() -&gt; {ok,Cwd} | {error,Error}
+set_cwd(Path) -&gt; ok | {error,Error}
+</code></pre>
+
+<h3 id="localpathsresolved">Local paths resolved</h3>
+
+<p>A central function of the 9p mounter is to come up with list list of connections
+and associated fids that may serve a given local name.</p>
+
+<pre><code>resolve_path(Path) -&gt; 
+</code></pre>
+
+<p>&#8230;</p>
+
+<p>TODO current directory?</p>
+
+<p>For current directory we need to keep mostly path, such as /a/b/c. cfid for the
+current directory may be kept as a cached value.</p>
+
+<h2 id="pclient">9p client</h2>
+
+<p>Each 9p connection is managed by a separate Erlang process. A 9p connection is
+initiatied by calling:</p>
+
+<pre><code>start_link(TransMod, TransConf, AttachTo) -&gt; {ok,ConnPid}
+start_link(TransMod, TransConf, AttachTo, Opts) -&gt; {ok,ConnPid}
+</code></pre>
+
+<p><code>TransMod</code>/<code>TranConf</code> is the transport configuration. <code>AttachTo</code> is the list of
+attach paths. Attach paths should be either a binary, a <code>{AName,User}</code> tuple or
+<code>{AName,User,Uid}</code> tuple. The tuple format lets the caller specify the
+parameters of the attach message.</p>
+
+<p>The following optiions are recognized by &#8216;9p&#8217;:start_link():</p>
+
+<pre><code>{version,Ver}
+{msize,N}
+{auth_user,AUser}
+{auth_user_id,AUserId}
+{auth_path,APath}
+{unix_uid,Uid}
+{unix_gid,Gid}
+</code></pre>
+
+<p>Possible versions are &#8216;9P2000.L&#8217; and &#8216;9P2000.e&#8217; (default). <code>msize</code> defaults to
+4294967295 for &#8216;9P2000.e&#8217; version to allow sending processes messages as a
+single 9p frame. AUser, AUserId, and APath are auxilliary parameters rof the 9p
+auth message. Uid and Gid are passed on to the server if MUNGE authentication is
+in effect.</p>
+
+<p>Establishing a 9p connection involves many, sometimes a dozen roundtrips to the
+server. The start_link() calls only initiates the process. Completed attach
+operations are communicated to the 9p mounter asynchronously using the following
+messages:</p>
+
+<pre><code>{'9p_attached',ConnPid,Fid,AName}
+</code></pre>
+
+<p>9p mounter translated these messages into the corresponding updates to the mounting
+table.</p>
+
+<p>A 9p connection should be started by the 9p mounter. Otherwise, the processe
+opening a 9p connection should trap exits and send the message
+<code>{'9p_closed',ConnPid}</code> to the 9p mounter when it detects a dropped 9p
+connection.</p>
+
+<p>A 9p connection should detect dropped/lost transport connections and attempt to
+recover them using a session key (9P2000.e only).</p>
+
+<h2 id="prim_file">prim_file</h2>
+
+<p>TODO: union mount map/reduce strategies
+TODO promises</p>
+
+<p>A typical scenario implemented at prim_file level involves issuing
+attach/read/clunk requests to all fids referred by the file descriptor and
+combining the results.</p>
+
+<p>Composite fids make error handling more complex. An operation on a composite fid
+may results in dozen of separate conversations over many connections. Some of
+them may (and will) fail. Thus the result of the operation may be partial and
+include errors. The file:* interface does not provide a facility for
+returning partial results. The practical approach is to return partial results as
+a complete set. If there are no usable results at all, the last error should be
+returned.</p>
+
+<hr />
+
+<h2 id="erlangonxenbootsequence">Erlang on Xen boot sequence</h2>
+
+<p>Erlang on Xen uses the modified boot sequence of Erlang/OTP. 9p_server and
+9p_mounter processes are added to the kernel supervision tree. 9p_server
+starts a listener on the loopback interface and export all buckets of named
+blobs. 9p_mounter obtains the initial mounting information from a file
+/boot/local.map. The file is generated during the build process.</p>
+
+<p>Early during the boot sequence the files are retrieved using a low-level named
+blob interface. For example, the boot script is found using
+<code>binary:lookup_embedded('boot.script')</code> call. Note that the call disregards the
+bucket that contains the boot script.</p>
+
+<p>Later a 9p server starts to accept local connections and the code server is able
+to search for modules using <code>file:*</code> interface. The union mounting ability of
+the 9p mounter allows &#8216;shadowing&#8217; of standard Erlang modules with custom Erlang
+on Xen versions.</p>
+
+<p>All remote 9p connections are controlled by command-line arguments. They are
+established later during the boot sequence just before applications are started.</p>
+
+<h2 id="authenticationsummary">Authentication summary</h2>
+
+<p>All possible modes of authentication are summarized in the table below. <em>alpha</em>
+and <em>beta</em> are Erlang on Xen nodes, <em>diod</em> is a Linux 9p server, <em>v9fs</em> is a
+Linux 9p kernel driver.</p>
+
+<table>
+<colgroup>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+<col style="text-align:left;"/>
+</colgroup>
+
+<thead>
+<tr>
+	<th style="text-align:left;">Connection</th>
+	<th style="text-align:left;">Protocol</th>
+	<th style="text-align:left;">Mode</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+	<td style="text-align:left;">alpha &rarr; alpha</td>
+	<td style="text-align:left;">9P2000.e</td>
+	<td style="text-align:left;">A local connection - no authentication</td>
+</tr>
+<tr>
+	<td style="text-align:left;">alpha &rarr; beta</td>
+	<td style="text-align:left;">9P2000.e</td>
+	<td style="text-align:left;">MUMBLE authentication <a class="citation" href="#fn:6" title="Jump to citation">[6]<span class="citekey" style="display:none">mumble</span></a></td>
+</tr>
+<tr>
+	<td style="text-align:left;">alpha &rarr; diod</td>
+	<td style="text-align:left;">9P2000.L</td>
+	<td style="text-align:left;">MUNGE authentication <a class="citation" href="#fn:4" title="Jump to citation">[4]<span class="citekey" style="display:none">munge</span></a></td>
+</tr>
+<tr>
+	<td style="text-align:left;">v9fs &rarr; alpha</td>
+	<td style="text-align:left;">9P2000.u</td>
+	<td style="text-align:left;">MUNGE authentication</td>
+</tr>
+</tbody>
+</table>
+<p>The v9fs &#8212;&gt; alpha is tricky. It uses a wrapper over the mount command tha
+performs initial 9p message exchange, including MUNGE authentication, and then
+pass the file descriptor to the mount command <a class="citation" href="#fn:5" title="Jump to citation">[5]<span class="citekey" style="display:none">eoxmount</span></a>.</p>
+
+<h2 id="related">Related</h2>
+
+<h3 id="nameddatablobs">Named data blobs</h3>
+
+<p>All named blobs embedded into a Ling image are separated into &#8216;buckets&#8217;. The
+buckets contains data blobs, but not other buckets. The names of buckets and
+data blobs are atoms.</p>
+
+<p>The following BIFs expose buckets and data blobs to the application:</p>
+
+<pre><code>binary:embedded_buckets() -&gt; [atom()]
+</code></pre>
+
+<p>returns the list of all buckets.</p>
+
+<pre><code>binary:list_embedded(Bucket) -&gt; [atom()] | false
+</code></pre>
+
+<p>returns the list of data blobs that belong to the <em>Bucket</em> or <code>false</code> if the
+bucket is not found.</p>
+
+<pre><code>binary:embedded_size(Bucket, Name) -&gt; integer() | false
+</code></pre>
+
+<p>returns the size of the data blob identified by <em>Bucket/Name</em> pair or <code>false</code> if
+the data blob is not found.</p>
+
+<pre><code>binary:embedded_part(Bucket, Name, Pos, Len) -&gt; binary() | false
+binary:embedded_part(Bucket, Name, PosLen) -&gt; binary() | false
+</code></pre>
+
+<p>returns <em>Len</em> bytes of the data blob <em>Bucket/Name</em> starting at the position
+<em>Pos</em>. <em>Len</em>, <em>Pos</em>, and <em>PosLen</em> follow the conventions of the &#8216;binary&#8217; module.
+<code>false</code> is returned if the blob is not found.</p>
+
+<pre><code>binary:lookup_embedded(Name) -&gt; Data | false
+</code></pre>
+
+<p>returns the contents of the named blob. The blob is search in all buckets. The
+first blob found is returned. Returns <code>false</code> if the blob is not found.</p>
+
+<p>The build system generates the list of buckets from the contents of the &#8216;import&#8217;
+directory. The directory contain soft links to other directories. The link names
+become the bucket names and the contents of the referenced directories are
+embedded as data blobs. .beam files are skipped if there exists a .ling file
+with the same name.</p>
+
+<p>The 9p server exports all buckets and their contents as synthetic files. The
+corresponding behaviour is encapsulated in &#8216;embedded_exp&#8217; module.</p>
+
+<div class="footnotes">
+<hr />
+<ol>
+
+<li id="fn:1" class="citation"><span class="citekey" style="display:none">9p2000u</span><p>9p2000 protocol Unix extension
+(http://ericvh.github.com/9p-rfc/rfc9p2000.u.html).</p>
+</li>
+
+<li id="fn:2" class="citation"><span class="citekey" style="display:none">9p2000L</span><p>9p2000.L protocol (http://code.google.com/p/diod/wiki/protocol). </p>
+</li>
+
+<li id="fn:3" class="citation"><span class="citekey" style="display:none">9p2000e</span><p>9p2000.e protocol Erlang extension, Cloudozer LLP, 2012.</p>
+</li>
+
+<li id="fn:4" class="citation"><span class="citekey" style="display:none">munge</span><p>MUNGE authentication scheme (https://code.google.com/p/munge/).</p>
+</li>
+
+<li id="fn:5" class="citation"><span class="citekey" style="display:none">eoxmount</span><p>Erlang on Xen mounting wrapper (http://github.com/maximk/eoxmount).</p>
+</li>
+
+<li id="fn:6" class="citation"><span class="citekey" style="display:none">mumble</span><p>MUMBLE authentication scheme, Cloudozer LLP, 2012.</p>
+</li>
+
+</ol>
+</div>
+
+
+</body>
+</html>

@@ -1,0 +1,116 @@
+#!/usr/bin/env escript
+
+%% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+%% 
+%% Redistribution and use in source and binary forms, with or without
+%% modification, are permitted provided that the following conditions are met:
+%% 
+%% * Redistributions of source code must retain the above copyright notice, this
+%% list of conditions and the following disclaimer.
+%% 
+%% * Redistributions in binary form must reproduce the above copyright notice,
+%% this list of conditions and the following disclaimer in the documentation
+%% and/or other materials provided with the distribution.
+%% 
+%% * Redistributions in any form must be accompanied by information on how to
+%% obtain complete source code for the LING software and any accompanying
+%% software that uses the LING software. The source code must either be included
+%% in the distribution or be available for no more than the cost of distribution
+%% plus a nominal fee, and must be freely redistributable under reasonable
+%% conditions.  For an executable file, complete source code means the source
+%% code for all modules it contains. It does not include source code for modules
+%% or files that typically accompany the major components of the operating
+%% system on which the executable file runs.
+%% 
+%% THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+%% IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+%% DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+%% INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%% (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%% ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%% (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-import(lists, [foreach/2,map/2]).
+-import(string, [tokens/2,strip/3]).
+
+main([BifTabFile,BifErlFile]) ->
+	builtins(BifTabFile, BifErlFile);
+main(_) ->
+	io:format("usage: bifs_gen bif.tab ling_bifs.erl~n", []).
+
+builtins(BifTabFile, BifErlFile) ->
+	{ok,In} = file:open(BifTabFile, [read]),
+	Bifs = bifs(In),
+	file:close(In),
+
+	%%NB: keep in sync with bifs_gen
+
+	{Bifs1,_} = lists:mapfoldl(fun({M,F,As,Impl}, N) ->
+		{{N,M,F,As,Impl},N+1}
+	end, 0, Bifs),
+	%% io:format("~p~n", [Bifs1]),	
+	
+%% -module(ling_bifs).
+%% -export([is_builtin/3]).
+%%
+%% is_builtin(erlang, is_integer, 1) -> true;
+%% ...
+%% is_builtin(_, _, _) -> false.
+%%
+%% %% EOF
+
+	{ok,Be} = file:open(BifErlFile, write),
+	io:format(Be, "-module(ling_bifs).~n", []),
+	io:format(Be, "-export([is_builtin/3]).~n~n", []),
+
+	foreach(fun({_,M,F,As,_}) ->
+		io:format(Be, "is_builtin(~w, ~w, ~w) -> true;~n", [M,F,length(As)])
+	end, Bifs1),
+	io:format(Be, "is_builtin(_, _, _) -> false.~n~n", []),
+
+	io:format(Be, "%%EOF~n", []),
+	file:close(Be).
+
+bifs(In) -> bifs(In, []).
+bifs(In, Bifs) ->
+	case io:get_line(In, '') of
+	  eof -> Bifs;
+	  [$#|_] -> bifs(In, Bifs);
+	  "\n" -> bifs(In, Bifs);
+	  L -> bifs(In, [bif_spec(strip(L, right, $\n))|Bifs])
+	end.
+
+%% erlang:is_integer(T)		bif_is_integer1
+
+bif_spec(L) ->
+	%% io:format("spec: ~p~n", [L]),
+	[L1,Impl] = tokens(L, " \t"),
+	{M,F,As} = case tokens(L1, "(") of
+	  [L2,L3] ->
+		%%
+		%% erlang:=:=(A,B) -> two colons
+		%%
+		%% TODO: use re
+		%%
+		Pos = string:chr(L2, $:),
+		X = string:substr(L2, 1, Pos-1),
+		Y = string:substr(L2, Pos+1),
+		{X,Y,tokens(strip(L3, right, $)), ",")};
+	  [L2] ->
+		Pos = string:chr(L2, $:),
+		X = string:substr(L2, 1, Pos-1),
+		Y = string:substr(L2, Pos+1),
+		{X,Y,[]}
+	end,
+	
+	M1 = erlang:list_to_atom(M),
+	F1 = erlang:list_to_atom(F),
+	As1 = map(fun erlang:list_to_atom/1, As),
+	Impl1 = list_to_atom(Impl),
+	
+	{M1,F1,As1,Impl1}.
+
+%%EOF

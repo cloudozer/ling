@@ -1,0 +1,201 @@
+
+@doc
+
+<p>Each Erlang on Xen node has a running local 9p server. The 9p server serves a series of
+synthetic and/or not-so-synthetic files organized into a two-level hierarchy.
+Explanations below assumes the following sample hierarchy:</p>
+
+<pre>
+	/
+	/boot
+	/boot/local.map
+	/boot/start.boot
+	/stdlib
+	/stdlib/dict.ling
+	/proc
+	/proc/1
+	/proc/2
+</pre>
+	
+<p>The first level names (`/boot', `/stdlib', and `/proc') are <em>always</em>
+directories. Such directories are called 'export' directories. The second level
+names, e.g. `/proc/1', are <em>always</em> files. Thus the root directory `/' cannot
+contain files and export directories cannot contain other directories. These
+limitations of the 9p server hierarchy are not carried over to applications
+consuming the exported tree as the exported names can be mounted at arbitrary
+locations.</p>
+
+<h3>9p protocol flavours</h3>
+
+<p>The 9p server supports two 9p protocol flavours: 9p2000.u and 9p2000.e. The
+former is usually for connections originating from 9pfs driver included into the
+standard Linux kernel. The latter is typically for connections from other Erlang
+on Xen nodes.</p>
+
+<p>9p2000.L, the Linux flavour of the 9p protocol, is not supported by the 9p
+server. The 9p client in its turn can originate 9p2000.L connections to
+Linux-based servers.</p>
+
+<h3>Custom export modules</h3>
+
+<p>Each export directory is associated with a callback module. The 9p server
+invokes the callback module when an operation is requested on the directory or
+any file it contains. A single callback module may be responsible for multiple
+directories. For example, both `/boot' and `/stdlib' are associated with
+`embedded_export' module. Callbacks receive an additional parameter that allow
+them to distinguish between directories in such cases.</p>
+
+<p>9p server tries to collect and provide as much information as possible by itself
+without asking the callback module. For example, all walk operations are mostly
+handled by 9p server. The callback module may be asked to verify
+permissions in such cases.</p>
+
+<p>Each callback module implements a predefined set of functions. If certain
+function is not exported by the module, a default implementation is used
+instead.</p>
+
+<p>All calls receive Conn and ModConf parameters. Conn is an opaque structure that
+can be queried using {@link '9p_info'. 9p_info} functions. ModConf parameter
+contains the callback module configuration. It can be used to distinguish
+between directories when one callback module serves several of them.</p>
+
+<p>Names and aliases can be used interchangably. Passing an alias instead of a name
+is often faster.</p>
+
+<p>Predefined functions of an export module:</p>
+
+<pre>
+	top_granted(User, Conn, ModConf) -&gt; true | false
+	file_granted(Name, User, Conn, ModConf) -&gt; true | false
+	list_dir(Conn, ModConf) -&gt; Files
+	find(Name, Conn, ModConf) -&gt; {found,Alias} | false
+	create(Name, Conn, ModConf) -&gt; true | false
+	remove(Name, Conn, ModConf) -&gt; true | false
+	rename(Name, Conn, ModConf) -&gt; true | false
+	read(Name, Offset, Count, Conn, ModConf) -&gt; {cache,Data} | Data
+	write(Name, Offset, Data, Conn, ModConf) -&gt; Count
+	truncate(Name, Size, Conn, ModConf) -&gt; true
+	top_stat(Conn, ModConf) -&gt; #stat{}
+	file_stat(Name, Conn, ModConf) -&gt; #stat{}
+</pre>
+
+<p>Detailed description of predefined functions of a callback module follow.</p>
+
+<pre>
+	top_granted(User, Conn, ModConf) -> true | false
+</pre>
+
+<p>Authorizes attach/walk operation for the entire export directory.
+<em>User</em> is a user name or a `{UserName,UserId}' tuple taken from attach
+parameters. <em>User</em> is set to `undefined' for walk operations. Defaults to
+`true'.</p>
+
+<pre>
+	file_granted(Name, User, Conn, ModConf) -> true | false
+</pre>
+
+<p>Authorizes attach/walk operation for a named file in the exported directory.
+<em>User</em> is a user name or a `{UserName,UserId}' tuple taken from attach
+parameters. <em>User</em> is set to `undefined' for walk operations. Defaults to
+`true'.</p>
+
+<pre>
+	list_dir(Conn, ModConf) -> Files
+</pre>
+
+<p>Returns the list of `{Name,Alias}' tuples for all files in the directory. Names
+are represented as binaries. No default.</p>
+
+<pre>
+	find(Name, Conn, ModConf) -> {found,Alias} | false
+</pre>
+
+<p>Checks if the named file exists and returns its alias. The alias may be the same
+as Name. No default.</p>
+
+<pre>
+	create(Name, Conn, ModConf) -> true | false
+</pre>
+
+<p>Creates the named file. Returns `true' if successful, and `false' otherwise.
+Defaults to `false'.</p>
+
+<pre>
+	remove(Name, Conn, ModConf) -> true | false
+</pre>
+
+<p>Remove the named file. Returns `true' if successful. Defaults to `false'. Note
+that it is not possible to 'remove' the exported directory.</p>
+
+<pre>
+	rename(Name, NewName, Conn, ModConf) -> true | false
+</pre>
+
+<p>Renames the file to NewName. Returns `true' if successful. Defaults to
+`false'.</p>
+
+<pre>
+	read(Name, Offset, Count, Conn, ModConf) -> {cache,Data} | Data
+</pre>
+
+<p>Reads (maximum) <em>Count</em> bytes from the named file starting at
+<em>Offset</em> and returns them as a binary. Note that the size of
+<em>Data</em> may be less than <em>Count</em>. Defaults to &lt;&lt;>>.</p>
+
+<p>`{cache,Data}' return value contains the whole contents of the file. The caller
+may save the value and serve this and any subsequent read requests by slicing
+the cached value. If `Offset' is 0, then `read()' should be queried even if the
+cached contents is available. This creates a chance for refreshing the cached
+file contents. The cached data may be either a binary or a list of binaries. In
+the latter case, when slicing the cached value the boundaries of binaries should
+not be crossed. Such behaviour is needed for serving data represented as
+records, for example, when reading directories.</p>
+
+<pre>
+	write(Name, Offset, Data, Conn, ModConf) -> Count
+</pre>
+
+<p>Write <em>Data</em> to the named file starting at <em>Offset</em>. Returns number of bytes
+actually written. Defaults to `0'.</p>
+
+<pre>
+	truncate(Name, Size, Conn, ModConf) -> true
+</pre>
+
+<p>Truncate the size of the named file to <em>Size</em>.</p>
+
+<pre>
+	top_stat(Name, Conn, ModConf) -> #stat{}
+</pre>
+
+<p>Fills in the stat structure with information about the export directory itself.
+The only field that must be set is 'name'. No default. See {@link file_stat/3}.</p>
+
+<pre>
+	file_stat(Name, Conn, ModConf) -> #stat{}
+</pre>
+
+<p>Fills in the stat structure with information about the file. Fields 'name' and
+'length' must be set. No default.</p>
+
+<p>The layout of the stat record is as follows:</p>
+
+<pre>
+-record(stat, {ver =e,    %% 9P2000.e or 9P2000.u
+               type =0,    %% Plan 9?
+               dev =0,    %% Plan 9?
+               qid,
+               mode,
+               atime,
+               mtime,
+               length,
+               name,
+               uid = &lt;&lt;>>,
+               gid = &lt;&lt;>>,
+               muid = &lt;&lt;>>,
+               ext = &lt;&lt;>>,
+               num_uid =0,
+               num_gid =0,
+               num_muid =0}).
+</pre>
+

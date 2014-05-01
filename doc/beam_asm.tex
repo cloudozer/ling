@@ -1,0 +1,238 @@
+
+\documentclass{article}
+\usepackage{fontspec}
+
+\usepackage{multicol}
+
+\title{BEAM generic operations encoding}
+
+\setromanfont[Mapping=tex-text]{NeoSans}
+
+\begin{document}
+\maketitle
+
+The encoding of the assembler output into a 'Code' chunk of a BEAM file is
+performed by functions in \verb$beam_asm$ module. \verb$encode_op(Name, Args, Dict)$
+encodes a single generic operation into a binary. A contatenation of such
+binaries is the data that follows a 16-byte header of the chunk. \verb$Name$ is one
+of$:$
+
+\begin{multicols}{3}
+\begin{itemize}
+\item label
+\item func\_info
+\item int\_code\_end
+\item call
+\item call\_last
+\item call\_only
+\item call\_ext
+\item call\_ext\_last
+\item bif0
+\item bif1
+\item bif2
+\item allocate
+\item allocate\_heap
+\item allocate\_zero
+\item allocate\_heap\_zero
+\item test\_heap
+\item init
+\item deallocate
+\item return
+\item send
+\item remove\_message
+\item timeout
+\item loop\_rec
+\item loop\_rec\_end
+\item wait
+\item wait\_timeout
+\item is\_lt
+\item is\_ge
+\item is\_eq
+\item is\_ne
+\item is\_eq\_exact
+\item is\_ne\_exact
+\item is\_integer
+\item is\_float
+\item is\_number
+\item is\_atom
+\item is\_pid
+\item is\_reference
+\item is\_port
+\item is\_nil
+\item is\_binary
+\item is\_list
+\item is\_nonempty\_list
+\item is\_tuple
+\item test\_arity
+\item select\_val
+\item select\_tuple\_arity
+\item jump
+\item 'catch'
+\item catch\_end
+\item move
+\item get\_list
+\item get\_tuple\_element
+\item set\_tuple\_element
+\item put\_list
+\item put\_tuple
+\item put
+\item badmatch
+\item if\_end
+\item case\_end
+\item call\_fun
+\item is\_function
+\item call\_ext\_only
+\item bs\_put\_integer
+\item bs\_put\_binary
+\item bs\_put\_float
+\item bs\_put\_string
+\item fclearerror
+\item fcheckerror
+\item fmove
+\item fconv
+\item fadd
+\item fsub
+\item fmul
+\item fdiv
+\item fnegate
+\item make\_fun2
+\item 'try'
+\item try\_end
+\item try\_case
+\item try\_case\_end
+\item raise
+\item bs\_init2
+\item bs\_add
+\item apply
+\item apply\_last
+\item is\_boolean
+\item is\_function2
+\item bs\_start\_match2
+\item bs\_get\_integer2
+\item bs\_get\_float2
+\item bs\_get\_binary2
+\item bs\_skip\_bits2
+\item bs\_test\_tail2
+\item bs\_save2
+\item bs\_restore2
+\item gc\_bif1
+\item gc\_bif2
+\item is\_bitstr
+\item bs\_context\_to\_binary
+\item bs\_test\_unit
+\item bs\_match\_string
+\item bs\_init\_writable
+\item bs\_append
+\item bs\_private\_append
+\item trim
+\item bs\_init\_bits
+\item bs\_get\_utf8
+\item bs\_skip\_utf8
+\item bs\_get\_utf16
+\item bs\_skip\_utf16
+\item bs\_get\_utf32
+\item bs\_skip\_utf32
+\item bs\_utf8\_size
+\item bs\_put\_utf8
+\item bs\_utf16\_size
+\item bs\_put\_utf16
+\item bs\_put\_utf32
+\item on\_load
+\item recv\_mark
+\item recv\_set
+\item gc\_bif3
+\item line
+\end{itemize}
+\end{multicols}
+
+\verb$Args$ is the list arguments of the operation. The length of the list is
+the arity of the operation. The arity together with the \verb$Name$ dictate the
+opcode. The opcode is the first byte of the binary. The opcode is followed by
+individually encoded arguments. Arguments are encoded as (a sequence of) tagged
+values.
+
+Integers in the 0..15 range are encoded in a single byte as 
+
+\setlength{\unitlength}{12pt}
+\begin{picture}(10,2)
+\put(0,0){\line(1,0){8}}
+\multiput(0.25,0.5)(1,0){4}{$i$}
+\multiput(4.25,0.5)(1,0){1}{0}
+\multiput(5.25,0.5)(1,0){3}{$t$}
+\multiput(0,0)(1,0){9}{\line(0,1){0.5}}
+\end{picture}
+where $iiii$ is the encoded value, $ttt$ is the tag.
+
+Integers in the 16..2047 range are encoded as two bytes$:$
+
+\begin{picture}(20,2)
+\put(0,0){\line(1,0){8}}
+\multiput(0.25,0.5)(1,0){3}{$i$}
+\multiput(3.25,0.5)(1,0){1}{0}
+\multiput(4.25,0.5)(1,0){1}{1}
+\multiput(5.25,0.5)(1,0){3}{$t$}
+\multiput(0,0)(1,0){9}{\line(0,1){0.5}}
+\put(10,0){\line(1,0){8}}
+\multiput(10.25,0.5)(1,0){8}{$j$}
+\multiput(10,0)(1,0){9}{\line(0,1){0.5}}
+\end{picture}
+where $iiijjjjjjjj$ is the encoded value.
+
+Integers larger than 2047 (and any negative integers) are first converted into a
+sequence of bytes the most significant first. In general, for large integers the
+length of the sequence is encoded first followed by the bytes themselves. If the
+length is within the 2..8 range then it is encoded as
+
+\begin{picture}(10,2)
+\put(0,0){\line(1,0){8}}
+\multiput(0.25,0.5)(1,0){3}{$l$}
+\multiput(3.25,0.5)(1,0){2}{1}
+\multiput(5.25,0.5)(1,0){3}{$t$}
+\multiput(0,0)(1,0){9}{\line(0,1){0.5}}
+\end{picture}
+where $lll+2$ is the length of the byte sequence that follows.
+
+The encoding of the length of a longer byte sequence starts with
+
+\begin{picture}(10,2)
+\put(0,0){\line(1,0){8}}
+\multiput(0.25,0.5)(1,0){5}{1}
+\multiput(5.25,0.5)(1,0){3}{$t$}
+\multiput(0,0)(1,0){9}{\line(0,1){0.5}}
+\end{picture}
+followed by an encoding of the length as a separate value tagged with the tag
+$u$. The actual bytes go next.
+
+Using the above scheme arguments are encoded using the following rules$:$
+
+\begin{enumerate}
+\item \verb${x,X}$ and \verb${y,Y}$ use tags $x$ and $y$ and encode the register.
+\item \verb${atom,A}$ uses tag $a$ to encode the atom index.
+\item \verb${integer,I}$ uses tag $i$.
+\item \verb$nil$ is represented as a value 0 encoded with the tag $a$.
+\item \verb${f,L}$ uses tag $f$ to encode the label index.
+\item \verb${string,S}$ uses tag $u$ to encode the offset into the string table.
+\item \verb${extfunc,M,F,A}$ encodes the index in the import table using $u$ tag.
+\item \verb$Uint$ is encoded using $u$ tag.
+\item \verb${field_flags,Flags}$ uses $u$ tag to encode bit-masked flags.
+\end{enumerate}
+
+The rest of argument types use extended scheme that start with the subtype
+encoded using tag $z$$:$
+
+\begin{enumerate}
+\item \verb${float,F}$ uses subtype 0 followed by 8-byte floating-point value.
+\item \verb${list,List}$ uses subtype 1 followed by the length of the list encoded
+with tag $u$ followed by individually encoded list items.
+\item \verb${fr,R}$ uses subtype 2 followed by the floating-point register encoded
+with tag $u$.
+\item \verb${alloc,List}$ uses subtype 3 followed by two pairs of values encoded with
+tag $u$. If the first tagged value of the pair is 0 then the second value is
+the number of words. If the first value is 1 then the second is the number of
+floats.
+\item \verb${literal,Lit}$ uses subtype 4 followed by the index into the literal table
+encoded with tag $u$.
+\end{enumerate}
+
+\end{document}
+
