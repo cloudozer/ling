@@ -21,7 +21,7 @@ $(OTP): otp.tar.gz
 	tar xvzf $<
 
 otp: $(OTP)
-	(cd $< && env MAKEFLAGS=-j ./otp_build setup --disable-hipe --without-javac && make -j install)
+	(cd $< && ./otp_build setup --disable-hipe --without-javac && make install)
 
 NETTLE= nettle-2.7.1
 
@@ -38,7 +38,7 @@ $(UCLIBC): uclibc.tar.bz2
 	tar xvjf $<
 
 uclibc: $(UCLIBC) uclibc-config
-	(cd $< && env C_INCLUDE_PATH=/usr/include/$(shell arch)-linux-gnu make -j install)
+	(cd $< && env C_INCLUDE_PATH=/usr/include/$(shell arch)-linux-gnu make install)
 
 uclibc-config:
 	install $(CURDIR)/uClibc_config $(UCLIBC)/.config
