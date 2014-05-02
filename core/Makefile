@@ -103,7 +103,7 @@ lwip:
 	make -C lib/lwip
 
 lib/pcre/config.log:
-	cd lib/pcre; ./configure --disable-shared \
+	cd lib/pcre && autoreconf -i && ./configure --disable-shared \
 							 --disable-cpp \
 							 --disable-stack-for-recursion \
 							 --enable-utf8 \
@@ -119,5 +119,5 @@ vmling.o: $(STARTUP_OBJ) $(ALL_OBJS)
 
 xen-headers: include/xen
 include/xen:
-	ln -sf ../../$(XEN_DIR)/xen/include/public include/xen
+	ln -sf $(XEN_DIR)/xen/include/public include/xen
 
