@@ -184,7 +184,10 @@
 #define INET_STAT_SEND_OCT		10
 
 // Raw socket interface
-#define VIF_REQ_OPEN	100
+#define VIF_REQ_OPEN		100
+#define VIF_REQ_SETOPTS		101
+
+#define VIF_OPT_MAX_MQ_LEN	1
 
 #define VIF_REP_ERROR   0
 #define VIF_REP_OK      1

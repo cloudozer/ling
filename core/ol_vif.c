@@ -107,6 +107,22 @@ static term_t ol_vif_control(outlet_t *ol,
 		*reply++ = VIF_REP_OK;
 		break;
 	}
+	
+	case VIF_REQ_SETOPTS:
+	{
+		if (dlen != 1 +4)
+			goto error;
+		int opt = data[0];
+		if (opt == VIF_OPT_MAX_MQ_LEN)
+		{
+			int max_mq_len = GET_UINT_32(data +1);
+			ol->max_mq_len = max_mq_len;
+		}
+		else
+			goto error;
+		*reply++ = VIF_REP_OK;
+		break;
+	}
 
 	default:
 error:

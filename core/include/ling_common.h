@@ -40,6 +40,7 @@
 // likely()/unlikely()
 #include "os.h"
 
+#include "limits.h"
 #include "sys_stats.h"
 
 #ifdef LING_DEBUG

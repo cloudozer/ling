@@ -1,3 +1,4 @@
+
 // Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
@@ -31,13 +32,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-
 #include <stdint.h>
 #include <math.h>
 
 #include "ling_common.h"
 
+#include "os.h"
 #include "heap.h"
 #include "proc.h"
 #include "code_base.h"
@@ -223,12 +223,13 @@ void proc_main(proc_t *proc)
 	assert(*proc->cap.cp == shrink_ptr(&&int_code_end_0));
 	if (nalloc_no_memory())
 	{
+		// variables (other than proc) are not valid - do not touch
 		proc->result.what = SLICE_RESULT_ERROR;
 		proc->result.reason = A_NO_MEMORY;
-		proc->cap.live = 0;
 
-		// is swapped out (light)
-		goto schedule;
+		// proc is swapped out (light)
+		proc = scheduler_next(proc, 0);
+		goto init_done;
 	}
 
 	// We are ready to execute the first iop - report how much time we have
@@ -249,10 +250,10 @@ schedule:
 	// proc->cap.live must be set before jumping here
 	// must be swapped out (light)
 	
-	proc_stack_set_top(proc, sp);
-
 	proc->cap.ip = ip;
 	proc->cap.cp = cp;
+
+	proc_stack_set_top(proc, sp);
 
 	if (proc->cap.live > 0)
 	{
@@ -521,10 +522,14 @@ if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 8) & 255));
-
-	heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 8) & 255));
+		heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[1] >> 0) & 255));
 	swap_in();
 }
 
@@ -4534,10 +4539,14 @@ if (unlikely(hend - htop < ((ip[1] >> 8) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 16) & 255));
-
-	heap_ensure(&proc->hp, ((ip[1] >> 8) & 255), root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 16) & 255));
+		heap_ensure(&proc->hp, ((ip[1] >> 8) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[1] >> 8) & 255));
 	swap_in();
 }
 
@@ -5805,10 +5814,14 @@ if (unlikely(hend - htop < 2))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, 1);
-
-	heap_ensure(&proc->hp, 2, root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, 1);
+		heap_ensure(&proc->hp, 2, root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, 2);
 	swap_in();
 }
 
@@ -8829,10 +8842,14 @@ if (unlikely(hend - htop < ((ip[2] >> 0) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, ((ip[2] >> 8) & 255));
-
-	heap_ensure(&proc->hp, ((ip[2] >> 0) & 255), root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[2] >> 8) & 255));
+		heap_ensure(&proc->hp, ((ip[2] >> 0) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[2] >> 0) & 255));
 	swap_in();
 }
 
@@ -11270,10 +11287,14 @@ if (unlikely(hend - htop < 2))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, 1);
-
-	heap_ensure(&proc->hp, 2, root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, 1);
+		heap_ensure(&proc->hp, 2, root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, 2);
 	swap_in();
 }
 
@@ -14300,10 +14321,14 @@ if (unlikely(hend - htop < ((ip[1] >> 8) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 16) & 255));
-
-	heap_ensure(&proc->hp, ((ip[1] >> 8) & 255), root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 16) & 255));
+		heap_ensure(&proc->hp, ((ip[1] >> 8) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[1] >> 8) & 255));
 	swap_in();
 }
 
@@ -20094,10 +20119,14 @@ if (unlikely(hend - htop < ip[1]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, 1);
-
-	heap_ensure(&proc->hp, ip[1], root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, 1);
+		heap_ensure(&proc->hp, ip[1], root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ip[1]);
 	swap_in();
 }
 
@@ -20514,10 +20543,14 @@ if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, 1);
-
-	heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, 1);
+		heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[1] >> 0) & 255));
 	swap_in();
 }
 
@@ -24441,7 +24474,7 @@ l_is_eq_exact_immed_17: ATTRIBUTE_COLD
 
 
 void *next = (void *)expand_ptr(ip[3]);
-if (sp[((ip[2] >> 0) & 255)+1] != A_FUNNY848)
+if (sp[((ip[2] >> 0) & 255)+1] != A_FUNNY849)
 	do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
@@ -27157,7 +27190,7 @@ move_jump_9: ATTRIBUTE_COLD
 #endif
 
 
-r0 = A_FUNNY848;
+r0 = A_FUNNY849;
 do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
@@ -27190,10 +27223,14 @@ if (unlikely(hend - htop < ip[2]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
-
-	heap_ensure(&proc->hp, ip[2], root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
+		heap_ensure(&proc->hp, ip[2], root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ip[2]);
 	swap_in();
 }
 
@@ -30926,10 +30963,14 @@ if (unlikely(hend - htop < ip[2]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
-
-	heap_ensure(&proc->hp, ip[2], root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
+		heap_ensure(&proc->hp, ip[2], root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ip[2]);
 	swap_in();
 }
 
@@ -30953,10 +30994,14 @@ if (unlikely(hend - htop < ip[2]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
-
-	heap_ensure(&proc->hp, ip[2], root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
+		heap_ensure(&proc->hp, ip[2], root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ip[2]);
 	swap_in();
 }
 
@@ -31526,7 +31571,7 @@ l_move_call_22: ATTRIBUTE_COLD
 #endif
 
 
-r0 = A_FUNNY856;
+r0 = A_FUNNY857;
 cp = ip + 2;
 ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
@@ -33042,10 +33087,14 @@ if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, 1);
-
-	heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, 1);
+		heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[1] >> 0) & 255));
 	swap_in();
 }
 
@@ -34231,10 +34280,14 @@ if (unlikely(hend - htop < ip[1]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, ((ip[2] >> 0) & 255));
-
-	heap_ensure(&proc->hp, ip[1], root_regs, nr_regs);
+	if (nr_regs <= MAX_ROOT_REGS)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[2] >> 0) & 255));
+		heap_ensure(&proc->hp, ip[1], root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ip[1]);
 	swap_in();
 }
 

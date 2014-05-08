@@ -379,6 +379,8 @@ module_size
 variant_size
 count_iops
 processing_delay
+llstat
+stop
 help
 
 #EOF

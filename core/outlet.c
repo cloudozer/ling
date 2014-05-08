@@ -303,7 +303,13 @@ void outlet_pass_new_data(outlet_t *ol, uint8_t *data, int dlen)
 {
 	proc_t *proc = scheduler_lookup(ol->owner);
 	if (proc == 0)
-		return;
+		return;	// drop
+
+	// The max_mq_len can be changed by vif outlets only. It stops adding
+	// messages to the owner's mailbox if it is overflowing already.
+	//
+	if (ol->max_mq_len != 0 && msg_queue_len(&proc->mailbox) >= ol->max_mq_len)
+		return;	// drop
 
 	int needed = 3 +3;	// two 2-tuples: {Port,{data,Data}}
 	uint32_t *htop;

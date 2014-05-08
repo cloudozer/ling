@@ -188,30 +188,33 @@ static void garbage_collect_waiting_processes(uint64_t alloted_ns)
 		if (hp->wait_gc_runs >= 0 && hp->wait_gc_runs <= gc_runs)
 		{
 			int nr_regs = proc_count_root_regs(fatty);
-			region_t root_regs[nr_regs];
-			proc_fill_root_regs(fatty, root_regs, fatty->cap.regs, fatty->cap.live);
-			uint64_t gc_started_ns = monotonic_clock();
-			if (heap_gc_non_recursive_N(hp, root_regs, nr_regs) < 0)
+			if (nr_regs <= MAX_ROOT_REGS)
 			{
-				printk("garbage_collect_waiting_processes: no memory while collecting garbage, ignored\n");
-				break;
+				region_t root_regs[nr_regs];
+				proc_fill_root_regs(fatty, root_regs, fatty->cap.regs, fatty->cap.live);
+				uint64_t gc_started_ns = monotonic_clock();
+				if (heap_gc_non_recursive_N(hp, root_regs, nr_regs) < 0)
+				{
+					printk("garbage_collect_waiting_processes: no memory while collecting garbage, ignored\n");
+					break;
+				}
+				uint64_t consumed_ns = (monotonic_clock() -gc_started_ns);
+				alloted_ns -= consumed_ns;
+
+				//printk("%d|%d|%d|%d|%llu|%llu\n",
+				//	nr_timed,
+				//	nr_infinite,
+				//	gc_runs,
+				//	hp->wait_gc_runs,
+				//	consumed_ns,
+				//	alloted_ns);
+
+				hp->wait_gc_runs++;
+				if (hp->gc_spot == 0)
+					hp->wait_gc_runs = -1; // no more gc for this waiting process
+
+				continue;	// continue with the same process
 			}
-			uint64_t consumed_ns = (monotonic_clock() -gc_started_ns);
-			alloted_ns -= consumed_ns;
-
-			//printk("%d|%d|%d|%d|%llu|%llu\n",
-			//	nr_timed,
-			//	nr_infinite,
-			//	gc_runs,
-			//	hp->wait_gc_runs,
-			//	consumed_ns,
-			//	alloted_ns);
-
-			hp->wait_gc_runs++;
-			if (hp->gc_spot == 0)
-				hp->wait_gc_runs = -1; // no more gc for this waiting process
-
-			continue;	// continue with the same process
 		}
 
 		counter++;

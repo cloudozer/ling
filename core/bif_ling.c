@@ -43,6 +43,12 @@ void gdb_break(void);
 void linc_display(void);
 #endif // EXP_LINC_LATENCY
 
+#ifdef EXP_LINC_LLSTAT
+void llstat_restart(int ifidx);
+void llstat_stop(void);
+void llstat_display(void);
+#endif // EXP_LINC_LLSTAT
+
 #ifdef EXP_COUNT_IOPS
 void print_iop_counters(void);
 #endif // EXP_COUNT_IOPS
@@ -167,6 +173,16 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 		else
 			linc_display();
 #endif // EXP_LINC_LATENCY
+		break;
+	case A_LLSTAT:
+#ifdef EXP_LINC_LLSTAT
+		if (is_int(Arg))
+			llstat_restart(int_value(Arg));
+		else if (Arg == A_STOP)
+			llstat_stop();
+		else
+			llstat_display();
+#endif // EXP_LINC_LLSTAT
 		break;
 	default:
 		badarg(What);

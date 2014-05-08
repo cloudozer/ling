@@ -72,6 +72,7 @@ memnode_t *nalloc(int size)
 	memnode_t *node = nalloc_internal(size);
 	if (node == 0)
 		no_memory_signal();
+
 	return node;
 }
 

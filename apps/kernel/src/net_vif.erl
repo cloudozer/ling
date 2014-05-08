@@ -42,6 +42,9 @@
 -define(VIF_PREFIX, "eth").
 
 -define(VIF_REQ_OPEN, 100).
+-define(VIF_REQ_SETOPTS, 101).
+
+-define(VIF_OPT_MAX_MQ_LEN, 1).
 
 -define(VIF_REP_ERROR, 0).
 -define(VIF_REP_OK, 1).
@@ -53,18 +56,48 @@ open(IfName, Opts) when is_atom(IfName) ->
 	open(atom_to_list(IfName), Opts);
 
 open(?VIF_PREFIX ++ NN, Opts) when is_list(Opts) ->
-	IfIndex = list_to_integer(NN),
-	Port = erlang:open_port(vif, Opts),
-	AsBytes = binary_to_list(<<IfIndex:32>>),
-	case erlang:port_control(Port, ?VIF_REQ_OPEN, AsBytes) of
-	[?VIF_REP_OK] ->
-		{ok,Port};
-	[?VIF_REP_ERROR|Err] ->
-		{error,list_to_atom(Err)}
+	case check_options(Opts) of
+	{ok,VifOpts,GenOpts} ->
+		IfIndex = list_to_integer(NN),
+		Port = erlang:open_port(vif, GenOpts),
+		AsBytes = binary_to_list(<<IfIndex:32>>),
+		case erlang:port_control(Port, ?VIF_REQ_OPEN, AsBytes) of
+		[?VIF_REP_OK] ->
+			set_options(Port, VifOpts);
+		[?VIF_REP_ERROR|Err] ->
+			{error,list_to_atom(Err)}
+		end;
+	Error ->
+		Error
 	end;
 
 open(_IfName, _Opts) ->
 	{error,badarg}.
+
+check_options(Opts) ->
+	check_options(Opts, [], []).
+
+check_options([], VifOpts, GenOpts) ->
+	{ok,lists:reverse(VifOpts),
+		lists:reverse(GenOpts)};
+check_options([{mailbox_limit,N} =Opt|Opts], VifOpts, GenOpts) when is_integer(N), N >= 0 ->
+	check_options(Opts, [Opt|VifOpts], GenOpts);
+check_options([{mailbox_limit,_}|_], _, _) ->
+	{error,badarg};
+check_options([Opt|Opts], VifOpts, GenOpts) ->
+	check_options(Opts, VifOpts, [Opt|GenOpts]).
+
+set_options(Port, []) ->
+	{ok,Port};
+set_options(Port, [{mailbox_limit,N}|Opts]) ->
+	Cmd = [?VIF_OPT_MAX_MQ_LEN|binary_to_list(<<N:32>>)],
+	case erlang:port_control(Port, ?VIF_REQ_SETOPTS, Cmd) of
+	[?VIF_REP_OK] ->
+		set_options(Port, Opts);
+	[?VIF_REP_ERROR|Err] ->
+		erlang:port_close(Port),
+		{error,list_to_atom(Err)}
+	end.
 
 close(Port) ->
 	erlang:port_close(Port).
