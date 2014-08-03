@@ -73,20 +73,16 @@
 
 #include "monitors.h"
 #include "timers.h"
-#include "console.h"
-#include "netfe.h"
-#include "netif.h"
-#include "disk.h"
-#include "ser_cons.h"
 #include "ets.h"
 #include "counters.h"
 #include "embed.h"
 #include "mtwist.h"
 #include "prof.h"
 
-#include "lwip/ip_addr.h"
+#include "outlet.h"
+#include "netif.h"
+
 #include "lwip/stats.h"
-#include "lwip/netif.h"
 
 #define fail(reason) do { \
 	proc->bif_excep_reason = (reason); \

@@ -895,23 +895,23 @@ while (argc > 1 && argv[op][0] == '-')
       ((stack_size = get_value((unsigned char *)argv[op+1], &endptr)),
         *endptr == 0))
     {
-#if defined(_WIN32) || defined(WIN32)
+//#if defined(_WIN32) || defined(WIN32)
     printf("PCRE: -S not supported on this OS\n");
     exit(1);
-#else
-    int rc;
-    struct rlimit rlim;
-    getrlimit(RLIMIT_STACK, &rlim);
-    rlim.rlim_cur = stack_size * 1024 * 1024;
-    rc = setrlimit(RLIMIT_STACK, &rlim);
-    if (rc != 0)
-      {
-    printf("PCRE: setrlimit() failed with error %d\n", rc);
-    exit(1);
-      }
-    op++;
-    argc--;
-#endif
+//#else
+//    int rc;
+//    struct rlimit rlim;
+//    getrlimit(RLIMIT_STACK, &rlim);
+//    rlim.rlim_cur = stack_size * 1024 * 1024;
+//    rc = setrlimit(RLIMIT_STACK, &rlim);
+//    if (rc != 0)
+//      {
+//    printf("PCRE: setrlimit() failed with error %d\n", rc);
+//    exit(1);
+//      }
+//    op++;
+//    argc--;
+//#endif
     }
 #if !defined NOPOSIX
   else if (strcmp(argv[op], "-p") == 0) posix = 1;

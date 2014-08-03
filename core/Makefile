@@ -1,17 +1,19 @@
 
 .PHONY: default lwip pcre
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc
-default: xen-headers lwip pcre $(INCLUDES) vmling.o
+default: lwip pcre $(INCLUDES) vmling.o
 
 include ../Config.mk
 
-ARCH := x86
-XEN_INTERFACE_VERSION := 0x00030205
+ARCH := arm
+TEXT_BASE := 0x200000
 
-ASFLAGS := -D__ASSEMBLY__
+CROSS_PREFIX := arm-unknown-eabi
+CC := $(CROSS_PREFIX)-gcc
 
-CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
-CPPFLAGS += -isystem $(UCLIBC_DIR)/usr/include
+CPPFLAGS := -DTEXT_BASE=$(TEXT_BASE)
+CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
+CPPFLAGS += -isystem $(NETTLE_DIR)
 CPPFLAGS += -isystem lib/pcre
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
 CPPFLAGS += -iquote bignum
@@ -19,7 +21,6 @@ CPPFLAGS += -iquote lib/lwip/src/include
 CPPFLAGS += -iquote lib/lwip/src/include/ipv4
 CPPFLAGS += -iquote lib/lwip/src/include/ipv6
 CPPFLAGS += -iquote lib/lwip/ling
-CPPFLAGS += -D__XEN_INTERFACE_VERSION__=$(XEN_INTERFACE_VERSION)
 
 CPPFLAGS += -DLING_VER=$(LING_VER)
 CPPFLAGS += -DLING_HOSTNAME=$(LING_HOSTNAME)
@@ -28,17 +29,17 @@ CPPFLAGS += -DLING_HOSTNAME=$(LING_HOSTNAME)
 #CPPFLAGS += -DDEBUG_UNUSED_MEM
 #CPPFLAGS += -DTRACE_HARNESS
 
-COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer
+COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer -ffreestanding
 
-CFLAGS := -Wall -Werror -std=gnu99 -O3 -Wno-nonnull -Wno-strict-aliasing $(COMMON_CFLAGS)
-#CFLAGS := -Wall -Werror -std=gnu99 -g 
+#CFLAGS := -Wall -Werror -std=gnu99 -O3 -Wno-nonnull -Wno-strict-aliasing $(COMMON_CFLAGS)
+CFLAGS := -Wall -Werror -std=gnu99 -g $(COMMON_FLAGS)
 
-LDFLAGS := -T ling.lds
+LDFLAGS := -Ttext $(TEXT_BASE)
+LDFLAGS += -T ling.lds
 LDFLAGS += -nostdlib
-LDFLAGS += -L $(UCLIBC_DIR)/usr/lib
 LDFLAGS += -L $(NETTLE_DIR)
-LDFLAGS += -Xlinker --relocatable
-LDFLAGS += -Xlinker --build-id=none
+#LDFLAGS += -Xlinker --relocatable
+#LDFLAGS += -Xlinker --build-id=none
 LDFLAGS += -Xlinker -Map=ling.map
 LDFLAGS += -static
 LDFLAGS += -L lib/pcre/.libs
@@ -56,15 +57,15 @@ ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) \
 	preload/literals.o
 
 $(STARTUP_OBJ): %.o: %.S
-	gcc $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) -c $< -o $@
 
 # Stop iops reordering in ling_main.o
 OBJS1 := $(filter-out ling_main.o,$(OBJS))
 $(ARCH_OBJS) $(OBJS1) $(BIGNUM_OBJS): %.o: %.c include/atom_defs.h
-	gcc $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 ling_main.o: ling_main.c include/atom_defs.h
-	gcc $(CFLAGS) $(CPPFLAGS) -fno-reorder-blocks -o $@ -c $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fno-reorder-blocks -o $@ -c $<
 
 include/bif.h: ../bc/scripts/bif.tab
 	scripts/bifs_gen $< $@
@@ -115,9 +116,5 @@ pcre: lib/pcre/config.log
 	make -C lib/pcre
 
 vmling.o: $(STARTUP_OBJ) $(ALL_OBJS)
-	gcc -o $@ $(STARTUP_OBJ) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL) $(CFLAGS)
-
-xen-headers: include/xen
-include/xen:
-	ln -sf $(XEN_DIR)/xen/include/public include/xen
+	$(CC) -o $@ $(STARTUP_OBJ) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL) $(CFLAGS)
 

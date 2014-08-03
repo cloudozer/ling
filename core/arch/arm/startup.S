@@ -33,70 +33,10 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "xen/xen.h"
+.global _start
 
-#include "limits.h"
-
-	.section __xen_guest
-	
-	.ascii	"GUEST_OS=Ling"
-	.ascii	",XEN_VER=xen-3.0"
-	.ascii	",VIRT_BASE=0x0"
-	.ascii	",ELF_PADDR_OFFSET=0x0"
-	.ascii	",HYPERCALL_PAGE=0x1"
-#if !defined(__x86_64__)
-	.ascii	",PAE=yes"
-#endif
-	.ascii	",LOADER=generic"
-	.byte	0
-
-/*
-	NB: for x86_64, even if there is no PAE=yes indicated above, PAE is still
-	used but in 32-bit mode.
-*/
-	
-	.text
-
-	.globl	_start, hypercall_page
-	.globl	shared_info
-	.globl	grant_table
-	
-	.org	0x0000
 _start:
+		mov	sp, #TEXT_BASE
+		bl	start_pling
 
-#if defined(__x86_64__)
-
-	cld
-	movq stack_data(%rip), %rsp
-	andq $(~(STACK_SIZE -1)), %rsp
-	movq %rsi, %rdi
-	call start_ling
-
-stack_data:
-	.quad stack +2*STACK_SIZE
-
-#else /*__x86_64__*/
-	
-	cld
-	lss stack_data, %esp
-	andl $(~(STACK_SIZE-1)), %esp
-	push %esi
-	call start_ling
-
-stack_data:
-	.long stack + 2*STACK_SIZE, FLAT_KERNEL_SS
-
-#endif
-
-	.org	0x1000
-hypercall_page:
-
-	.org	0x2000
-shared_info:
-
-	.org	0x3000
-grant_table:
-
-	.org	0x4000
-	.end
-
+;@EOF

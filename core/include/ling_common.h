@@ -84,6 +84,9 @@ extern const char *ling_hostname;
 
 #define UNUSED __attribute__((unused))
 
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
 // hot/cold attributes on labels need gcc >= 4.8
 #if __GNUC__ >= 4 && __GNUC_MINOR__ >= 8
 #define ATTRIBUTE_HOT __attribute((__hot__))

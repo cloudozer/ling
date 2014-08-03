@@ -21,7 +21,7 @@ configuration file.
 3. Nettle
 
 LING uses the Nettle library for cryptographic primitives. The version known to
-work is 4.7.1. The static version of the library is required. It may or may not
+work is 2.7.1. The static version of the library is required. It may or may not
 be available as a binary package. To build from sources is always an option.
 
 Build

@@ -168,7 +168,7 @@ term_t ext_term_decode(uint32_t *htop, uint32_t expected_heap_size,
 	if (heap_size != expected_heap_size)
 	{
 		printk("%s:%d: heap size is %d, expected %d\n",
-			   __FILE__, __LINE__, heap_size, expected_heap_size);
+			   __FILE__, __LINE__, heap_size, (int)expected_heap_size);
 		return noval;	
 	}
 

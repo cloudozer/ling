@@ -329,7 +329,7 @@ term_t cbif_process_display2(proc_t *proc, term_t *regs)
 	int disp = probe->cap.ip -fi;
 	if (fi != 0)
 		printk("Program counter: 0x%pp (%pt:%pt/%d +%d)\n",
-				probe->cap.ip, T(fi[1]), T(fi[2]), fi[3], disp);
+				probe->cap.ip, T(fi[1]), T(fi[2]), (int)fi[3], disp);
 	else
 		printk("Program counter: 0x%pp\n", probe->cap.ip);
 	
@@ -342,7 +342,7 @@ term_t cbif_process_display2(proc_t *proc, term_t *regs)
 		disp = cp -fi;
 		if (fi != 0)
 			printk("CP: 0x%pp (%pt:%pt/%d +%d)\n",
-					cp, T(fi[1]), T(fi[2]), fi[3], disp);
+					cp, T(fi[1]), T(fi[2]), (int)fi[3], disp);
 		else
 			printk("CP: 0x%pp\n", cp);
 	}
@@ -360,7 +360,7 @@ term_t cbif_process_display2(proc_t *proc, term_t *regs)
 			disp = cp -fi;
 			if (fi != 0)
 				printk("\n0x%pp Return addr 0x%pp (%pt:%pt/%d +%d)\n",
-							sp, cp, T(fi[1]), T(fi[2]), fi[3], disp);
+							sp, cp, T(fi[1]), T(fi[2]), (int)fi[3], disp);
 			else
 				printk("\n0x%pp Return addr 0x%pp\n", sp, cp);
 		}
@@ -377,7 +377,7 @@ term_t cbif_process_display2(proc_t *proc, term_t *regs)
 				disp = where -fi;
 				if (fi != 0)
 					printk("y(%d)\tCatch 0x%pp (%pt:%pt/%d +%d)\n",
-								y, where, T(fi[1]), T(fi[2]), fi[3], disp);
+								y, where, T(fi[1]), T(fi[2]), (int)fi[3], disp);
 				else
 					printk("y(%d)\tCatch 0x%pp\n", y, where);
 			}
