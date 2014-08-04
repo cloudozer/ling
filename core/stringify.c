@@ -211,9 +211,9 @@ static int term_to_str_1(int depth, term_t t, char *buf, int len)
 		else if (t == R_I_P)
 			result = "#rip";
 		else if (is_short_pid(t))
-			RETPRINTF("<0.%d.0>", short_pid_id(t));
+			RETPRINTF("<0.%d.0>", (int)short_pid_id(t));
 		else if (is_short_oid(t))
-			RETPRINTF("#Port<0.%d.0>", short_oid_id(t));
+			RETPRINTF("#Port<0.%d.0>", (int)short_oid_id(t));
 		else
 			RETERR(t);
 
@@ -259,13 +259,13 @@ static int term_to_str_1(int depth, term_t t, char *buf, int len)
 			t_fun_t *fun = term_data;
 			unsigned char *mod_name = atoms_get(atom_index(fun->module));
 			RETPRINTF("#Fun<%.*s.%d.%d>",
-				mod_name[0], mod_name+1, fun->index, fun->uniq[0]);
+				mod_name[0], mod_name+1, (int)fun->index, (int)fun->uniq[0]);
 		}
 		case SUBTAG_EXPORT:
 		{
 			t_export_t *exp = term_data;
 			RETPRINTF("#Fun<%pt.%pt.%d>",
-				T(exp->e->module), T(exp->e->function), exp->e->arity);
+				T(exp->e->module), T(exp->e->function), (int)exp->e->arity);
 		}
 
 		case SUBTAG_PROC_BIN:
@@ -358,21 +358,21 @@ static int term_to_str_1(int depth, term_t t, char *buf, int len)
 			t_long_pid_t *pid = term_data;
 			uint32_t id = opr_hdr_id(pid);
 			uint32_t creat = opr_hdr_creat(pid);
-			RETPRINTF("<%pt.%d.%d>", T(pid->node), id, creat);
+			RETPRINTF("<%pt.%d.%d>", T(pid->node), (int)id, (int)creat);
 		}
 		case SUBTAG_OID:
 		{
 			t_long_oid_t *oid = term_data;
 			uint32_t id = opr_hdr_id(oid);
 			uint32_t creat = opr_hdr_creat(oid);
-			RETPRINTF("#Port<%pt.%d.%d>", T(oid->node), id, creat);
+			RETPRINTF("#Port<%pt.%d.%d>", T(oid->node), (int)id, (int)creat);
 		}
 		case SUBTAG_REF:
 		{
 			t_long_ref_t *ref = term_data;
 			uint32_t id = opr_hdr_id(ref);
 			//uint32_t creat = opr_hdr_creat(ref);
-			RETPRINTF("#Ref<%pt.%d.%d.%d>", T(ref->node), id, ref->id1, ref->id2);
+			RETPRINTF("#Ref<%pt.%d.%d.%d>", T(ref->node), (int)id, (int)ref->id1, (int)ref->id2);
 		}
 		default:
 			RETERR(t);

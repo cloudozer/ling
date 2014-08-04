@@ -57,7 +57,7 @@ int64_t strtoi64(const char *nptr, char **endptr, int base)
     s = nptr;
     do {
 		c = *s++;
-    } while (isspace(c));
+    } while (isspace((int)c));
     if (c == '-') {
 		neg = 1;
 		c = *s++;

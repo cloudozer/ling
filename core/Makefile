@@ -10,6 +10,7 @@ TEXT_BASE := 0x200000
 
 CROSS_PREFIX := arm-unknown-eabi
 CC := $(CROSS_PREFIX)-gcc
+OBJCOPY := $(CROSS_PREFIX)-objcopy
 
 CPPFLAGS := -DTEXT_BASE=$(TEXT_BASE)
 CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
@@ -32,15 +33,15 @@ CPPFLAGS += -DLING_HOSTNAME=$(LING_HOSTNAME)
 COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer -ffreestanding
 
 #CFLAGS := -Wall -Werror -std=gnu99 -O3 -Wno-nonnull -Wno-strict-aliasing $(COMMON_CFLAGS)
-CFLAGS := -Wall -Werror -std=gnu99 -g $(COMMON_FLAGS)
+CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -g $(COMMON_FLAGS)
 
 LDFLAGS := -Ttext $(TEXT_BASE)
 LDFLAGS += -T ling.lds
 LDFLAGS += -nostdlib
 LDFLAGS += -L $(NETTLE_DIR)
-#LDFLAGS += -Xlinker --relocatable
-#LDFLAGS += -Xlinker --build-id=none
-LDFLAGS += -Xlinker -Map=ling.map
+LDFLAGS += -Xlinker --relocatable
+LDFLAGS += -Xlinker --build-id=none
+LDFLAGS += -Xlinker --cref -Xlinker -Map=ling.map
 LDFLAGS += -static
 LDFLAGS += -L lib/pcre/.libs
 LDFLAGS += -L lib/lwip
@@ -94,7 +95,7 @@ $(INCLUDES): \
 		premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc copy
 
 preload/literals.o: preload/literals.bin
-	objcopy -I binary -O elf64-x86-64 -B i386 \
+	$(OBJCOPY) -I binary -O elf32-littlearm -B arm\
 		--redefine-sym _binary_preload_literals_bin_start=literals_blob_start \
 		--redefine-sym _binary_preload_literals_bin_end=literals_blob_end \
 		--redefine-sym _binary_preload_literals_bin_size=literals_blob_size \

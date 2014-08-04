@@ -124,6 +124,11 @@ void start_ling(void)
 	/* UNREACHABLE */
 }
 
+void domain_poweroff(void)
+{
+	while (1);
+}
+
 void printk(const char *fmt, ...)
 {
     char buffer[BUFSIZ];

@@ -82,6 +82,8 @@
 #include "outlet.h"
 #include "netif.h"
 
+#include "disk.h"
+
 #include "lwip/stats.h"
 
 #define fail(reason) do { \

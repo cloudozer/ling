@@ -37,6 +37,6 @@
 
 _start:
 		mov	sp, #TEXT_BASE
-		bl	start_pling
+		bl	start_ling
 
 ;@EOF

@@ -36,6 +36,12 @@
 #include "term.h"
 #include "heap.h"
 
+//
+// embed_buck_t and embed_bin_t both have a '_raw' fields that are resolved to
+// terms at runtime. It is possible to resolve them during compile time but this
+// greatly increases the build time.
+//
+
 typedef struct embed_buck_t embed_buck_t;
 struct embed_buck_t {
 	uint8_t *bucket_raw;	//see above

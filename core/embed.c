@@ -43,12 +43,6 @@
 #include "atom_defs.h"
 #include "embed.h"
 
-//
-// embed_buck_t and embed_bin_t both have a '_raw' fields that are resolved to
-// terms at runtime. It is possible to resolve them during compile time but this
-// greatly increases the build time.
-//
-
 static embed_buck_t *find_bucket(term_t bucket);
 
 int embed_init(void)

@@ -66,7 +66,7 @@ outlet_t *ol_console_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_dns_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_udp_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_tcp_factory(proc_t *cont_proc, uint32_t bit_opts);
-outlet_t *ol_disk_factory(proc_t *cont_proc, uint32_t bit_opts);
+//outlet_t *ol_disk_factory(proc_t *cont_proc, uint32_t bit_opts);
 
 #define NUM_DRIVERS	8
 
@@ -78,7 +78,7 @@ drv_spec_t outlet_drivers[NUM_DRIVERS] = {
 	{ .name = A_DNS,			.factory = ol_dns_factory },
 	{ .name = A_UDP,			.factory = ol_udp_factory },
 	{ .name = A_TCP,			.factory = ol_tcp_factory },
-	{ .name = A_DISK,			.factory = ol_disk_factory },
+//	{ .name = A_DISK,			.factory = ol_disk_factory },
 };
 
 outlet_factory_func_t outlet_resolve_driver(term_t name)

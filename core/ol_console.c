@@ -83,7 +83,7 @@ static uint8_t *ol_console_get_send_buffer(outlet_t *ol, int len)
 	if (len > ol->max_send_bufsize)
 	{
 		printk("*** Too much data sent to console:\n");
-		printk("*** %d byte(s) sent - bufsize %d byte(s)\n", len, ol->max_send_bufsize);
+		printk("*** %d byte(s) sent - bufsize %d byte(s)\n", len, (int)ol->max_send_bufsize);
 		printk("*** console will now close\n");
 		return 0;	// do not resize
 	}
