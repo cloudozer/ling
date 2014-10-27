@@ -30,13 +30,41 @@
 // ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #pragma once
 
-//
-//
-//
+#define isalpha(a) ((((unsigned)(a)|32)-'a') < 26)
+#define isdigit(a) (((unsigned)(a)-'0') < 10)
+#define islower(a) (((unsigned)(a)-'a') < 26)
+#define isupper(a) (((unsigned)(a)-'A') < 26)
+#define isprint(a) (((unsigned)(a)-' ') < 95)
+#define isgraph(a) (((unsigned)(a)-0x21) < 0x5e)
 
-void qsort(void *base, unsigned num, unsigned width, int (*comp)(const void *, const void *));
+#define tolower(a) ((a)|0x20)
+#define toupper(a) ((a)&0x5f)
+
+static __inline int isspace(int c)
+{
+        return c == ' ' || (unsigned)c-'\t' < 5;
+}
+
+static __inline int isalnum(int c)
+{
+        return isalpha(c) || isdigit(c);
+}
+
+static __inline int isxdigit(int c)
+{
+	return isdigit(c) || ((unsigned)c|32)-'a' < 6;
+}
+
+static __inline int ispunct(int c)
+{
+	return isgraph(c) && !isalnum(c);
+}
+
+static __inline int iscntrl(int c)
+{
+	return (unsigned)c < 0x20 || c == 0x7f;
+}
 
 //EOF

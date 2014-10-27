@@ -42,7 +42,7 @@
 //NB: the profiling code may not work if modules are added/removed dynamically
 
 #include "term.h"
-#include "qsort.h"
+#include "stdlib.h"
 #include "code_base.h"
 
 #include <string.h>

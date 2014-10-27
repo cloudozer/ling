@@ -39,7 +39,7 @@
 
 #include "ling_common.h"
 
-#include "qsort.h"
+#include "stdlib.h"
 #include "bits.h"
 #include "string.h"
 #include "mm.h"

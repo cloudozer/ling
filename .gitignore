@@ -4,6 +4,5 @@
 /Config.mk
 *.la
 *.lo
-/core/include/xen
 /dist
 ling-*.tag.gz

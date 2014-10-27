@@ -51,7 +51,7 @@
 #include "bif.h"
 #include "catch_tab.h"
 #include "stringify.h"
-#include "qsort.h"
+#include "stdlib.h"
 #include "msg_queue.h"
 #include "bits.h"
 #include "cluster.h"

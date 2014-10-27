@@ -1,6 +1,5 @@
 FROM ubuntu:13.10
 
-ADD uClibc_config /usr/src/uClibc_config
 RUN echo deb-src http://archive.ubuntu.com/ubuntu saucy main universe >> /etc/apt/sources.list \
 	&& apt-get update \
 	&& env DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential wget \
