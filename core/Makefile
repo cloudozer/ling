@@ -52,8 +52,8 @@ STARTUP_OBJ := $(patsubst %.S,%.o,arch/$(ARCH)/startup.S)
 ARCH_OBJS := $(patsubst %.c,%.o,$(wildcard arch/$(ARCH)/*.c))
 OBJS := $(patsubst %.c,%.o,$(wildcard *.c))
 BIGNUM_OBJS := $(patsubst %.c,%.o,$(wildcard bignum/*.c))
-MISC_OBJS := $(patsubst %.c,%.o,$(wildcard lib/misc/src/*.c))
-MISC_AS_OBJS := $(patsubst %.s,%.o,$(wildcard lib/misc/src/x86_64/*.s))
+MISC_OBJS := $(patsubst %.c,%.o,$(wildcard lib/misc/*.c))
+MISC_AS_OBJS := $(patsubst %.s,%.o,$(wildcard lib/misc/arch/x86/*.s))
 PCRE_OBJS := \
 	lib/pcre/pcre_chartables.o \
 	lib/pcre/pcre_compile.o \
