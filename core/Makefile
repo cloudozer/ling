@@ -150,7 +150,7 @@ lib/nettle/libnettle.a: lib/nettle/config.h
 	make -C lib/nettle
 
 lib/nettle/config.h: lib/nettle.tar.gz
-	mkdir lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \
+	mkdir -p lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \
 	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl CFLAGS="-fno-stack-protector -U_FORTIFY_SOURCE"
 
 lib/nettle.tar.gz:
