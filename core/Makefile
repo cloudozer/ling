@@ -33,14 +33,14 @@ COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer 
 CFLAGS := \
 	-Wall -Werror -std=gnu99 -O3 \
 	-fexcess-precision=standard -frounding-math \
-	-Wno-nonnull -Wno-strict-aliasing -Wno-aggressive-loop-optimizations \
+	-Wno-nonnull -Wno-strict-aliasing \
 	$(COMMON_CFLAGS)
 
 #CFLAGS := -Wall -Werror -std=gnu99 -g 
 
 LDFLAGS := -T ling.lds
 LDFLAGS += -nostdlib
-LDFLAGS += -L $(NETTLE_DIR)
+LDFLAGS += -L lib/nettle
 LDFLAGS += -Xlinker --relocatable
 LDFLAGS += -Xlinker --build-id=none
 LDFLAGS += -Xlinker -Map=ling.map
@@ -105,7 +105,7 @@ $(PCRE_OBJS): %.o: %.c
 	gcc $(CFLAGS) $(CPPFLAGS) -DHAVE_CONFIG_H -o $@ -c $<
 
 $(LWIP_OBJS): %.o: %.c
-	gcc $(CFLAGS) $(CPPFLAGS) -Wno-address -Wno-char-subscripts -o $@ -c $<
+	gcc $(CFLAGS) $(CPPFLAGS) -Wno-char-subscripts -o $@ -c $<
 
 ling_main.o: ling_main.c include/atom_defs.h
 	gcc $(CFLAGS) $(CPPFLAGS) -fno-reorder-blocks -o $@ -c $<
@@ -141,7 +141,17 @@ preload/literals.o: preload/literals.bin
 		--redefine-sym _binary_preload_literals_bin_start=literals_blob_start \
 		--redefine-sym _binary_preload_literals_bin_end=literals_blob_end \
 		--redefine-sym _binary_preload_literals_bin_size=literals_blob_size \
-	   	$< $@
+		$< $@
 
-vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) 
+vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) lib/nettle/libnettle.a
 	gcc -o $@ $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL) $(CFLAGS)
+
+lib/nettle/libnettle.a: lib/nettle/config.h
+	make -C lib/nettle
+
+lib/nettle/config.h: lib/nettle.tar.gz
+	mkdir lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \
+	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl CFLAGS="-fno-stack-protector -U_FORTIFY_SOURCE"
+
+lib/nettle.tar.gz:
+	wget -O $@ -c https://ftp.gnu.org/gnu/nettle/nettle-2.7.1.tar.gz

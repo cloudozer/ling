@@ -6,7 +6,6 @@ REQ_OTP_REL=R16B01
 LING_VER=0.2.3
 
 # Default values
-NETTLE_DIR=/usr/local/lib64
 PREFIX=/usr/local
 
 while true; do
@@ -15,14 +14,9 @@ while true; do
 		PREFIX=${1#*=}
 		shift
 		;;
-	--with-nettle=*)
-		NETTLE_DIR=${1#*=}
-		shift
-		;;
 	--help)
 		cat <<EOF
 --with-prefix=PREFIX  path prefix for the LING installation
---with-nettle=DIR     path to the Nettle library
 EOF
 		exit 0
 		;;
@@ -81,34 +75,9 @@ fi
 #	exit 1
 #fi
 #
-# Nettle dependency
-echo -ne "checking for nettle... "
-cat > test.c <<EOF
-main() {
-}
-EOF
-if gcc -L $NETTLE_DIR -Xlinker -r -static -nostdlib \
-		test.c -lnettle &>/dev/null; then
-	echo yes
-else
-	echo no
-	cat <<EOF
---------------------------------------------------------------------------------
-The core library of LING requires the *static* version of Nettle - a low-level
-cryptographic library (http://www.lysator.liu.se/~nisse/nettle/). You need to
-build it from sources. See core/lib/README. Use --with-nettle= option. For
-example,
-
-	./configure --with-nettle=/usr/local/lib64
-
-EOF
-	cleanup
-	exit 1
-fi
 
 cat > Config.mk <<EOF
 LING_VER := $LING_VER
-NETTLE_DIR := $NETTLE_DIR
 LING_ROOT := $PREFIX/lib/ling
 BIN_DIR := $PREFIX/bin
 EOF
