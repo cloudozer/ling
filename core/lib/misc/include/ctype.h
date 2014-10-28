@@ -39,12 +39,23 @@
 #define isprint(a) (((unsigned)(a)-' ') < 95)
 #define isgraph(a) (((unsigned)(a)-0x21) < 0x5e)
 
-#define tolower(a) ((a)|0x20)
-#define toupper(a) ((a)&0x5f)
+static __inline int tolower(int c)
+{
+	if (isupper(c))
+		return c | 32;
+	return c;
+}
+
+static __inline int toupper(int c)
+{
+	if (islower(c))
+		return c & 0x5f;
+	return c;
+}
 
 static __inline int isspace(int c)
 {
-        return c == ' ' || (unsigned)c-'\t' < 5;
+	return c == ' ' || (unsigned)c-'\t' < 5;
 }
 
 static __inline int isalnum(int c)
