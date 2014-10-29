@@ -69,7 +69,7 @@ double strtod(const char *string, char **endPtr)
 	 * Entry is 10^2^i.  Used to convert decimal
 	 * exponents into floating-point numbers. */
 	static double powersOf10[] = {
-		1e1, 1e2, 1e4, 1e8, 1e16, 1e32, //1e64, 1e128, 1e256,
+		1e1, 1e2, 1e4, 1e8, 1e16, 1e32, 1e64, 1e128, 1e256
 	};
 
 	/*
