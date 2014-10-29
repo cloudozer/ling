@@ -134,7 +134,7 @@ test(File, Fd, Ns, L, Cases, Err) ->
 	{eof,_} -> {Err, Cases};
 	{error, {Line,_Mod,Message}, _} ->
 	    Fmt = erl_parse:format_error(Message),
-	    io:format("!1 ~s:~w: error ~s~n", [File, Line+L, Fmt]),
+	    io:format("~s:~w: error ~s~n", [File, Line+L, Fmt]),
 	    {Err+1, Cases};
 	{ok, [{match,ThisLine,Expr1,Expr2}], Line} ->
 	    case multi_match(Ns, {op,0,'-',Expr1,Expr2}) of
@@ -142,7 +142,7 @@ test(File, Fd, Ns, L, Cases, Err) ->
 		    test(File, Fd, Ns, Line+L-1,Cases+1, Err);
 		[_|_] ->
 		    PP = erl_pp:expr({op,0,'=/=',Expr1,Expr2}),
-		    io:format("!2 ~s:~w : error ~s~n", [File,ThisLine+L, PP]),
+		    io:format("~s:~w : error ~s~n", [File,ThisLine+L, PP]),
 		    test(File, Fd, Ns, Line+L-1,Cases+1, Err+1)
 	    end;
 	{ok, Exprs, Line} ->
