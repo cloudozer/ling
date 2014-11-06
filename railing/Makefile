@@ -1,13 +1,11 @@
 
-.PHONY: default dist
+.PHONY: default
 
-include ../Config.mk
+default: railing
 
-default:
-	@echo "{escript_emu_args,\"%%! -ling_root $(LING_ROOT)\\n\"}." > rebar.config
-	./rebar compile escriptize
+railing: railing.beam
+	@./escriptize
 
-dist:
-	@echo "" > rebar.config
-	./rebar compile escriptize
+railing.beam: railing.erl
+	@erlc railing.erl
 

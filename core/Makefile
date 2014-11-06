@@ -3,8 +3,7 @@
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc
 default: $(INCLUDES) vmling.o
 
-include ../Config.mk
-
+LING_VER := 0.2.3
 ARCH := x86
 XEN_INTERFACE_VERSION := 0x00030205
 
@@ -32,7 +31,7 @@ COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer 
 
 CFLAGS := \
 	-Wall -Werror -std=gnu99 -O3 \
-	-fexcess-precision=standard -frounding-math \
+	-fexcess-precision=standard -frounding-math -mfpmath=sse -msse2 \
 	-Wno-nonnull -Wno-strict-aliasing \
 	$(COMMON_CFLAGS)
 

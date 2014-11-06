@@ -1,9 +1,5 @@
 *.o
 *.beam
 *.ling
-/Makefile
-/Config.mk
 *.la
 *.lo
-/dist
-ling-*.tag.gz

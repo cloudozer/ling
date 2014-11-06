@@ -1,8 +1,6 @@
 
 .PHONY: default
 
-include ../Config.mk
-
 BEAMS := $(patsubst %.erl,%.beam,$(wildcard *.erl))
 
 default: $(BEAMS)
