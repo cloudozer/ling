@@ -34,7 +34,7 @@
 #pragma once
 
 void counters_init();
-void counter_add(uint64_t ref_id, uint64_t mask);
+uint64_t counter_add(uint64_t mask);
 int counter_read(uint64_t ref_id, uint64_t *pval);
 int counter_increment(uint64_t ref_id, uint64_t incr);
 int counter_remove(uint64_t ref_id);

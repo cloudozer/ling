@@ -89,8 +89,8 @@ UNUSED static void print_xs_tree(char *start);
 
 static void spawn_init_start(int8_t *cmd_line);
 
-// think /etc/hostname
-const char *ling_hostname = quote_and_expand(LING_HOSTNAME);
+// both domain and host name
+char my_domain_name[256];
 
 void start_ling(start_info_t *si)
 {
@@ -124,8 +124,9 @@ void start_ling(start_info_t *si)
 	console_init(mfn_to_virt(start_info.console.domU.mfn),
 			start_info.console.domU.evtchn);
 	xenstore_init(mfn_to_virt(start_info.store_mfn),
-		start_info.store_evtchn);	
+		start_info.store_evtchn);
 
+	xenstore_read("name", my_domain_name, sizeof(my_domain_name));
 	//print_xenstore_values();
 
 	if (disk_vbd_is_present())

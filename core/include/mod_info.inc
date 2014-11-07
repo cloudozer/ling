@@ -16,5 +16,5 @@ extern uint8_t premod_init_strings[];
 extern fun_entry_t premod_prim_inet_funs[];
 extern uint8_t premod_prim_inet_strings[];
 
-#define EH_UNDEF_EXP	(preloaded_exports+406)
+#define EH_UNDEF_EXP	(preloaded_exports+412)
 

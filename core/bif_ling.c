@@ -63,6 +63,11 @@ void print_loaded_module_sizes(void);
 extern uint32_t trace_mask;
 #endif
 
+term_t cbif_domain_name0(proc_t *proc, term_t *regs)
+{
+	return heap_strz(&proc->hp, my_domain_name);
+}
+
 term_t cbif_b1_0(proc_t *proc, term_t *regs)
 {
 #ifdef LING_DEBUG

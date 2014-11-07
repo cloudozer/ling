@@ -1,4 +1,3 @@
-
 // Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
@@ -522,7 +521,7 @@ if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 8) & 255));
@@ -2879,7 +2878,7 @@ l_call_ext_6: ATTRIBUTE_HOT
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+500);
+export_t *exp = (preloaded_exports+506);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -4539,7 +4538,7 @@ if (unlikely(hend - htop < ((ip[1] >> 8) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 16) & 255));
@@ -5113,7 +5112,7 @@ l_call_ext_24:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+501);
+export_t *exp = (preloaded_exports+507);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -5147,7 +5146,7 @@ l_move_call_ext_13:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+374);
+export_t *exp = (preloaded_exports+380);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -5814,7 +5813,7 @@ if (unlikely(hend - htop < 2))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, 1);
@@ -6829,7 +6828,7 @@ l_call_ext_0:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+493);
+export_t *exp = (preloaded_exports+499);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -6979,7 +6978,7 @@ l_call_ext_12:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+502);
+export_t *exp = (preloaded_exports+508);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -7167,7 +7166,7 @@ l_move_call_ext_only_1:
 
 
 r0 = rs[1];
-export_t *exp = (preloaded_exports+493);
+export_t *exp = (preloaded_exports+499);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -7569,7 +7568,7 @@ l_call_ext_80:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+503);
+export_t *exp = (preloaded_exports+509);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -8842,7 +8841,7 @@ if (unlikely(hend - htop < ((ip[2] >> 0) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, ((ip[2] >> 8) & 255));
@@ -10605,7 +10604,7 @@ l_call_ext_28:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+504);
+export_t *exp = (preloaded_exports+510);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -10917,7 +10916,7 @@ l_call_ext_101:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+505);
+export_t *exp = (preloaded_exports+511);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -11027,7 +11026,7 @@ l_call_ext_only_2:
 #endif
 
 
-export_t *exp = (preloaded_exports+506);
+export_t *exp = (preloaded_exports+512);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -11287,7 +11286,7 @@ if (unlikely(hend - htop < 2))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, 1);
@@ -11694,7 +11693,7 @@ l_call_ext_37:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+507);
+export_t *exp = (preloaded_exports+513);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -11976,7 +11975,7 @@ l_call_ext_4:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+508);
+export_t *exp = (preloaded_exports+514);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -12086,7 +12085,7 @@ l_call_ext_only_4:
 #endif
 
 
-export_t *exp = (preloaded_exports+493);
+export_t *exp = (preloaded_exports+499);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -12233,7 +12232,7 @@ l_call_ext_25:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+509);
+export_t *exp = (preloaded_exports+515);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -12284,7 +12283,7 @@ l_move_call_ext_14:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+510);
+export_t *exp = (preloaded_exports+516);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -12922,7 +12921,7 @@ l_call_ext_43:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+511);
+export_t *exp = (preloaded_exports+517);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -13157,7 +13156,7 @@ l_call_ext_71:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+512);
+export_t *exp = (preloaded_exports+518);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -13426,7 +13425,7 @@ l_move_call_ext_21:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+501);
+export_t *exp = (preloaded_exports+507);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -13553,7 +13552,7 @@ l_call_ext_96:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+513);
+export_t *exp = (preloaded_exports+519);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -13619,7 +13618,7 @@ l_call_ext_51:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+514);
+export_t *exp = (preloaded_exports+520);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -13754,7 +13753,7 @@ l_call_ext_2:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+499);
+export_t *exp = (preloaded_exports+505);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -14321,7 +14320,7 @@ if (unlikely(hend - htop < ((ip[1] >> 8) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 16) & 255));
@@ -14639,7 +14638,7 @@ l_call_ext_41:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+515);
+export_t *exp = (preloaded_exports+521);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -14726,7 +14725,7 @@ l_call_ext_20:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+510);
+export_t *exp = (preloaded_exports+516);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -14789,7 +14788,7 @@ l_call_ext_38:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+516);
+export_t *exp = (preloaded_exports+522);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -14909,7 +14908,7 @@ l_call_ext_66:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+517);
+export_t *exp = (preloaded_exports+523);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15013,7 +15012,7 @@ l_call_ext_23:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+518);
+export_t *exp = (preloaded_exports+524);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15046,7 +15045,7 @@ l_call_ext_11:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+519);
+export_t *exp = (preloaded_exports+525);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15311,7 +15310,7 @@ l_call_ext_16:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+346);
+export_t *exp = (preloaded_exports+352);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15598,7 +15597,7 @@ l_call_ext_105:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+520);
+export_t *exp = (preloaded_exports+526);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15632,7 +15631,7 @@ l_move_call_ext_10:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+521);
+export_t *exp = (preloaded_exports+527);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15685,7 +15684,7 @@ l_call_ext_7:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+522);
+export_t *exp = (preloaded_exports+528);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15812,7 +15811,7 @@ l_call_ext_26:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+523);
+export_t *exp = (preloaded_exports+529);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15845,7 +15844,7 @@ l_call_ext_47:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+524);
+export_t *exp = (preloaded_exports+530);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -15990,7 +15989,7 @@ l_call_ext_34:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+525);
+export_t *exp = (preloaded_exports+531);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -16043,7 +16042,7 @@ l_call_ext_17:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+526);
+export_t *exp = (preloaded_exports+532);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -16173,7 +16172,7 @@ l_call_ext_45:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+527);
+export_t *exp = (preloaded_exports+533);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -16301,7 +16300,7 @@ l_call_ext_82:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+528);
+export_t *exp = (preloaded_exports+534);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -16374,7 +16373,7 @@ l_call_ext_8:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+529);
+export_t *exp = (preloaded_exports+535);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -16479,7 +16478,7 @@ l_call_ext_109:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+530);
+export_t *exp = (preloaded_exports+536);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -16849,7 +16848,7 @@ l_call_ext_64:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+531);
+export_t *exp = (preloaded_exports+537);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -16908,7 +16907,7 @@ l_move_call_ext_22:
 
 r0 = A_LOGLEVEL;
 cp = ip + 1;
-export_t *exp = (preloaded_exports+532);
+export_t *exp = (preloaded_exports+538);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -16989,7 +16988,7 @@ l_call_ext_74:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+533);
+export_t *exp = (preloaded_exports+539);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -17042,7 +17041,7 @@ l_move_call_ext_only_0:
 
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-export_t *exp = (preloaded_exports+339);
+export_t *exp = (preloaded_exports+343);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -17111,7 +17110,7 @@ l_call_ext_31:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+534);
+export_t *exp = (preloaded_exports+540);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -17356,7 +17355,7 @@ l_call_ext_55:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+535);
+export_t *exp = (preloaded_exports+541);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -17639,7 +17638,7 @@ l_call_ext_42:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+536);
+export_t *exp = (preloaded_exports+542);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -18045,7 +18044,7 @@ l_move_call_ext_36:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+537);
+export_t *exp = (preloaded_exports+543);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -18390,7 +18389,7 @@ l_call_ext_44:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+538);
+export_t *exp = (preloaded_exports+544);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -18423,7 +18422,7 @@ l_call_ext_3:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+539);
+export_t *exp = (preloaded_exports+545);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -18516,7 +18515,7 @@ l_move_call_ext_44:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+526);
+export_t *exp = (preloaded_exports+532);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -18597,7 +18596,7 @@ l_call_ext_91:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+540);
+export_t *exp = (preloaded_exports+546);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -18671,7 +18670,7 @@ l_move_call_ext_37:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+328);
+export_t *exp = (preloaded_exports+332);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -18780,7 +18779,7 @@ l_call_ext_61:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+541);
+export_t *exp = (preloaded_exports+547);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19198,7 +19197,7 @@ l_call_ext_92:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+542);
+export_t *exp = (preloaded_exports+548);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19231,7 +19230,7 @@ l_call_ext_78:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+543);
+export_t *exp = (preloaded_exports+549);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19264,7 +19263,7 @@ l_call_ext_36:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+544);
+export_t *exp = (preloaded_exports+550);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19380,7 +19379,7 @@ l_call_ext_only_0:
 #endif
 
 
-export_t *exp = (preloaded_exports+545);
+export_t *exp = (preloaded_exports+551);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19430,7 +19429,7 @@ l_move_call_ext_28:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+546);
+export_t *exp = (preloaded_exports+552);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19463,7 +19462,7 @@ l_call_ext_40:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+547);
+export_t *exp = (preloaded_exports+553);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19813,7 +19812,7 @@ l_move_call_ext_25:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+548);
+export_t *exp = (preloaded_exports+554);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19881,7 +19880,7 @@ l_call_ext_98:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+549);
+export_t *exp = (preloaded_exports+555);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -19914,7 +19913,7 @@ l_call_ext_14:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+550);
+export_t *exp = (preloaded_exports+556);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20119,7 +20118,7 @@ if (unlikely(hend - htop < ip[1]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, 1);
@@ -20167,7 +20166,7 @@ l_call_ext_88:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+551);
+export_t *exp = (preloaded_exports+557);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20200,7 +20199,7 @@ l_call_ext_86:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+552);
+export_t *exp = (preloaded_exports+558);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20543,7 +20542,7 @@ if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, 1);
@@ -20575,7 +20574,7 @@ l_call_ext_84:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+391);
+export_t *exp = (preloaded_exports+397);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20608,7 +20607,7 @@ l_call_ext_75:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+553);
+export_t *exp = (preloaded_exports+559);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20641,7 +20640,7 @@ l_call_ext_62:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+554);
+export_t *exp = (preloaded_exports+560);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20674,7 +20673,7 @@ l_call_ext_58:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+311);
+export_t *exp = (preloaded_exports+315);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20707,7 +20706,7 @@ l_call_ext_48:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+555);
+export_t *exp = (preloaded_exports+561);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20740,7 +20739,7 @@ l_call_ext_35:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+374);
+export_t *exp = (preloaded_exports+380);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20773,7 +20772,7 @@ l_call_ext_10:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+489);
+export_t *exp = (preloaded_exports+495);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21060,7 +21059,7 @@ l_call_ext_77:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+556);
+export_t *exp = (preloaded_exports+562);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21224,7 +21223,7 @@ l_move_call_ext_only_4:
 
 
 r0 = A_TYPE;
-export_t *exp = (preloaded_exports+550);
+export_t *exp = (preloaded_exports+556);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21258,7 +21257,7 @@ l_move_call_ext_17:
 
 r0 = A_ERROR;
 cp = ip + 1;
-export_t *exp = (preloaded_exports+557);
+export_t *exp = (preloaded_exports+563);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21610,7 +21609,7 @@ l_move_call_ext_35:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+558);
+export_t *exp = (preloaded_exports+564);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21644,7 +21643,7 @@ l_move_call_ext_31:
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+387);
+export_t *exp = (preloaded_exports+393);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21788,7 +21787,7 @@ l_call_ext_104:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+559);
+export_t *exp = (preloaded_exports+565);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21821,7 +21820,7 @@ l_call_ext_65:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+560);
+export_t *exp = (preloaded_exports+566);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21854,7 +21853,7 @@ l_call_ext_59:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+561);
+export_t *exp = (preloaded_exports+567);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -21887,7 +21886,7 @@ l_call_ext_5:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+562);
+export_t *exp = (preloaded_exports+568);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -22039,7 +22038,7 @@ l_move_call_ext_last_3:
 r0 = A_LAGER_EVENT;
 cp = demasquerade_pointer(sp[0]);
 sp += 5+1;
-export_t *exp = (preloaded_exports+563);
+export_t *exp = (preloaded_exports+569);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -22482,7 +22481,7 @@ l_call_ext_39:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+564);
+export_t *exp = (preloaded_exports+570);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -23083,7 +23082,7 @@ l_call_ext_9:
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+565);
+export_t *exp = (preloaded_exports+571);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -23394,7 +23393,7 @@ l_move_call_ext_only_2:
 
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-export_t *exp = (preloaded_exports+521);
+export_t *exp = (preloaded_exports+527);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24474,7 +24473,7 @@ l_is_eq_exact_immed_17: ATTRIBUTE_COLD
 
 
 void *next = (void *)expand_ptr(ip[3]);
-if (sp[((ip[2] >> 0) & 255)+1] != A_FUNNY849)
+if (sp[((ip[2] >> 0) & 255)+1] != A_FUNNY854)
 	do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
@@ -24534,7 +24533,7 @@ l_call_ext_108: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+566);
+export_t *exp = (preloaded_exports+572);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24567,7 +24566,7 @@ l_call_ext_107: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+567);
+export_t *exp = (preloaded_exports+573);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24600,7 +24599,7 @@ l_call_ext_106: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+568);
+export_t *exp = (preloaded_exports+574);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24633,7 +24632,7 @@ l_call_ext_103: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+569);
+export_t *exp = (preloaded_exports+575);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24666,7 +24665,7 @@ l_call_ext_102: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+570);
+export_t *exp = (preloaded_exports+576);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24699,7 +24698,7 @@ l_call_ext_100: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+571);
+export_t *exp = (preloaded_exports+577);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24732,7 +24731,7 @@ l_call_ext_99: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+572);
+export_t *exp = (preloaded_exports+578);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24765,7 +24764,7 @@ l_call_ext_97: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+573);
+export_t *exp = (preloaded_exports+579);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24798,7 +24797,7 @@ l_call_ext_95: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+309);
+export_t *exp = (preloaded_exports+313);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24831,7 +24830,7 @@ l_call_ext_94: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+574);
+export_t *exp = (preloaded_exports+580);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24864,7 +24863,7 @@ l_call_ext_93: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+575);
+export_t *exp = (preloaded_exports+581);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24897,7 +24896,7 @@ l_call_ext_90: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+576);
+export_t *exp = (preloaded_exports+582);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24930,7 +24929,7 @@ l_call_ext_89: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+577);
+export_t *exp = (preloaded_exports+583);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24963,7 +24962,7 @@ l_call_ext_87: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+578);
+export_t *exp = (preloaded_exports+584);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -24996,7 +24995,7 @@ l_call_ext_85: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+579);
+export_t *exp = (preloaded_exports+585);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25029,7 +25028,7 @@ l_call_ext_83: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+580);
+export_t *exp = (preloaded_exports+586);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25062,7 +25061,7 @@ l_call_ext_81: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+581);
+export_t *exp = (preloaded_exports+587);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25095,7 +25094,7 @@ l_call_ext_79: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+582);
+export_t *exp = (preloaded_exports+588);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25128,7 +25127,7 @@ l_call_ext_76: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+583);
+export_t *exp = (preloaded_exports+589);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25161,7 +25160,7 @@ l_call_ext_73: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+584);
+export_t *exp = (preloaded_exports+590);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25194,7 +25193,7 @@ l_call_ext_72: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+585);
+export_t *exp = (preloaded_exports+591);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25227,7 +25226,7 @@ l_call_ext_70: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+586);
+export_t *exp = (preloaded_exports+592);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25260,7 +25259,7 @@ l_call_ext_69: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+587);
+export_t *exp = (preloaded_exports+593);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25293,7 +25292,7 @@ l_call_ext_68: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+588);
+export_t *exp = (preloaded_exports+594);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25326,7 +25325,7 @@ l_call_ext_67: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+589);
+export_t *exp = (preloaded_exports+595);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25359,7 +25358,7 @@ l_call_ext_63: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+590);
+export_t *exp = (preloaded_exports+596);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25392,7 +25391,7 @@ l_call_ext_60: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+591);
+export_t *exp = (preloaded_exports+597);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25425,7 +25424,7 @@ l_call_ext_57: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+354);
+export_t *exp = (preloaded_exports+360);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25458,7 +25457,7 @@ l_call_ext_56: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+592);
+export_t *exp = (preloaded_exports+598);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25491,7 +25490,7 @@ l_call_ext_54: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+593);
+export_t *exp = (preloaded_exports+599);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25524,7 +25523,7 @@ l_call_ext_53: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+594);
+export_t *exp = (preloaded_exports+600);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25557,7 +25556,7 @@ l_call_ext_52: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+595);
+export_t *exp = (preloaded_exports+601);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25590,7 +25589,7 @@ l_call_ext_50: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+596);
+export_t *exp = (preloaded_exports+602);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25623,7 +25622,7 @@ l_call_ext_49: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+597);
+export_t *exp = (preloaded_exports+603);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25656,7 +25655,7 @@ l_call_ext_46: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+598);
+export_t *exp = (preloaded_exports+604);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25689,7 +25688,7 @@ l_call_ext_33: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+599);
+export_t *exp = (preloaded_exports+605);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25722,7 +25721,7 @@ l_call_ext_32: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+600);
+export_t *exp = (preloaded_exports+606);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25755,7 +25754,7 @@ l_call_ext_30: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+601);
+export_t *exp = (preloaded_exports+607);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25788,7 +25787,7 @@ l_call_ext_29: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+602);
+export_t *exp = (preloaded_exports+608);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25821,7 +25820,7 @@ l_call_ext_27: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+603);
+export_t *exp = (preloaded_exports+609);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25854,7 +25853,7 @@ l_call_ext_22: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+604);
+export_t *exp = (preloaded_exports+610);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25887,7 +25886,7 @@ l_call_ext_21: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+605);
+export_t *exp = (preloaded_exports+611);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25920,7 +25919,7 @@ l_call_ext_19: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+606);
+export_t *exp = (preloaded_exports+612);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25953,7 +25952,7 @@ l_call_ext_18: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+607);
+export_t *exp = (preloaded_exports+613);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -25986,7 +25985,7 @@ l_call_ext_15: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+608);
+export_t *exp = (preloaded_exports+614);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -26019,7 +26018,7 @@ l_call_ext_13: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+609);
+export_t *exp = (preloaded_exports+615);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -26052,7 +26051,7 @@ l_call_ext_1: ATTRIBUTE_COLD
 
 
 cp = ip + 1;
-export_t *exp = (preloaded_exports+610);
+export_t *exp = (preloaded_exports+616);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -27190,7 +27189,7 @@ move_jump_9: ATTRIBUTE_COLD
 #endif
 
 
-r0 = A_FUNNY849;
+r0 = A_FUNNY854;
 do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
@@ -27223,7 +27222,7 @@ if (unlikely(hend - htop < ip[2]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
@@ -30963,7 +30962,7 @@ if (unlikely(hend - htop < ip[2]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
@@ -30994,7 +30993,7 @@ if (unlikely(hend - htop < ip[2]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, ((ip[3] >> 0) & 255));
@@ -31571,7 +31570,7 @@ l_move_call_22: ATTRIBUTE_COLD
 #endif
 
 
-r0 = A_FUNNY857;
+r0 = A_FUNNY862;
 cp = ip + 2;
 ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
@@ -31867,7 +31866,7 @@ l_call_ext_only_3: ATTRIBUTE_COLD
 #endif
 
 
-export_t *exp = (preloaded_exports+611);
+export_t *exp = (preloaded_exports+617);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -31899,7 +31898,7 @@ l_call_ext_only_1: ATTRIBUTE_COLD
 #endif
 
 
-export_t *exp = (preloaded_exports+610);
+export_t *exp = (preloaded_exports+616);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -31932,7 +31931,7 @@ l_move_call_ext_only_9: ATTRIBUTE_COLD
 
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-export_t *exp = (preloaded_exports+612);
+export_t *exp = (preloaded_exports+618);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -31965,7 +31964,7 @@ l_move_call_ext_only_8: ATTRIBUTE_COLD
 
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-export_t *exp = (preloaded_exports+613);
+export_t *exp = (preloaded_exports+619);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -31998,7 +31997,7 @@ l_move_call_ext_only_5: ATTRIBUTE_COLD
 
 
 r0 = A_TYPE;
-export_t *exp = (preloaded_exports+602);
+export_t *exp = (preloaded_exports+608);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32395,7 +32394,7 @@ l_move_call_ext_49: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+614);
+export_t *exp = (preloaded_exports+620);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32463,7 +32462,7 @@ l_move_call_ext_45: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+572);
+export_t *exp = (preloaded_exports+578);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32497,7 +32496,7 @@ l_move_call_ext_43: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+615);
+export_t *exp = (preloaded_exports+621);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32531,7 +32530,7 @@ l_move_call_ext_42: ATTRIBUTE_COLD
 
 r0 = A_AUTO_REPAIR;
 cp = ip + 1;
-export_t *exp = (preloaded_exports+611);
+export_t *exp = (preloaded_exports+617);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32565,7 +32564,7 @@ l_move_call_ext_41: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+616);
+export_t *exp = (preloaded_exports+622);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32599,7 +32598,7 @@ l_move_call_ext_40: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+617);
+export_t *exp = (preloaded_exports+623);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32633,7 +32632,7 @@ l_move_call_ext_39: ATTRIBUTE_COLD
 
 r0 = tag_int(10);
 cp = ip + 1;
-export_t *exp = (preloaded_exports+618);
+export_t *exp = (preloaded_exports+624);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32667,7 +32666,7 @@ l_move_call_ext_34: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+619);
+export_t *exp = (preloaded_exports+625);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32701,7 +32700,7 @@ l_move_call_ext_33: ATTRIBUTE_COLD
 
 r0 = A_FUNKY;
 cp = ip + 1;
-export_t *exp = (preloaded_exports+620);
+export_t *exp = (preloaded_exports+626);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32735,7 +32734,7 @@ l_move_call_ext_32: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+621);
+export_t *exp = (preloaded_exports+627);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32769,7 +32768,7 @@ l_move_call_ext_30: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+547);
+export_t *exp = (preloaded_exports+553);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32803,7 +32802,7 @@ l_move_call_ext_29: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+588);
+export_t *exp = (preloaded_exports+594);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32837,7 +32836,7 @@ l_move_call_ext_27: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+605);
+export_t *exp = (preloaded_exports+611);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32871,7 +32870,7 @@ l_move_call_ext_23: ATTRIBUTE_COLD
 
 r0 = tag_int(5);
 cp = ip + 1;
-export_t *exp = (preloaded_exports+618);
+export_t *exp = (preloaded_exports+624);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32905,7 +32904,7 @@ l_move_call_ext_20: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+566);
+export_t *exp = (preloaded_exports+572);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32939,7 +32938,7 @@ l_move_call_ext_18: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+622);
+export_t *exp = (preloaded_exports+628);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -32973,7 +32972,7 @@ l_move_call_ext_11: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+610);
+export_t *exp = (preloaded_exports+616);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -33007,7 +33006,7 @@ l_move_call_ext_0: ATTRIBUTE_COLD
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+613);
+export_t *exp = (preloaded_exports+619);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -33087,7 +33086,7 @@ if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, 1);
@@ -34280,7 +34279,7 @@ if (unlikely(hend - htop < ip[1]))
 {
 	swap_out();
 	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS)
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
 	{
 		region_t root_regs[nr_regs];
 		proc_fill_root_regs(proc, root_regs, rs, ((ip[2] >> 0) & 255));

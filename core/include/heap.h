@@ -50,8 +50,10 @@ struct heap_t {
 	memnode_t *gc_spot;				// the last gc node
 	t_proc_bin_t *proc_bins;		// the list of refc binaries
 	int total_pb_size;				// the sum of sizes of referenced proc_bins
+	int suppress_gc;				// do not collect garbage
 	int full_sweep_after;			// the fullsweep_after option value
 	int sweep_after_count;			// the counter for fullsweep_after
+	int minor_gcs;					// the number of gc runs while running
 	int wait_gc_runs;				// the number of gc runs while waiting
 #ifdef LING_DEBUG
 	// the expected value of the next heap_set_top()

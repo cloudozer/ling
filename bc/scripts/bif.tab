@@ -168,6 +168,8 @@ erlang:decode_packet$(Type,Bin,PackSize,LineLen)	cbif_decode_packet4
 lwip:setup(IpAddr,NetMask,Gateway,Dhcp)		cbif_setup4
 
 # bif_ling.c
+ling:domain_name()			cbif_domain_name0
+
 ling:b1()					cbif_b1_0
 ling:b2()					cbif_b2_0
 ling:b3()					cbif_b3_0
@@ -195,6 +197,8 @@ erlang:md5_final(Ctx)			cbif_md5_final1
 
 erlang:crc32(Old,Data)				cbif_crc32_2
 erlang:crc32_combine(Fst,Sec,Sz)	cbif_crc32_combine3
+erlang:adler32(Old,Data)			cbif_adler32_2
+erlang:adler32_combine(Fst,Sec,Sz)	cbif_adler32_combine3
 
 # bif_generic.c
 erlang:is_binary(Binary)	bif_is_binary1

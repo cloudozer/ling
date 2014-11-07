@@ -73,7 +73,7 @@ typedef uint8_t byte_t;
 
 extern uint64_t start_of_day_wall_clock;
 
-extern const char *ling_hostname;
+extern char my_domain_name[];
 
 // returned by recursive functions
 #define NO_MEMORY		1
@@ -102,9 +102,9 @@ extern const char *ling_hostname;
 #define UNUSED_MEM_SIGN		(0xdeadbeef)
 #endif
 
-void printk(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
+void printk(const char *fmt, ...); // __attribute__ ((format (printf, 1, 2)));
 
-void fatal_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2))) __attribute__ ((noreturn));
+void fatal_error(const char *fmt, ...) __attribute__ ((noreturn)); // __attribute__ ((format (printf, 1, 2)))
 
 void __assert_fail(const char *assertion,
 	const char *file, unsigned int line, const char * function) __attribute__ ((noreturn));

@@ -38,6 +38,7 @@
 #include "ling_common.h"
 
 #include "atom_defs.h"
+#include "atoms.h"
 #include "string.h"
 #include "code_base.h"
 #include "scheduler.h"
@@ -150,7 +151,15 @@ term_t proc_set_flag(proc_t *proc, term_t flag, term_t val)
 		proc->hp.full_sweep_after = n;
 		return tag_int(saved);
 	}
-	else if (flag == A_MONITOR_NODES)
+	else if (flag == A_SUPPRESS_GC)
+	{
+		// non-standard
+		if (!is_bool(val))
+			return noval;
+		int saved = proc->hp.suppress_gc;
+		proc->hp.suppress_gc = (val == A_TRUE);
+		return (saved) ?A_TRUE :A_FALSE;
+	} else if (flag == A_MONITOR_NODES)
 	{
 		//TODO: undocumented
 		return A_FALSE;

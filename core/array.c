@@ -31,16 +31,8 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/**
- *
- *
- *
- */
-
 #include "array.h"
-
 #include "ling_common.h"
-
 #include "string.h"
 
 #define ARRAY_NODE_SIZE	4096

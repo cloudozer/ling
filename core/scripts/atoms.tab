@@ -93,6 +93,7 @@ noproc
 trap_exit
 fullsweep_after
 monitor_nodes
+suppress_gc
 backtrace
 binary
 catchlevel

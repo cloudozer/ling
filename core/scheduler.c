@@ -188,7 +188,7 @@ static void garbage_collect_waiting_processes(uint64_t alloted_ns)
 		if (hp->wait_gc_runs >= 0 && hp->wait_gc_runs <= gc_runs)
 		{
 			int nr_regs = proc_count_root_regs(fatty);
-			if (nr_regs <= MAX_ROOT_REGS)
+			if (nr_regs <= MAX_ROOT_REGS && !hp->suppress_gc)
 			{
 				region_t root_regs[nr_regs];
 				proc_fill_root_regs(fatty, root_regs, fatty->cap.regs, fatty->cap.live);
