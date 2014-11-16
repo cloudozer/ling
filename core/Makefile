@@ -154,4 +154,4 @@ lib/nettle/config.h: lib/nettle.tar.gz
 	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl CFLAGS="-fno-stack-protector -U_FORTIFY_SOURCE"
 
 lib/nettle.tar.gz:
-	wget -O $@ -c https://ftp.gnu.org/gnu/nettle/nettle-2.7.1.tar.gz
+	wget -O $@ --no-check-certificate -c https://ftp.gnu.org/gnu/nettle/nettle-2.7.1.tar.gz
