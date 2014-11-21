@@ -1,9 +1,10 @@
 #!/usr/bin/env escript
-
+-mode(compile).
 -include_lib("kernel/include/file.hrl").
 
 files() -> [
 	"railing/railing.beam",
+	"railing/getopt.beam",
 	"bc/ling_bifs.beam",
 	"bc/ling_code.beam",
 	"bc/ling_disasm.beam",

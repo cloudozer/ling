@@ -1,10 +1,8 @@
+test.img: $(patsubst src/%.erl,ebin/%.beam,$(wildcard src/*.erl))
+	../railing/railing -ltest_server -lcompiler -lcrypto -lsyntax_tools -lsasl -los_mon -ipriv -m 1024
 
-.PHONY: default
+clean:
+	rm -rf .railing test.img test.dom ebin/*.beam
 
-BEAMS := $(patsubst src/%.erl,ebin/%.beam,$(wildcard src/*.erl))
-
-default: $(BEAMS)
-	../railing/railing
-
-$(BEAMS): ebin/%.beam: src/%.erl
+ebin/%.beam: src/%.erl
 	erlc -o ebin $<

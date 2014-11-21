@@ -1,4 +1,0 @@
-name = "test"
-kernel = "vmling"
-extra = "-home /test/ebin"
-memory = 2048

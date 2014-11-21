@@ -1,11 +1,8 @@
+railing: $(patsubst %.erl,%.beam,$(wildcard *.erl))
+	./escriptize
 
-.PHONY: default
+clean:
+	rm -f *.beam railing
 
-default: railing
-
-railing: railing.beam
-	@./escriptize
-
-railing.beam: railing.erl
-	@erlc railing.erl
-
+%.beam: %.erl
+	erlc $<

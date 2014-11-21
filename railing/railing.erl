@@ -1,29 +1,97 @@
 -module(railing).
 -export([main/1]).
 
+opt_spec() -> [
+	{help,    $h, "help",    undefined, "This help"},
+	{lib,     $l, "lib",     atom,      "Import lib from Erlang OTP"},
+	{include, $i, "include", string,    "Import directory recursively"},
+	{exclude, $x, "exclude", string,    "Do not import directories that start with path"},
+	{name,    $n, "name",    string,    "Set image name"},
+	{memory,  $m, "memory",  integer,   "Set image memory (megabytes)"}
+	% debug
+	% version
+	% clean
+].
+
 cache_dir() -> ".railing".
 
-main(_) ->
+main(Args) ->
+	{Opts, _} =
+		case getopt:parse(opt_spec(), Args) of
+			{error, Error} ->
+				io:format("~s\n", [getopt:format_error(opt_spec(), Error)]),
+				halt(1);
+			{ok, Ok} ->
+				Ok
+		end,
+
+	case lists:member(help, Opts) of
+		true ->
+			getopt:usage(opt_spec(), "railing"),
+			halt();
+		_ ->
+			ok
+	end,
+
+	Config =
+		lists:foldl(
+			fun(Plug, Acc) ->
+				{module, Mod} = code:load_abs(filename:rootname(Plug)),
+				Name = filename:basename(Plug, "_railing.beam"),
+				{ok, Conf} = file:consult(Name ++ ".config"),
+				Acc ++ Conf ++ Mod:rail(Conf)
+			end,
+			Opts,
+			filelib:wildcard("**/*_railing.beam")
+		),
+
+	Excludes = [cache_dir() | [X || {exclude, X} <- Config]],
+	Includes =
+		filelib:wildcard(filename:join(["**","ebin","*.{app,beam}"])) ++
+		lists:foldl(
+			fun(Dir, Files) ->
+				Files ++ [F || F <- filelib:wildcard(filename:join(Dir, "**")),	not filelib:is_dir(F)]
+			end,
+			[],
+			[I || {include, I} <- Config]
+		),
+
+	Files =
+		lists:dropwhile(
+			fun(I) ->
+				lists:any(
+					fun(E) ->
+						lists:prefix(E, I)
+					end,
+					Excludes
+				)
+			end,
+			Includes
+		),
+
+	Apps = [kernel, stdlib] ++ [L || {lib, L} <- Config],
+
 	file:make_dir(cache_dir()),
 	{ok, Sections} = escript:extract(escript:script_name(), []),
 	Archive = proplists:get_value(archive, Sections),
-	zip:extract(Archive, [{cwd, cache_dir()}]),
 
-	{Files, Apps} = read_config(),
+	%% we can't pass {cwd, cache_dir()} to unzip here
+	%% because 'keep_old_files' stops working for unknown reason
+	file:set_cwd(".railing"),
+	zip:unzip(Archive, [keep_old_files]),
+	file:set_cwd(".."),
 
-	ProjName = 
-		case file:get_cwd() of
-			{ok,"/"} ->
-				"himmel";
-			{ok,Cwd} ->
-				filename:basename(Cwd)
-		end,
+	%{Files, Apps} = read_config(),
+
+	PrjName = prj_name(Config),
+	ImgName = PrjName ++ ".img",
+	DomName = PrjName ++ ".dom",
 
 	DFs = [{filename:dirname(F),F} || F <- lists:usort(Files)],
 	CustomBucks = [
 		{
 			avoid_ebin_stem(Dir),
-			filename:join(["/",ProjName,Dir]),
+			filename:join(["/",PrjName,Dir]),
 			[bin(avoid_ebin_stem(Dir),File) || {Dir1,File} <- DFs, Dir1 =:= Dir]
 		} || Dir <- lists:usort([D || {D,_} <- DFs])
 	],
@@ -31,8 +99,10 @@ main(_) ->
 	StartBoot = filename:join([code:root_dir(),bin,"start.boot"]),
 	Bucks =
 		[{boot, "/boot", [local_map, StartBoot]}] ++
-		[bucket(A) || A <- Apps] ++
+		[lib(A) || A <- Apps] ++
 		CustomBucks,
+
+	io:format("Generate: ~s\n", [ImgName]),
 
 	LocalMap =
 		lists:map(
@@ -82,7 +152,70 @@ main(_) ->
 	file:close(EmbedFs),
 
 	ok = sh("ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
-	ok = sh("ld -o ../vmling -T ling.lds -nostdlib vmling.o embed.fs.o", [{cd, cache_dir()}]).
+	ok = sh("ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
+
+	io:format("Generate: ~s\n", [DomName]),
+
+	Memory =
+		case proplists:get_value(memory, Config) of
+			undefined ->
+				"";
+			M ->
+				"memory = " ++ integer_to_list(M) ++ "\n"
+		end,
+
+	Vif =
+		case proplists:get_value(vif, Config) of
+			undefined ->
+				"";
+			Vifs ->
+				VifList = [list_to_atom("bridge=" ++ atom_to_list(V)) || V <- Vifs],
+				"vif = " ++ lists:flatten(io_lib:format("~p", [VifList]))
+		end,
+
+	Ipconf =
+		case lists:keyfind(ipconf, 1, Config) of
+			{ipconf, {address, Address}, {netmask, Netmask}, {gateway, Gateway}} ->
+				" -ipaddr " ++ Address ++ " -netmask " ++ Netmask ++ " -gateway " ++ Gateway;
+			_ ->
+				" -dhcp"
+		end,
+
+	Sys =
+		lists:foldl(
+			fun({Name, Key, Val}, Str) ->
+				Str ++ io_lib:format(" -~p ~p '~s'", [Name, Key, lists:flatten(io_lib:write(Val))])
+			end,
+			"",
+			lists:flatten([App || {app, App} <- Config])
+		),
+
+	Pz = " -pz" ++ lists:flatten([" " ++ Dir || {_, Dir, _ }<- CustomBucks]),
+	Home = " -home /" ++ PrjName,
+	DefConfig =
+		case proplists:get_value(config, Config) of
+			undefined ->
+				"";
+			DC ->
+				" -config " ++ DC
+		end,
+	Eval =
+		case proplists:get_value(eval, Config) of
+			undefined ->
+				"";
+			E ->
+				" -eval \\\"" ++ E ++ "\\\""
+		end,
+
+	Extra = Sys ++ Ipconf ++ Home ++ Pz ++ DefConfig ++ Eval,
+
+	ok = file:write_file(DomName,
+		"name = \"" ++ PrjName ++ "\"\n" ++
+		"kernel = \"" ++ ImgName ++ "\"\n" ++
+		"extra = \"" ++ Extra ++ "\"\n" ++
+		Memory ++
+		Vif ++ "\n"
+	).
 
 write_bin(Dev, Bin, Data) ->
 	Name = binary:list_to_bin(Bin),
@@ -90,18 +223,26 @@ write_bin(Dev, Bin, Data) ->
 	DataSize = erlang:size(Data),
 	file:write(Dev, <<NameSize, Name/binary, DataSize:32, Data/binary>>).
 
-bucket(App) ->
-	Dir = code:lib_dir(App),
+lib(Lib) ->
+	Dir =
+		case code:lib_dir(Lib) of
+			{error, _} ->
+				io:format("can't find lib: ~p\n", [Lib]),
+				halt(1);
+			Ok ->
+				Ok
+		end,
+
 	Mnt = filename:join(["/erlang/lib",filename:basename(Dir),ebin]),
 
 	Files = union(
 		filelib:wildcard(filename:join([Dir, ebin, "*"])),
-		filelib:wildcard(filename:join([cache_dir(), apps, App, ebin, "*"]))
+		filelib:wildcard(filename:join([cache_dir(), apps, Lib, ebin, "*"]))
 	),
 
-	NewFiles = [bin(App, F) || F <- Files],
+	NewFiles = [bin(Lib, F) || F <- Files],
 
-	{App, Mnt, NewFiles}.
+	{Lib, Mnt, NewFiles}.
 
 
 bin(Buck, File) ->
@@ -113,7 +254,12 @@ bin(Buck, File) ->
 	end.
 
 compile(Buck, Beam) ->
-	Ling = filename:join([cache_dir(), ling, Buck, filename:rootname(filename:basename(Beam)) ++ ".ling"]),
+	Ling = filename:join([
+		cache_dir(),
+		ling,
+		Buck,
+		filename:rootname(filename:basename(Beam)) ++ ".ling"
+	]),
 
 	NeedUpdate = 
 		case filelib:last_modified(Ling) of
@@ -126,6 +272,7 @@ compile(Buck, Beam) ->
 
 	case NeedUpdate of
 		true ->
+			io:format("Compile: ~s\n", [Beam]),
 			{ok,L} = ling_code:beam_to_ling(Beam),
 			{ok,S} = ling_code:ling_to_specs(L),
 			ok = filelib:ensure_dir(Ling),
@@ -156,26 +303,26 @@ union([Std|A], B, U) ->
 	end.
 
 sh(Command, Opts) ->
-    PortOpts = [{line,16384},
+	PortOpts = [{line,16384},
 				 use_stdio,
 				 stderr_to_stdout,
 				 exit_status] ++ Opts,
-    Port = open_port({spawn, Command}, PortOpts),
+	Port = open_port({spawn, Command}, PortOpts),
 	sh_loop(Port).
 
 sh_loop(Port) ->
-    receive
-        {Port, {data, {eol, Line}}} ->
+	receive
+		{Port, {data, {eol, Line}}} ->
 			io:format("~s~n", [Line]),
 			sh_loop(Port);
-        {Port, {data, {noeol, Line}}} ->
+		{Port, {data, {noeol, Line}}} ->
 			io:format("~s", [Line]),
-            sh_loop(Port);
-        {Port, {exit_status, 0}} ->
+			sh_loop(Port);
+		{Port, {exit_status, 0}} ->
 			ok;
-        {Port,{exit_status,Status}} ->
+		{Port,{exit_status,Status}} ->
 			{error,Status}
-    end.
+	end.
 
 read_config() ->
 	ConfigFile = "railing.config",
@@ -208,6 +355,19 @@ avoid_ebin_stem(Dir) ->
 		"." -> top;
 		"ebin" -> avoid_ebin_stem(filename:dirname(Dir));
 		Stem -> list_to_atom(Stem)
+	end.
+
+prj_name(Opts) ->
+	case proplists:get_value(name, Opts) of
+		undefined ->
+			case file:get_cwd() of
+				{ok,"/"} ->
+					"himmel";
+				{ok,Cwd} ->
+					filename:basename(Cwd)
+			end;
+		Name ->
+			Name
 	end.
 
 %%EOF
