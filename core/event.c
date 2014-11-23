@@ -79,6 +79,7 @@ int events_do_pending(void)
 			struct event_handler *eh = &event_handlers[port];
 			assert(eh->entry != 0);
 			eh->entry(port, eh->data);
+
 			nr_fired++;
 		}
 	}

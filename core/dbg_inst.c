@@ -56,7 +56,6 @@
 		fatal_error("bad subtag"); \
 	} while (0)
 
-
 uint32_t *__expand_ptr(uint32_t n)
 {
 #if defined(__x86_64__)

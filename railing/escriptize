@@ -1,0 +1,46 @@
+#!/usr/bin/env escript
+-mode(compile).
+-include_lib("kernel/include/file.hrl").
+
+files() -> [
+	"railing/railing.beam",
+	"railing/getopt.beam",
+	"bc/ling_bifs.beam",
+	"bc/ling_code.beam",
+	"bc/ling_disasm.beam",
+	"bc/ling_iops.beam",
+	"bc/ling_iopvars.beam",
+	"bc/ling_lib.beam",
+
+	"core/ling.lds",
+	"core/vmling.o"
+].
+	
+main(_) ->
+	% cd to ling root directory
+	ok = file:set_cwd(filename:join(filename:dirname(escript:script_name()), "..")),
+
+	FileList1 = 
+		lists:map(
+			fun(F) ->
+				{ok, Bin} = file:read_file(F),
+				{filename:basename(F), Bin}
+			end,
+			files()
+		),
+
+	FileList2 = 
+		lists:map(
+			fun(F) ->
+				{ok, Bin} = file:read_file(F),
+				{F, Bin}
+			end,
+			filelib:wildcard(filename:join([apps,"*",ebin,"*"]))
+		),
+
+
+	Filename = "railing/railing",
+
+	ok = escript:create(Filename, [shebang, {archive, FileList1 ++ FileList2, [memory]}]),
+	{ok, #file_info{mode = Mode}} = file:read_file_info(Filename),
+	ok = file:change_mode(Filename, Mode bor 8#00111).

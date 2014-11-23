@@ -141,6 +141,9 @@ struct outlet_t {
 	int packet_size;		//
 	int exit_on_close;		// 1* | 0
 
+	// Non-standard option
+	int max_mq_len;			// maximum message queue length
+
 	// TCP - connection mode
 	int cr_in_progress;
 	term_t cr_reply_to;

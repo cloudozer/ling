@@ -39,7 +39,7 @@
 
 #include "ling_common.h"
 
-#include "qsort.h"
+#include "stdlib.h"
 #include "bits.h"
 #include "string.h"
 #include "mm.h"
@@ -82,6 +82,8 @@ static region_t *containing_region(region_t *regions, int n, void *addr);
 int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 {
 	ssi(SYS_STATS_GC_RUNS);
+	hp->minor_gcs++;
+
 	// select the GC node
 	memnode_t *gc_node = (hp->gc_spot != 0)
 		? hp->gc_spot->next

@@ -39,8 +39,10 @@
 #define PAGE_SHIFT	__PAGE_SHIFT
 #define PAGE_SIZE	__PAGE_SIZE
 
-#define STACK_SIZE_ORDER	8
+#define STACK_SIZE_ORDER	10
 #define STACK_SIZE	((PAGE_SIZE) << STACK_SIZE_ORDER)
+
+#define MAX_ROOT_REGS	65535
 
 #define BUFSIZ		4096
 #endif

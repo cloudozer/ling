@@ -83,8 +83,11 @@ void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends)
 	//hp->gc_spot = 0;
 	//hp->proc_bins = 0;
 	//hp->total_pb_size = 0;
+	//hp->suppress_gc = 0;
 	hp->full_sweep_after = DEFAULT_FULL_SWEEP_AFTER;
 	//hp->sweep_after_count = 0;
+	//hp->minor_gcs = 0;
+	//hp->wait_gc_runs = 0;
 	//hp->expected_top = 0;
 }
 

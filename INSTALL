@@ -9,16 +9,7 @@ To build LING from sources, the following prerequisites must be met:
 The installed version of Erlang/OTP must be R16B01. It means that it must be
 build from sources available at http://erlang.org.
 
-2. uClibc
-
-The version known to work is 0.9.33.2. Other versions must work too.  LING
-requires a static version of the library. Ubuntu and, possibly, other
-distributions do not include the static version.
-
-When building uClibc from source, you can use lib/uClibc_config as the
-configuration file.
-
-3. Nettle
+2. Nettle
 
 LING uses the Nettle library for cryptographic primitives. The version known to
 work is 4.7.1. The static version of the library is required. It may or may not

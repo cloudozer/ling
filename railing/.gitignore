@@ -1,5 +1,2 @@
-rebar.config
-.rebar
-ebin/
-
 railing
+railing.beam

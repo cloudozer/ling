@@ -1,8 +1,6 @@
 
 .PHONY: default
 
-include ../Config.mk
-
 STDLIB_BEAMS := $(patsubst stdlib/src/%.erl,stdlib/ebin/%.beam,$(wildcard stdlib/src/*.erl))
 KERNEL_BEAMS := $(patsubst kernel/src/%.erl,kernel/ebin/%.beam,$(wildcard kernel/src/*.erl))
 CRYPTO_BEAMS := $(patsubst crypto/src/%.erl,crypto/ebin/%.beam,$(wildcard crypto/src/*.erl))

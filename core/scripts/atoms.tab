@@ -93,6 +93,7 @@ noproc
 trap_exit
 fullsweep_after
 monitor_nodes
+suppress_gc
 backtrace
 binary
 catchlevel
@@ -379,6 +380,8 @@ module_size
 variant_size
 count_iops
 processing_delay
+llstat
+stop
 help
 
 #EOF

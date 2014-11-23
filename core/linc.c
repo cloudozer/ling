@@ -35,11 +35,12 @@
 // Temporary harness for tuning LINC performance
 //
 
-#ifdef EXP_LINC_LATENCY
 
 #include "ling_common.h"
 
 #include "time.h"
+
+#ifdef EXP_LINC_LATENCY
 
 #include <math.h>
 
@@ -148,3 +149,196 @@ void linc_display()
 }
 
 #endif // EXP_LINC_LATENCY
+
+#ifdef EXP_LINC_LLSTAT
+
+#define LLSTAT_MAX_INTS		500000
+
+static int llstat_running = 0;
+static int llstat_iface;
+
+static uint64_t llstat_started_at;
+static uint64_t llstat_stopped_at;
+
+static int64_t llstat_nr_ints;
+static int64_t llstat_nr_int_kicks;
+
+static int64_t llstat_rx_cons_min;
+static int64_t llstat_rx_cons_sum;
+static int64_t llstat_rx_cons_max;
+
+static int64_t llstat_int_tx_freed_min;
+static int64_t llstat_int_tx_freed_sum;
+static int64_t llstat_int_tx_freed_max;
+
+static int64_t llstat_nr_outs;
+static int64_t llstat_nr_out_kicks;
+static int64_t llstat_nr_drops;
+
+static int64_t llstat_out_tx_freed_min;
+static int64_t llstat_out_tx_freed_sum;
+static int64_t llstat_out_tx_freed_max;
+
+static int64_t llstat_out_tx_len;
+static int64_t llstat_drop_tx_len;
+
+static int llstat_results_ready = 0;
+
+void llstat_restart(int ifidx)
+{
+	llstat_started_at = monotonic_clock();
+
+	llstat_nr_ints = 0;
+	llstat_nr_int_kicks = 0;
+
+	llstat_rx_cons_min = 0;
+	llstat_rx_cons_sum = 0;
+	llstat_rx_cons_max = 0;
+
+	llstat_int_tx_freed_min = 0;
+	llstat_int_tx_freed_sum = 0;
+	llstat_int_tx_freed_max = 0;
+
+	llstat_nr_outs = 0;
+	llstat_nr_out_kicks = 0;
+	llstat_nr_drops = 0;
+
+	llstat_out_tx_freed_min = 0;
+	llstat_out_tx_freed_sum = 0;
+	llstat_out_tx_freed_max = 0;
+
+	llstat_out_tx_len = 0;
+	llstat_drop_tx_len = 0;
+
+	llstat_iface = ifidx;
+	llstat_running = 1;
+}
+
+void llstat_stop()
+{
+	if (!llstat_running)
+		return;
+
+	llstat_stopped_at = monotonic_clock();
+	llstat_running = 0;
+	llstat_results_ready = 1;
+}
+
+void linc_int_stat(int ifidx, int rx_consumed, int tx_freed, int kicked)
+{
+	if (!llstat_running || ifidx != llstat_iface)
+		return;
+
+	llstat_nr_ints++;
+	if (kicked)
+		llstat_nr_int_kicks++;
+
+	if (llstat_rx_cons_min > rx_consumed)
+		llstat_rx_cons_min = rx_consumed;
+	llstat_rx_cons_sum += rx_consumed;
+	if (llstat_rx_cons_max < rx_consumed)
+		llstat_rx_cons_max = rx_consumed;
+
+	if (llstat_int_tx_freed_min > tx_freed)
+		llstat_int_tx_freed_min = tx_freed;
+	llstat_int_tx_freed_sum += tx_freed;
+	if (llstat_int_tx_freed_max < tx_freed)
+		llstat_int_tx_freed_max = tx_freed;
+
+	if (llstat_nr_ints >= LLSTAT_MAX_INTS)
+		llstat_stop();
+}
+
+void linc_out_stat(int ifidx, int tx_len, int tx_freed, int kicked)
+{
+	if (!llstat_running || ifidx != llstat_iface)
+		return;
+
+	llstat_nr_outs++;
+	if (kicked)
+		llstat_nr_out_kicks++;
+
+	if (llstat_out_tx_freed_min > tx_freed)
+		llstat_out_tx_freed_min = tx_freed;
+	llstat_out_tx_freed_sum += tx_freed;
+	if (llstat_out_tx_freed_max < tx_freed)
+		llstat_out_tx_freed_max = tx_freed;
+
+	llstat_out_tx_len += tx_len;
+}
+
+void linc_out_drop(int ifidx, int tx_len)
+{
+	if (!llstat_running || ifidx != llstat_iface)
+		return;
+
+	llstat_nr_drops++;
+	llstat_drop_tx_len += tx_len;
+}
+
+void llstat_display()
+{
+	if (llstat_running)
+	{
+		printk("*** Statistics are still being collected\n");
+		return;
+	}
+
+	if (!llstat_results_ready || llstat_nr_ints == 0)
+	{
+		printk("*** No statistics collected\n");
+		return;
+	}
+
+	uint64_t elapsed_ns = llstat_stopped_at -llstat_started_at;
+
+	printk("Duration: %.1fms\n", elapsed_ns /1000000.0);
+	printk("RX: interrupts: %llu (%llu kicks %.1f%%) (freq %.1f/s period %.1fus)\n",
+			llstat_nr_ints,
+			llstat_nr_int_kicks,
+			llstat_nr_int_kicks *100.0 /llstat_nr_ints,
+			llstat_nr_ints *1000000000.0 /elapsed_ns,
+			elapsed_ns /1000.0 /llstat_nr_ints);
+	printk("RX: reqs per int: %llu/%.1f/%llu\n",
+			llstat_rx_cons_min,
+			(double)llstat_rx_cons_sum /llstat_nr_ints,
+			llstat_rx_cons_max);
+	printk("RX: tx buf freed per int: %llu/%.1f/%llu\n",
+			llstat_int_tx_freed_min,
+			(double)llstat_int_tx_freed_sum /llstat_nr_ints,
+			llstat_int_tx_freed_max);
+
+	if (llstat_nr_outs > 0)
+	{
+		printk("TX: outputs: %llu (%llu kicks %.1f%%) (freq %.1f/s period %.1fus)\n",
+				llstat_nr_outs,
+				llstat_nr_out_kicks,
+				llstat_nr_out_kicks *100.0 /llstat_nr_outs,
+				llstat_nr_outs *1000000000.0 /elapsed_ns,
+				elapsed_ns /1000.0 /llstat_nr_outs);
+		printk("TX: tx buf freed per int: %llu/%.1f/%llu\n",
+				llstat_out_tx_freed_min,
+				(double)llstat_out_tx_freed_sum /llstat_nr_outs,
+				llstat_out_tx_freed_max);
+		printk("TX: rates: %.1fkpps %.2fMbps avg pkt size %.1fB\n",
+				llstat_nr_outs *1000000.0 /elapsed_ns,
+				llstat_out_tx_len *8 *1000.0 /elapsed_ns,
+				(double)llstat_out_tx_len /llstat_nr_outs);
+	}
+
+	if (llstat_nr_drops > 0)
+	{
+		printk("TX: drops: %llu (freq %.1f/s period %.1fus)\n",
+				llstat_nr_drops,
+				llstat_nr_drops *1000000000.0 /elapsed_ns,
+				elapsed_ns /1000.0 /llstat_nr_drops);
+		printk("TX: drop rates: %.1fkpps %.2fMbps avg pkt size %.1fB\n",
+				llstat_nr_drops *1000000.0 /elapsed_ns,
+				llstat_drop_tx_len *8 *1000.0 /elapsed_ns,
+				(double)llstat_drop_tx_len /llstat_nr_drops);
+	}
+}
+
+#endif // EXP_LINC_LLSTAT
+
+//EOF

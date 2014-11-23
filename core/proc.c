@@ -358,6 +358,14 @@ uint32_t *proc_burn_fat(proc_t *proc, int needed, term_t *rs, int live)
 	//
 
 	int nr_regs = proc_count_root_regs(proc);
+
+	//NB: There can be a lot of root regions. The typical cause is an
+	// overgrown mailbox. The space for root regions should be
+	// allocated dynamically.
+	//
+	if (nr_regs > MAX_ROOT_REGS || proc->hp.suppress_gc)
+		return heap_alloc(&proc->hp, needed);
+
 	region_t root_regs[nr_regs];
 	proc_fill_root_regs(proc, root_regs, rs, live);
 

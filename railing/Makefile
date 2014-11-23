@@ -1,13 +1,8 @@
+railing: $(patsubst %.erl,%.beam,$(wildcard *.erl))
+	./escriptize
 
-.PHONY: default dist
+clean:
+	rm -f *.beam railing
 
-include ../Config.mk
-
-default:
-	@echo "{escript_emu_args,\"%%! -ling_root $(LING_ROOT)\\n\"}." > rebar.config
-	./rebar compile escriptize
-
-dist:
-	@echo "" > rebar.config
-	./rebar compile escriptize
-
+%.beam: %.erl
+	erlc $<

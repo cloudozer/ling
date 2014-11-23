@@ -342,4 +342,58 @@ term_t cbif_crc32_combine3(proc_t *proc, term_t *regs)
 	return int_to_term(val, &proc->hp);
 }
 
+term_t cbif_adler32_2(proc_t *proc, term_t *regs)
+{
+	term_t OldAdler32 = regs[0];
+	term_t Data = regs[1];
+	if (!is_int(OldAdler32) && !is_boxed_bignum(OldAdler32))
+		badarg(OldAdler32);
+	if (!is_boxed_binary(Data) && !is_list(Data))
+		badarg(Data);
+
+	int sz = iolist_size(Data);
+	if (sz < 0)
+		badarg(Data);
+	// EXCEPTION POSSIBLE
+	uint8_t *buf = heap_tmp_buf(&proc->hp, sz);
+	iolist_flatten(Data, buf);
+
+	int64_t init = (is_int(OldAdler32))
+		?int_value(OldAdler32)
+		:bignum_to_int((bignum_t *)peel_boxed(OldAdler32));
+
+	unsigned long val = adler32((unsigned long)init, buf, sz);
+
+	return int_to_term(val, &proc->hp);
+}
+
+term_t cbif_adler32_combine3(proc_t *proc, term_t *regs)
+{
+	term_t Adler1 = regs[0];
+	term_t Adler2 = regs[1];
+	term_t Size2 = regs[2];
+
+	if (!is_int(Adler1) && !is_boxed_bignum(Adler1))
+		badarg(Adler1);
+	if (!is_int(Adler2) && !is_boxed_bignum(Adler2))
+		badarg(Adler2);
+	if (!is_int(Size2) && !is_boxed_bignum(Size2))
+		badarg(Size2);
+
+	int64_t c1 = (is_int(Adler1))
+		?int_value(Adler1)
+		:bignum_to_int((bignum_t *)peel_boxed(Adler1));
+	int64_t c2 = (is_int(Adler2))
+		?int_value(Adler2)
+		:bignum_to_int((bignum_t *)peel_boxed(Adler2));
+	int64_t sz = (is_int(Size2))
+		?int_value(Size2)
+		:bignum_to_int((bignum_t *)peel_boxed(Size2));
+
+	unsigned long val = adler32_combine((unsigned long)c1,
+									    (unsigned long)c2,
+									    (unsigned long)sz);
+	return int_to_term(val, &proc->hp);
+}
+
 //EOF

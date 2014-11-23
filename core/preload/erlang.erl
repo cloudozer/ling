@@ -49,6 +49,7 @@
 -export([disconnect_node/1]).
 -export([get_cookie/0]).
 -export([min/2,max/2]).
+-export([integer_to_binary/1,integer_to_binary/2]).
 -export([integer_to_list/2]).
 -export([list_to_integer/1,list_to_integer/2,list_to_integer/3]).
 -export([binary_to_term/1,binary_to_term/2]).
@@ -88,7 +89,7 @@
 
 -export([atom_to_binary/2,binary_to_atom/2,binary_to_existing_atom/2]).
 
--export([crc32/1]).
+-export([crc32/1,adler32/1]).
 
 -export([nif_error/1]).
 
@@ -204,6 +205,9 @@ min(_, B) -> B.
 
 max(A, B) when A > B -> A;
 max(_, B) -> B.
+
+integer_to_binary(I) -> list_to_binary(integer_to_list(I)).
+integer_to_binary(I, Base) -> list_to_binary(erlang:integer_to_list(I, Base)).
 
 integer_to_list(I, 10) ->
     erlang:integer_to_list(I);
@@ -544,8 +548,8 @@ disk_info() ->
 new_counter() ->
 	erlang:new_counter(64).
 
-update_counter(Ref) ->
-	erlang:update_counter(Ref, 1).
+update_counter(Id) ->
+	erlang:update_counter(Id, 1).
 
 system_monitor() ->
 	erlang:display({not_implemented,system_monitor}),
@@ -775,6 +779,9 @@ binary_to_existing_atom(Bin, Enc) ->
 
 crc32(Data) ->
 	erlang:crc32(0, Data).
+
+adler32(Data) ->
+	erlang:adler32(1, Data).
 
 is_builtin(M, F, A) ->
 	ling_bifs:is_builtin(M, F, A).

@@ -52,7 +52,7 @@
 
 -define(SMALL_BITS, (32 -3)).
 
--define(MAX_HEAP_BIN, 512).
+-define(MAX_HEAP_BIN, 64).
 -define(MAX_BYTE_SIZE, ((1 bsl (32 -3)) -1)).
 -define(MAX_BIT_SIZE, (?MAX_BYTE_SIZE bsl 3)).
 

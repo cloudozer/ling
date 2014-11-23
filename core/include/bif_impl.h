@@ -47,6 +47,7 @@
 #include <nettle/cbc.h>
 
 #include "crc32.h"
+#include "adler32.h"
 
 #include "atom_defs.h"
 #include "bits.h"

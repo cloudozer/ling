@@ -64,6 +64,12 @@ void linc_incoming(int index);
 void linc_output(int index);
 #endif // EXP_LINC_LATENCY
 
+#ifdef EXP_LINC_LLSTAT
+void linc_int_stat(int ifidx, int rx_consumed, int tx_freed, int kicked);
+void linc_out_stat(int ifidx, int tx_len, int tx_freed, int kicked);
+void linc_out_drop(int ifidx, int tx_len);
+#endif // EXP_LINC_LLSTAT
+
 #define NR_RX_BUFFERS	256
 #define EXT_RX_BUFFERS  256
 
@@ -113,7 +119,7 @@ struct netfe_t {
 
 static void netfe_int(uint32_t port, void *data);
 static void netfe_incoming(netfe_t *fe, uint8_t *packet, int pack_len);
-static void netfe_tx_buf_gc(netfe_t *fe);
+static int netfe_tx_buf_gc(netfe_t *fe);
 static struct pbuf *packet_to_pbuf(unsigned char *packet, int pack_len);
 static int parse_mac(char *s, uint8_t mac[ETH_ALEN]);
 
@@ -283,7 +289,7 @@ static void netfe_int(uint32_t port, void *data)
 	netfe_t *fe = (netfe_t *)data;
 	assert(fe != 0);
 
-	netfe_tx_buf_gc(fe);
+	UNUSED int nr_tx_gc = netfe_tx_buf_gc(fe);
 
 	// A reponse may have NETRXF_more_data flag set. Such responses are buffered
 	// instead of passing it to upper layer immediately.
@@ -354,6 +360,10 @@ try_harder:
 	RING_PUSH_REQUESTS_AND_CHECK_NOTIFY(&fe->rx_ring, notify);
 	if (notify)
 		event_kick(fe->evtchn);
+
+#ifdef EXP_LINC_LLSTAT
+	linc_int_stat(fe->index, add_reqs, nr_tx_gc, notify);
+#endif // EXP_LINC_LLSTAT
 }
 
 static void netfe_incoming(netfe_t *fe, uint8_t *packet, int pack_len)
@@ -409,6 +419,9 @@ void netfe_output(netfe_t *fe, uint8_t *packet, int pack_len)
 	if (fe->free_tx_head == NO_TX_BUFFER)
 	{
 		//printk("netfe_output: packet dropped [size %d]\n", pack_len);
+#ifdef EXP_LINC_LLSTAT
+		linc_out_drop(fe->index, pack_len);
+#endif // EXP_LINC_LLSTAT
 		LINK_STATS_INC(link.drop);
 		return;
 	}
@@ -435,12 +448,17 @@ void netfe_output(netfe_t *fe, uint8_t *packet, int pack_len)
 	if (notify)
 		event_kick(fe->evtchn);
 
-	netfe_tx_buf_gc(fe);
+	UNUSED int nr_tx_gc = netfe_tx_buf_gc(fe);
+
+#ifdef EXP_LINC_LLSTAT
+	linc_out_stat(fe->index, pack_len, nr_tx_gc, notify);
+#endif // EXP_LINC_LLSTAT
 }
 
-static void netfe_tx_buf_gc(netfe_t *fe)
+static int netfe_tx_buf_gc(netfe_t *fe)
 {
 	RING_IDX prod, cons;
+	int nr_freed = 0;
 
 	do {
 		prod = fe->tx_ring.sring->rsp_prod;
@@ -451,6 +469,7 @@ static void netfe_tx_buf_gc(netfe_t *fe)
 			netif_tx_response_t *rsp = RING_GET_RESPONSE(&fe->tx_ring, cons);
 			fe->free_tx_bufs[rsp->id] = fe->free_tx_head;
 			fe->free_tx_head = rsp->id;
+			nr_freed++;
 		}
 
 		fe->tx_ring.rsp_cons = prod;
@@ -461,6 +480,8 @@ static void netfe_tx_buf_gc(netfe_t *fe)
 		mb();
 
 	} while ((cons == prod) && (prod != fe->tx_ring.sring->rsp_prod));
+
+	return nr_freed;
 }
 
 static struct pbuf *packet_to_pbuf(unsigned char *packet, int pack_len)

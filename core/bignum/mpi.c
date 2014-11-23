@@ -927,6 +927,7 @@ mp_err mp_sub(heap_t *hp, mp_int *a, mp_int *b, mp_int *c)
     }
 
   } else if(cmp == 0) {  /* Same sign, equal magnitude */
+    s_mp_pad(hp, c, 1); // heal crippled bogo_bignum (see its definition in bignum.c)
     mp_zero(c);
     return MP_OKAY;
 

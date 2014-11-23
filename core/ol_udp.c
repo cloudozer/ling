@@ -345,8 +345,8 @@ static term_t ol_udp_control(outlet_t *ol,
 	{
 		// why use UDP outlet to get this?
 		*reply++ = INET_REP_OK;
-		strcpy(reply, ling_hostname);
-		reply += strlen(ling_hostname);
+		strcpy(reply, my_domain_name);
+		reply += strlen(my_domain_name);
 	}
 	break;
 

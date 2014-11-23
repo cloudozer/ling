@@ -341,277 +341,283 @@ term_t bif_is_list1(term_t List, proc_t *proc);
 term_t bif_is_bitstring1(term_t Bits, proc_t *proc);
 // erlang:is_binary/1 [146]
 term_t bif_is_binary1(term_t Binary, proc_t *proc);
-// erlang:crc32_combine/3 [147]
+// erlang:adler32_combine/3 [147]
+term_t cbif_adler32_combine3(proc_t *proc, term_t *regs);
+// erlang:adler32/2 [148]
+term_t cbif_adler32_2(proc_t *proc, term_t *regs);
+// erlang:crc32_combine/3 [149]
 term_t cbif_crc32_combine3(proc_t *proc, term_t *regs);
-// erlang:crc32/2 [148]
+// erlang:crc32/2 [150]
 term_t cbif_crc32_2(proc_t *proc, term_t *regs);
-// erlang:md5_final/1 [149]
+// erlang:md5_final/1 [151]
 term_t cbif_md5_final1(proc_t *proc, term_t *regs);
-// erlang:md5_update/2 [150]
+// erlang:md5_update/2 [152]
 term_t cbif_md5_update2(proc_t *proc, term_t *regs);
-// erlang:md5_init/0 [151]
+// erlang:md5_init/0 [153]
 term_t cbif_md5_init0(proc_t *proc, term_t *regs);
-// erlang:md5/1 [152]
+// erlang:md5/1 [154]
 term_t cbif_md5_1(proc_t *proc, term_t *regs);
-// erlang:phash2/2 [153]
+// erlang:phash2/2 [155]
 term_t cbif_phash2_2(proc_t *proc, term_t *regs);
-// erlang:phash2/1 [154]
+// erlang:phash2/1 [156]
 term_t cbif_phash2_1(proc_t *proc, term_t *regs);
-// erlang:phash/2 [155]
+// erlang:phash/2 [157]
 term_t cbif_phash2(proc_t *proc, term_t *regs);
-// erlang:hash/2 [156]
+// erlang:hash/2 [158]
 term_t cbif_hash2(proc_t *proc, term_t *regs);
-// lwip:stats/0 [157]
+// lwip:stats/0 [159]
 term_t cbif_stats0(proc_t *proc, term_t *regs);
-// ling:experimental/2 [158]
+// ling:experimental/2 [160]
 term_t cbif_experimental2(proc_t *proc, term_t *regs);
-// ling:profile_display/0 [159]
+// ling:profile_display/0 [161]
 term_t cbif_profile_display0(proc_t *proc, term_t *regs);
-// ling:profile/1 [160]
+// ling:profile/1 [162]
 term_t cbif_profile1(proc_t *proc, term_t *regs);
-// ling:trace/2 [161]
+// ling:trace/2 [163]
 term_t cbif_trace2(proc_t *proc, term_t *regs);
-// ling:trace/1 [162]
+// ling:trace/1 [164]
 term_t cbif_trace1(proc_t *proc, term_t *regs);
-// ling:b3/0 [163]
+// ling:b3/0 [165]
 term_t cbif_b3_0(proc_t *proc, term_t *regs);
-// ling:b2/0 [164]
+// ling:b2/0 [166]
 term_t cbif_b2_0(proc_t *proc, term_t *regs);
-// ling:b1/0 [165]
+// ling:b1/0 [167]
 term_t cbif_b1_0(proc_t *proc, term_t *regs);
-// lwip:setup/4 [166]
+// ling:domain_name/0 [168]
+term_t cbif_domain_name0(proc_t *proc, term_t *regs);
+// lwip:setup/4 [169]
 term_t cbif_setup4(proc_t *proc, term_t *regs);
-// erlang:'decode_packet$'/4 [167]
+// erlang:'decode_packet$'/4 [170]
 term_t cbif_decode_packet4(proc_t *proc, term_t *regs);
-// erlang:port_get_data/1 [168]
+// erlang:port_get_data/1 [171]
 term_t cbif_port_get_data1(proc_t *proc, term_t *regs);
-// erlang:port_set_data/2 [169]
+// erlang:port_set_data/2 [172]
 term_t cbif_port_set_data2(proc_t *proc, term_t *regs);
-// erlang:port_control/3 [170]
+// erlang:port_control/3 [173]
 term_t cbif_port_control3(proc_t *proc, term_t *regs);
-// erlang:port_is_busy/1 [171]
+// erlang:port_is_busy/1 [174]
 term_t cbif_port_is_busy1(proc_t *proc, term_t *regs);
-// erlang:port_open/2 [172]
+// erlang:port_open/2 [175]
 term_t cbif_port_open2(proc_t *proc, term_t *regs);
-// erlang:port_info/2 [173]
+// erlang:port_info/2 [176]
 term_t cbif_port_info2(proc_t *proc, term_t *regs);
-// erlang:release_counter/1 [174]
+// erlang:release_counter/1 [177]
 term_t cbif_release_counter1(proc_t *proc, term_t *regs);
-// erlang:update_counter/2 [175]
+// erlang:update_counter/2 [178]
 term_t cbif_update_counter2(proc_t *proc, term_t *regs);
-// erlang:read_counter/1 [176]
+// erlang:read_counter/1 [179]
 term_t cbif_read_counter1(proc_t *proc, term_t *regs);
-// erlang:new_counter/1 [177]
+// erlang:new_counter/1 [180]
 term_t cbif_new_counter1(proc_t *proc, term_t *regs);
-// erlang:disk_info/1 [178]
+// erlang:disk_info/1 [181]
 term_t cbif_disk_info1(proc_t *proc, term_t *regs);
-// auth:secret2/0 [179]
+// auth:secret2/0 [182]
 term_t cbif_secret2_0(proc_t *proc, term_t *regs);
-// auth:secret1/0 [180]
+// auth:secret1/0 [183]
 term_t cbif_secret1_0(proc_t *proc, term_t *regs);
-// auth:set_secrets/2 [181]
+// auth:set_secrets/2 [184]
 term_t cbif_set_secrets2(proc_t *proc, term_t *regs);
-// erlang:node_group/0 [182]
+// erlang:node_group/0 [185]
 term_t cbif_node_group0(proc_t *proc, term_t *regs);
-// erlang:parent_node/0 [183]
+// erlang:parent_node/0 [186]
 term_t cbif_parent_node0(proc_t *proc, term_t *regs);
-// erlang:read_timer/1 [184]
+// erlang:read_timer/1 [187]
 term_t cbif_read_timer1(proc_t *proc, term_t *regs);
-// erlang:cancel_timer/1 [185]
+// erlang:cancel_timer/1 [188]
 term_t cbif_cancel_timer1(proc_t *proc, term_t *regs);
-// erlang:send_after/3 [186]
+// erlang:send_after/3 [189]
 term_t cbif_send_after3(proc_t *proc, term_t *regs);
-// erlang:start_timer/3 [187]
+// erlang:start_timer/3 [190]
 term_t cbif_start_timer3(proc_t *proc, term_t *regs);
-// file:native_name_encoding/0 [188]
+// file:native_name_encoding/0 [191]
 term_t cbif_native_name_encoding0(proc_t *proc, term_t *regs);
-// erlang:universaltime/0 [189]
+// erlang:universaltime/0 [192]
 term_t cbif_universaltime0(proc_t *proc, term_t *regs);
-// erlang:localtime/0 [190]
+// erlang:localtime/0 [193]
 term_t cbif_localtime0(proc_t *proc, term_t *regs);
-// erlang:time/0 [191]
+// erlang:time/0 [194]
 term_t cbif_time0(proc_t *proc, term_t *regs);
-// erlang:date/0 [192]
+// erlang:date/0 [195]
 term_t cbif_date0(proc_t *proc, term_t *regs);
-// erlang:now/0 [193]
+// erlang:now/0 [196]
 term_t cbif_now0(proc_t *proc, term_t *regs);
-// erlang:'halt$'/2 [194]
+// erlang:'halt$'/2 [197]
 term_t cbif_halt2(proc_t *proc, term_t *regs);
-// erlang:fun_info/2 [195]
+// erlang:fun_info/2 [198]
 term_t cbif_fun_info2(proc_t *proc, term_t *regs);
-// erlang:fun_info/1 [196]
+// erlang:fun_info/1 [199]
 term_t cbif_fun_info1(proc_t *proc, term_t *regs);
-// erlang:function_exported/3 [197]
+// erlang:function_exported/3 [200]
 term_t cbif_function_exported3(proc_t *proc, term_t *regs);
-// erlang:get_module_info/2 [198]
+// erlang:get_module_info/2 [201]
 term_t cbif_get_module_info2(proc_t *proc, term_t *regs);
-// erlang:check_process_code/2 [200]
+// erlang:check_process_code/2 [203]
 term_t cbif_check_process_code2(proc_t *proc, term_t *regs);
-// erlang:check_old_code/1 [201]
+// erlang:check_old_code/1 [204]
 term_t cbif_check_old_code1(proc_t *proc, term_t *regs);
-// erlang:delete_module/1 [202]
+// erlang:delete_module/1 [205]
 term_t cbif_delete_module1(proc_t *proc, term_t *regs);
-// erlang:'load_module$'/2 [203]
+// erlang:'load_module$'/2 [206]
 term_t cbif_load_module2(proc_t *proc, term_t *regs);
-// erlang:module_loaded/1 [204]
+// erlang:module_loaded/1 [207]
 term_t cbif_module_loaded1(proc_t *proc, term_t *regs);
-// erlang:pre_loaded/0 [205]
+// erlang:pre_loaded/0 [208]
 term_t cbif_pre_loaded0(proc_t *proc, term_t *regs);
-// erlang:loaded/0 [206]
+// erlang:loaded/0 [209]
 term_t cbif_loaded0(proc_t *proc, term_t *regs);
-// erlang:process_display/2 [207]
+// erlang:process_display/2 [210]
 term_t cbif_process_display2(proc_t *proc, term_t *regs);
-// erlang:display/1 [208]
+// erlang:display/1 [211]
 term_t cbif_display1(proc_t *proc, term_t *regs);
-// erlang:whereis/1 [209]
+// erlang:whereis/1 [212]
 term_t cbif_whereis1(proc_t *proc, term_t *regs);
-// erlang:unregister/1 [210]
+// erlang:unregister/1 [213]
 term_t cbif_unregister1(proc_t *proc, term_t *regs);
-// erlang:register/2 [211]
+// erlang:register/2 [214]
 term_t cbif_register2(proc_t *proc, term_t *regs);
-// erlang:registered/0 [212]
+// erlang:registered/0 [215]
 term_t cbif_registered0(proc_t *proc, term_t *regs);
-// erlang:ports/0 [213]
+// erlang:ports/0 [216]
 term_t cbif_ports0(proc_t *proc, term_t *regs);
-// erlang:processes/0 [214]
+// erlang:processes/0 [217]
 term_t cbif_processes0(proc_t *proc, term_t *regs);
-// erlang:memory/1 [215]
+// erlang:memory/1 [218]
 term_t cbif_memory1(proc_t *proc, term_t *regs);
-// erlang:statistics/1 [216]
+// erlang:statistics/1 [219]
 term_t cbif_statistics1(proc_t *proc, term_t *regs);
-// erlang:system_flag/2 [217]
+// erlang:system_flag/2 [220]
 term_t cbif_system_flag2(proc_t *proc, term_t *regs);
-// erlang:'get_dictionary$'/0 [218]
+// erlang:'get_dictionary$'/0 [221]
 term_t cbif_get_dictionary0(proc_t *proc, term_t *regs);
-// erlang:'set_dictionary$'/1 [219]
+// erlang:'set_dictionary$'/1 [222]
 term_t cbif_set_dictionary1(proc_t *proc, term_t *regs);
-// erlang:unlink/1 [220]
+// erlang:unlink/1 [223]
 term_t cbif_unlink1(proc_t *proc, term_t *regs);
-// erlang:link/1 [221]
+// erlang:link/1 [224]
 term_t cbif_link1(proc_t *proc, term_t *regs);
-// erlang:demonitor/1 [222]
+// erlang:demonitor/1 [225]
 term_t cbif_demonitor1(proc_t *proc, term_t *regs);
-// erlang:monitor/2 [223]
+// erlang:monitor/2 [226]
 term_t cbif_monitor2(proc_t *proc, term_t *regs);
-// erlang:spawn_monitor/1 [224]
+// erlang:spawn_monitor/1 [227]
 term_t cbif_spawn_monitor1(proc_t *proc, term_t *regs);
-// erlang:spawn_link/1 [225]
+// erlang:spawn_link/1 [228]
 term_t cbif_spawn_link1(proc_t *proc, term_t *regs);
-// erlang:spawn/1 [226]
+// erlang:spawn/1 [229]
 term_t cbif_spawn1(proc_t *proc, term_t *regs);
-// erlang:spawn_monitor/3 [227]
+// erlang:spawn_monitor/3 [230]
 term_t cbif_spawn_monitor3(proc_t *proc, term_t *regs);
-// erlang:spawn_link/3 [228]
+// erlang:spawn_link/3 [231]
 term_t cbif_spawn_link3(proc_t *proc, term_t *regs);
-// erlang:spawn/3 [229]
+// erlang:spawn/3 [232]
 term_t cbif_spawn3(proc_t *proc, term_t *regs);
-// erlang:get_stacktrace/0 [230]
+// erlang:get_stacktrace/0 [233]
 term_t cbif_get_stacktrace0(proc_t *proc, term_t *regs);
-// erlang:garbage_collect/1 [237]
+// erlang:garbage_collect/1 [240]
 term_t cbif_garbage_collect1(proc_t *proc, term_t *regs);
-// erlang:garbage_collect/0 [238]
+// erlang:garbage_collect/0 [241]
 term_t cbif_garbage_collect0(proc_t *proc, term_t *regs);
-// erlang:is_process_alive/1 [239]
+// erlang:is_process_alive/1 [242]
 term_t cbif_is_process_alive1(proc_t *proc, term_t *regs);
-// erlang:group_leader/2 [240]
+// erlang:group_leader/2 [243]
 term_t cbif_group_leader2(proc_t *proc, term_t *regs);
-// erlang:group_leader/0 [241]
+// erlang:group_leader/0 [244]
 term_t cbif_group_leader0(proc_t *proc, term_t *regs);
-// erlang:process_info/2 [242]
+// erlang:process_info/2 [245]
 term_t cbif_process_info2(proc_t *proc, term_t *regs);
-// erlang:process_flag/3 [243]
+// erlang:process_flag/3 [246]
 term_t cbif_process_flag3(proc_t *proc, term_t *regs);
-// erlang:process_flag/2 [244]
+// erlang:process_flag/2 [247]
 term_t cbif_process_flag2(proc_t *proc, term_t *regs);
-// ets:give_away/3 [245]
+// ets:give_away/3 [248]
 term_t cbif_ets_give_away3(proc_t *proc, term_t *regs);
-// ets:update_element/3 [246]
+// ets:update_element/3 [249]
 term_t cbif_ets_update_element3(proc_t *proc, term_t *regs);
-// ets:update_counter/3 [247]
+// ets:update_counter/3 [250]
 term_t cbif_ets_update_counter3(proc_t *proc, term_t *regs);
-// ets:setopts/2 [248]
+// ets:setopts/2 [251]
 term_t cbif_ets_setopts2(proc_t *proc, term_t *regs);
-// ets:select_delete/2 [249]
+// ets:select_delete/2 [252]
 term_t cbif_ets_select_delete2(proc_t *proc, term_t *regs);
-// ets:select_reverse/3 [250]
+// ets:select_reverse/3 [253]
 term_t cbif_ets_select_reverse3(proc_t *proc, term_t *regs);
-// ets:select_reverse/2 [251]
+// ets:select_reverse/2 [254]
 term_t cbif_ets_select_reverse2(proc_t *proc, term_t *regs);
-// ets:select_reverse/1 [252]
+// ets:select_reverse/1 [255]
 term_t cbif_ets_select_reverse1(proc_t *proc, term_t *regs);
-// ets:select_count/2 [253]
+// ets:select_count/2 [256]
 term_t cbif_ets_select_count2(proc_t *proc, term_t *regs);
-// ets:select/3 [254]
+// ets:select/3 [257]
 term_t cbif_ets_select3(proc_t *proc, term_t *regs);
-// ets:select/2 [255]
+// ets:select/2 [258]
 term_t cbif_ets_select2(proc_t *proc, term_t *regs);
-// ets:select/1 [256]
+// ets:select/1 [259]
 term_t cbif_ets_select1(proc_t *proc, term_t *regs);
-// ets:match_spec_run_r/3 [257]
+// ets:match_spec_run_r/3 [260]
 term_t cbif_ets_match_spec_run_r3(proc_t *proc, term_t *regs);
-// ets:match_spec_compile/1 [258]
+// ets:match_spec_compile/1 [261]
 term_t cbif_ets_match_spec_compile1(proc_t *proc, term_t *regs);
-// ets:match_object/3 [259]
+// ets:match_object/3 [262]
 term_t cbif_ets_match_object3(proc_t *proc, term_t *regs);
-// ets:match_object/2 [260]
+// ets:match_object/2 [263]
 term_t cbif_ets_match_object2(proc_t *proc, term_t *regs);
-// ets:match_object/1 [261]
+// ets:match_object/1 [264]
 term_t cbif_ets_match_object1(proc_t *proc, term_t *regs);
-// ets:match/3 [262]
+// ets:match/3 [265]
 term_t cbif_ets_match3(proc_t *proc, term_t *regs);
-// ets:match/2 [263]
+// ets:match/2 [266]
 term_t cbif_ets_match2(proc_t *proc, term_t *regs);
-// ets:match/1 [264]
+// ets:match/1 [267]
 term_t cbif_ets_match1(proc_t *proc, term_t *regs);
-// ets:slot/2 [265]
+// ets:slot/2 [268]
 term_t cbif_ets_slot2(proc_t *proc, term_t *regs);
-// ets:rename/2 [266]
+// ets:rename/2 [269]
 term_t cbif_ets_rename2(proc_t *proc, term_t *regs);
-// ets:prev/2 [267]
+// ets:prev/2 [270]
 term_t cbif_ets_prev2(proc_t *proc, term_t *regs);
-// ets:next/2 [268]
+// ets:next/2 [271]
 term_t cbif_ets_next2(proc_t *proc, term_t *regs);
-// ets:member/2 [269]
+// ets:member/2 [272]
 term_t cbif_ets_member2(proc_t *proc, term_t *regs);
-// ets:last/1 [270]
+// ets:last/1 [273]
 term_t cbif_ets_last1(proc_t *proc, term_t *regs);
-// ets:is_compiled_ms/1 [271]
+// ets:is_compiled_ms/1 [274]
 term_t cbif_ets_is_compiled_ms1(proc_t *proc, term_t *regs);
-// ets:insert_new/2 [272]
+// ets:insert_new/2 [275]
 term_t cbif_ets_insert_new2(proc_t *proc, term_t *regs);
-// ets:insert/2 [273]
+// ets:insert/2 [276]
 term_t cbif_ets_insert2(proc_t *proc, term_t *regs);
-// ets:lookup_element/3 [274]
+// ets:lookup_element/3 [277]
 term_t cbif_ets_lookup_element3(proc_t *proc, term_t *regs);
-// ets:lookup/2 [275]
+// ets:lookup/2 [278]
 term_t cbif_ets_lookup2(proc_t *proc, term_t *regs);
-// ets:safe_fixtable/2 [276]
+// ets:safe_fixtable/2 [279]
 term_t cbif_ets_safe_fixtable2(proc_t *proc, term_t *regs);
-// ets:info/2 [277]
+// ets:info/2 [280]
 term_t cbif_ets_info2(proc_t *proc, term_t *regs);
-// ets:info/1 [278]
+// ets:info/1 [281]
 term_t cbif_ets_info1(proc_t *proc, term_t *regs);
-// ets:first/1 [279]
+// ets:first/1 [282]
 term_t cbif_ets_first1(proc_t *proc, term_t *regs);
-// ets:delete_all_objects/1 [280]
+// ets:delete_all_objects/1 [283]
 term_t cbif_ets_delete_all_objects1(proc_t *proc, term_t *regs);
-// ets:delete_object/2 [281]
+// ets:delete_object/2 [284]
 term_t cbif_ets_delete_object2(proc_t *proc, term_t *regs);
-// ets:delete/2 [282]
+// ets:delete/2 [285]
 term_t cbif_ets_delete2(proc_t *proc, term_t *regs);
-// ets:delete/1 [283]
+// ets:delete/1 [286]
 term_t cbif_ets_delete1(proc_t *proc, term_t *regs);
-// ets:new/2 [284]
+// ets:new/2 [287]
 term_t cbif_ets_new2(proc_t *proc, term_t *regs);
-// ets:all/0 [285]
+// ets:all/0 [288]
 term_t cbif_ets_all0(proc_t *proc, term_t *regs);
-// re:run/3 [286]
+// re:run/3 [289]
 term_t cbif_re_run3(proc_t *proc, term_t *regs);
-// re:run/2 [287]
+// re:run/2 [290]
 term_t cbif_re_run2(proc_t *proc, term_t *regs);
-// re:compile/2 [288]
+// re:compile/2 [291]
 term_t cbif_re_compile2(proc_t *proc, term_t *regs);
-// re:compile/1 [289]
+// re:compile/1 [292]
 term_t cbif_re_compile1(proc_t *proc, term_t *regs);
 
 //EOF
