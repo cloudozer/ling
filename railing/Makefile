@@ -5,4 +5,4 @@ clean:
 	rm -f *.beam railing
 
 %.beam: %.erl
-	erlc $<
+	erlc -DLING_VER=\"$(LING_VER)\" $< 

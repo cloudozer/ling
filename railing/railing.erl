@@ -9,9 +9,9 @@ opt_spec() -> [
 	{name,    $n, "name",    string,    "Set image name (default: current dir name)"},
 	{domain,  $d, "domain",  string,    "Set domain file name (default: 'domain_config')"},
 	{memory,  $m, "memory",  integer,   "Set image memory (megabytes)"},
-	{extra,   $e, "extra",   string,    "Append extra string to the kernel command line"}
+	{extra,   $e, "extra",   string,    "Append extra string to the kernel command line"},
+	{version, $v, "version", undefined, "Print version information and quit"}
 	% debug
-	% version
 	% clean
 ].
 
@@ -26,6 +26,14 @@ main(Args) ->
 			{ok, Ok} ->
 				Ok
 		end,
+
+	case lists:member(version, Opts) of
+		true ->
+			io:format("LING v~s\n", [?LING_VER]),
+			halt();
+		_ ->
+			ok
+	end,
 
 	case lists:member(help, Opts) orelse length(Cmds) == 0 of
 		true ->

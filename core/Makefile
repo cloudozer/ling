@@ -3,7 +3,6 @@
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc
 default: $(INCLUDES) vmling.o
 
-LING_VER := 0.2.3
 ARCH := x86
 XEN_INTERFACE_VERSION := 0x00030205
 
