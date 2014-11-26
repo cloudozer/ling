@@ -7,7 +7,7 @@ opt_spec() -> [
 	{include, $i, "include", string,    "Import directory recursively"},
 	{exclude, $x, "exclude", string,    "Do not import directories that start with path"},
 	{name,    $n, "name",    string,    "Set image name (default: current dir name)"},
-	{domain,  $d, "domain",  string,    "Set domain file name (default: 'domain_config'"},
+	{domain,  $d, "domain",  string,    "Set domain file name (default: 'domain_config')"},
 	{memory,  $m, "memory",  integer,   "Set image memory (megabytes)"},
 	{extra,   $e, "extra",   string,    "Append extra string to the kernel command line"}
 	% debug
@@ -167,7 +167,7 @@ main(Args) ->
 	{ok, EmbedFs} = file:open(filename:join(cache_dir(),"embed.fs"), [write]),
 
 	BuckCount = erlang:length(Bucks),
-	BinCount = 
+	BinCount =
 		lists:foldl(
 			fun({_Buck, _Mnt, Bins}, Count) ->
 				Count + erlang:length(Bins)
@@ -218,8 +218,8 @@ main(Args) ->
 
 	Vif = "vif = " ++ lists:flatten(io_lib:format("~p", [[Vif || {vif, Vif} <- Config]])),
 	Pz = " -pz" ++ lists:flatten([" " ++ Dir || {_, Dir, _} <- CustomBucks]),
-	Home = " -home /" ++ PrjName,
-	Extra = [E || {extra, E} <- Config] ++ [Home] ++ [Pz],
+	Home = "-home /" ++ PrjName,
+	Extra = [" " ++ E || {extra, E} <- Config] ++ [Home] ++ [Pz],
 
 	ok = file:write_file(DomName,
 		"name = \"" ++ PrjName ++ "\"\n" ++
@@ -248,8 +248,8 @@ lib(Lib) ->
 	Mnt = filename:join(["/erlang/lib",filename:basename(Dir),ebin]),
 
 	Files = union(
-		filelib:wildcard(filename:join([Dir, ebin, "*"])),
-		filelib:wildcard(filename:join([cache_dir(), apps, Lib, ebin, "*"]))
+		filelib:wildcard(filename:join([Dir, ebin, "*.{app,beam}"])),
+		filelib:wildcard(filename:join([cache_dir(), apps, Lib, ebin, "*.{app,beam}"]))
 	),
 
 	NewFiles = [bin(Lib, F) || F <- Files],
