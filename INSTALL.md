@@ -10,7 +10,7 @@ work. It usually means that Erlang must be build from
 [sources](http://erlang.org).
 
 ## Build
-
+```
 make
 make install
-
+```
