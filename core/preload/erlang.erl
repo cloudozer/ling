@@ -104,7 +104,6 @@
 
 -compile({no_auto_import,[halt/2,port_command/3]}).
 
--define(LING_VER, "0.2.3").
 -define(LING_COMPAT_REL, 16).
 -define(LING_COMPAT_OTP_RELEASE, "R16B01").	%% do not forget to update this
 

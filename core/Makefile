@@ -118,7 +118,7 @@ $(BEAMS): %.beam: %.erl
 
 PREMODS := $(patsubst %.erl,%.beam,$(wildcard preload/*.erl))
 $(PREMODS): %.beam: %.erl
-	erlc -o preload $<
+	erlc -DLING_VER=\"$(LING_VER)\" -o preload $<
 
 gentab/exp_tab.erl: $(PREMODS) ../bc/scripts/bif.tab
 	scripts/exptab_gen preload ../bc/scripts/bif.tab $@
