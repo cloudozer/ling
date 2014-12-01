@@ -8,7 +8,7 @@ opt_spec() -> [
 	{exclude, $x, "exclude", string,    "do not import directories that start with <path>"},
 	{name,    $n, "name",    string,    "set image name (default: current dir name)"},
 	{domain,  $d, "domain",  string,    "set domain config file name (default: 'domain_config')"},
-	{memory,  $m, "memory",  integer,   "set domain memory size (megabytes, default: 1024)"},
+	{memory,  $m, "memory",  integer,   "set domain memory size (megabytes)"},
 	{extra,   $e, "extra",   string,    "append to kernel command line"},
 	{version, $v, "version", undefined, "print version info"}
 	% debug
