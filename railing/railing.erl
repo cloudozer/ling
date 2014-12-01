@@ -2,15 +2,15 @@
 -export([main/1]).
 
 opt_spec() -> [
-	{help,    $h, "help",    undefined, "This help"},
-	{lib,     $l, "lib",     atom,      "Import lib from Erlang OTP"},
-	{include, $i, "include", string,    "Import directory recursively"},
-	{exclude, $x, "exclude", string,    "Do not import directories that start with path"},
-	{name,    $n, "name",    string,    "Set image name (default: current dir name)"},
-	{domain,  $d, "domain",  string,    "Set domain file name (default: 'domain_config')"},
-	{memory,  $m, "memory",  integer,   "Set image memory (megabytes)"},
-	{extra,   $e, "extra",   string,    "Append extra string to the kernel command line"},
-	{version, $v, "version", undefined, "Print version information and quit"}
+	{help,    $h, "help",    undefined, "this help"},
+	{lib,     $l, "lib",     atom,      "import lib from Erlang OTP"},
+	{include, $i, "include", string,    "import directory recursively"},
+	{exclude, $x, "exclude", string,    "do not import directories that start with <path>"},
+	{name,    $n, "name",    string,    "set image name (default: current dir name)"},
+	{domain,  $d, "domain",  string,    "set domain config file name (default: 'domain_config')"},
+	{memory,  $m, "memory",  integer,   "set domain memory size (megabytes, default: 1024)"},
+	{extra,   $e, "extra",   string,    "append to kernel command line"},
+	{version, $v, "version", undefined, "print version info"}
 	% debug
 	% clean
 ].
@@ -37,7 +37,7 @@ main(Args) ->
 
 	case lists:member(help, Opts) orelse length(Cmds) == 0 of
 		true ->
-			getopt:usage(opt_spec(), "railing", "[image]"),
+			getopt:usage(opt_spec(), "railing image", ""),
 			halt();
 		_ ->
 			ok
