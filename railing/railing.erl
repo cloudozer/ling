@@ -18,6 +18,14 @@ opt_spec() -> [
 cache_dir() -> ".railing".
 
 main(Args) ->
+	case erlang:system_info(otp_release) of
+		?OTP_VER ->
+			ok;
+		OtpVer ->
+			io:format("Erlang ~s is incompatible, required version ~s\n", [OtpVer, ?OTP_VER]),
+			halt(1)
+	end,
+
 	{Opts, Cmds} =
 		case getopt:parse(opt_spec(), Args) of
 			{error, Error} ->
@@ -29,7 +37,7 @@ main(Args) ->
 
 	case lists:member(version, Opts) of
 		true ->
-			io:format("LING v~s\n", [?LING_VER]),
+			io:format("ling-~s\n", [?LING_VER]),
 			halt();
 		_ ->
 			ok

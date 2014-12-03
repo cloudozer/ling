@@ -1,5 +1,8 @@
 
-.PHONY: default
+.PHONY: default nettle
+
+include ../Config.mk
+
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc
 default: $(INCLUDES) vmling.o
 
@@ -128,10 +131,8 @@ include/atom_defs.h atoms.inc gentab/atoms.erl: scripts/atoms.tab gentab/exp_tab
 
 
 premod: $(INCLUDES)
-$(INCLUDES): \
-				gentab/atoms.beam gentab/exp_tab.beam include/atom_defs.h $(PREMODS)
-	scripts/premod_gen preload \
-		premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc copy
+$(INCLUDES): gentab/atoms.beam gentab/exp_tab.beam include/atom_defs.h $(PREMODS)
+	scripts/premod_gen preload premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc copy
 
 preload/literals.o: preload/literals.bin
 	objcopy -I binary -O elf64-x86-64 -B i386 \
@@ -140,8 +141,10 @@ preload/literals.o: preload/literals.bin
 		--redefine-sym _binary_preload_literals_bin_size=literals_blob_size \
 		$< $@
 
-vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) lib/nettle/libnettle.a
+vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) | nettle
 	gcc -o $@ $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL) $(CFLAGS)
+
+nettle: lib/nettle/libnettle.a
 
 lib/nettle/libnettle.a: lib/nettle/config.h
 	make -C lib/nettle

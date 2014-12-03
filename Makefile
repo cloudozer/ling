@@ -1,21 +1,27 @@
 
-.PHONY: default bc core apps railing test install
+.PHONY: default bc core apps railing test install checkotp
 
-LING_VER := 0.3.0
+include Config.mk
 
-default: bc core apps railing
+default: bc core apps railing | checkotp
+
+checkotp:
+ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp_release)),erlang:halt(0)."))
+	@echo Erlang/OTP $(OTP_VER) not found
+	@exit 1
+endif
 
 bc:
 	make -C bc
 
 core:
-	make -C core LING_VER=$(LING_VER)
+	make -C core
 
 apps:
 	make -C apps
 
 railing:
-	make -C railing LING_VER=$(LING_VER)
+	make -C railing
 
 test:
 	make -C test
