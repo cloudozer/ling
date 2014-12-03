@@ -22,7 +22,7 @@ main(Args) ->
 		?OTP_VER ->
 			ok;
 		OtpVer ->
-			io:format("Erlang ~s is incompatible, required version ~s\n", [OtpVer, ?OTP_VER]),
+			io:format("Error: incompatible Erlang/OTP version: required ~s, found ~s\n", [?OTP_VER, OtpVer]),
 			halt(1)
 	end,
 
@@ -37,7 +37,7 @@ main(Args) ->
 
 	case lists:member(version, Opts) of
 		true ->
-			io:format("ling-~s\n", [?LING_VER]),
+			io:format("LING v~s\n", [?LING_VER]),
 			halt();
 		_ ->
 			ok
@@ -235,7 +235,7 @@ main(Args) ->
 	Vif = "vif = " ++ lists:flatten(io_lib:format("~p", [[Vif || {vif, Vif} <- Config]])),
 	Pz = " -pz" ++ lists:flatten([" " ++ Dir || {_, Dir, _} <- CustomBucks]),
 	Home = "-home /" ++ PrjName,
-	Extra = [" " ++ E || {extra, E} <- Config] ++ [Home] ++ [Pz],
+	Extra = [E ++ " " || {extra, E} <- Config] ++ [Home] ++ [Pz],
 
 	ok = file:write_file(DomName,
 		"name = \"" ++ PrjName ++ "\"\n" ++
