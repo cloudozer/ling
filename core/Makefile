@@ -4,7 +4,7 @@
 include ../Config.mk
 
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc
-default: $(INCLUDES) vmling.o
+default: nettle $(INCLUDES) vmling.o
 
 ARCH := x86
 XEN_INTERFACE_VERSION := 0x00030205
@@ -12,6 +12,7 @@ XEN_INTERFACE_VERSION := 0x00030205
 ASFLAGS := -D__ASSEMBLY__
 
 CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
+CPPFLAGS += -iquote lib
 CPPFLAGS += -isystem lib/misc/include
 CPPFLAGS += -isystem lib/pcre
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
@@ -141,7 +142,7 @@ preload/literals.o: preload/literals.bin
 		--redefine-sym _binary_preload_literals_bin_size=literals_blob_size \
 		$< $@
 
-vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) | nettle
+vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS)
 	gcc -o $@ $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL) $(CFLAGS)
 
 nettle: lib/nettle/libnettle.a
