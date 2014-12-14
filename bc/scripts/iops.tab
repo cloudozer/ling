@@ -294,4 +294,17 @@ l_wait_timeout f u
 l_wait_error
 send 
 
-%%EOF
+%% Maps
+
+is_map f d
+
+new_map -list d u
+update_map_assoc -list d d u
+update_map_exact -list f d d u
+
+get_map_element f d s d
+get_map_elements -list f d u
+
+has_map_field f d s
+has_map_fields -list f d u
+

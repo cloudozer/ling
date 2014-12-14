@@ -39,8 +39,7 @@ main([IopVarsTab,HotColdIops,IopVarsErl]) ->
 	io:format("Writing ~s...~n", [IopVarsErl]),
 	{ok,Out} = file:open(IopVarsErl, [write]),
 	io:format(Out, "~s~n", [C]),
-	file:close(Out),
-	io:format("Done~n");
+	file:close(Out);
 
 main(_) ->
 	io:format("usage: reorder_iopvars iopvars.tab hot_cold_iops iopvars.erl~n").
