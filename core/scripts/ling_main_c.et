@@ -3874,6 +3874,13 @@ if (is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX)
 
 goto l_apply_entry;
 
+<%@ iop(is_map, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_boxed_map(v))
+	<% jump(Fail) %>;
+
+// TODO: maps
+
 <%@ iop(Op, _Args) %>
 
 //printk("TODO: iop <% atom_to_list(Op) %> not implemented\n");

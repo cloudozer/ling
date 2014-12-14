@@ -28460,16 +28460,14 @@ is_map_0:
 
 
 void *next = (void *)expand_ptr(ip[3]);
+term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed_map(v))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
-//printk("TODO: iop is_map not implemented\n");
-printk("TODO: iop {is_map,[{f,{word,0}},{t,{word,1}}]} not implemented\n");
-
-light_swap_out();
-term_t op_name = heap_strz(&proc->hp, "is_map");
-term_t reason = heap_tuple2(&proc->hp, A_NOT_IMPLEMENTED, op_name);
-light_swap_in();
-
-raise_error(reason);
+// TODO: maps
 
 
 ip += 3;
