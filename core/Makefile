@@ -108,6 +108,9 @@ $(PCRE_OBJS): %.o: %.c
 $(LWIP_OBJS): %.o: %.c
 	gcc $(CFLAGS) $(CPPFLAGS) -Wno-char-subscripts -o $@ -c $<
 
+ling_main.c: scripts/ling_main_c.et scripts/hot_cold_iops
+	scripts/main_gen $^
+
 ling_main.o: ling_main.c include/atom_defs.h
 	gcc $(CFLAGS) $(CPPFLAGS) -fno-reorder-blocks -o $@ -c $<
 

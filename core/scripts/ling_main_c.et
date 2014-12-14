@@ -1,0 +1,4207 @@
+<%~
+i2l(X) -> integer_to_list(X).
+
+%%
+%% Same as arg but never resolves registers and slots packed as a term
+%%
+dir_arg({t,{word,W}}) -> [<<"(term_t)">>,word(W)];
+dir_arg(X) -> arg(X).
+
+arg({T,{value,V}}) -> value_arg(T, V);
+arg({T,{bits,W,B}}) -> bits_arg(T, W, B);
+arg({T,{word,W}}) -> word_arg(T, W).
+
+value_arg(u, V) -> integer_to_list(V);
+value_arg(u8, V) -> integer_to_list(V);
+value_arg(smallint, I) -> [<<"tag_int(">>,integer_to_list(I),<<")">>];
+value_arg(x, 0) -> <<"r0">>;
+value_arg(x, V) -> [<<"rs[">>,integer_to_list(V),<<"]">>];
+value_arg(y, V) -> [<<"sp[">>,integer_to_list(V+1),<<"]">>];
+value_arg(fr, N) -> [<<"fr[">>,integer_to_list(N),<<"]">>];
+value_arg(e, MFA) ->
+	io_lib:format("(preloaded_exports+~w)", [exp_tab:entry_index(MFA)]);
+value_arg(t, nil) -> <<"nil">>;
+value_arg(a, A) -> atoms:c_name(A);
+value_arg(b, MFA) -> exp_tab:entry_label(MFA).
+
+bits(W, B) -> [<<"((ip[">>,integer_to_list(W+1),
+			   <<"] >> ">>,integer_to_list(B),<<") & 255)">>].
+
+bits_arg(u8, W, B) -> bits(W, B);
+bits_arg(i8, W, B) -> [<<"(int8_t)">>,bits(W, B)];
+
+%%XXX: check if compiler emits the optimized code here
+bits_arg(x8, W, B) -> ["((",bits(W,B)," == 0) ?r0 :rs[",bits(W, B),"])"];
+
+bits_arg(y8, W, B) -> [<<"sp[">>,bits(W, B),<<"+1]">>];
+bits_arg(fr, W, B) -> [<<"fr[">>,bits(W, B),<<"]">>].
+
+word(W) -> [<<"ip[">>,integer_to_list(W+1),<<"]">>].
+
+word_arg(u32, W) -> word(W);
+%%
+%% TODO: check that compiler does not retrieve word(W) multiple times
+%%
+word_arg(t, W) -> [<<"(term_t)(is_reg(">>,word(W),
+				   <<") ?(">>,word(W),
+				   <<" == reg0) ?r0 :rs[reg_index(">>,word(W),
+				   <<")] :is_slot(">>,word(W),
+				   <<") ?sp[slot_index(">>,word(W),
+				   <<")+1] :">>,word(W),
+				   <<")">>];
+word_arg(b, W) -> [<<"(bif_func_t)expand_ptr(">>,word(W),<<")">>];
+word_arg(e, W) -> [<<"(export_t *)expand_ptr(">>,word(W),<<")">>];
+word_arg(f, W) -> [<<"(uint32_t *)expand_ptr(">>,word(W),<<")">>];
+word_arg(str, W) -> [<<"(uint8_t *)expand_ptr(">>,word(W),<<")">>];
+word_arg(fu, W) -> [<<"(fun_entry_t *)expand_ptr(">>,word(W),<<")">>].
+
+variant_index(Id, Vs) ->
+	variant_index(Id, Vs, 0).
+
+variant_index(Id, [{_,Id,_,_}|Vs], N) ->
+	N;
+variant_index(Id, [_|Vs], N) ->
+	variant_index(Id, Vs, N +1).
+
+%>
+<%? {Variants} = Data %>
+// Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 
+// * Redistributions of source code must retain the above copyright notice, this
+// list of conditions and the following disclaimer.
+// 
+// * Redistributions in binary form must reproduce the above copyright notice,
+// this list of conditions and the following disclaimer in the documentation
+// and/or other materials provided with the distribution.
+// 
+// * Redistributions in any form must be accompanied by information on how to
+// obtain complete source code for the LING software and any accompanying
+// software that uses the LING software. The source code must either be included
+// in the distribution or be available for no more than the cost of distribution
+// plus a nominal fee, and must be freely redistributable under reasonable
+// conditions.  For an executable file, complete source code means the source
+// code for all modules it contains. It does not include source code for modules
+// or files that typically accompany the major components of the operating
+// system on which the executable file runs.
+// 
+// THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+// DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#include <stdint.h>
+#include <math.h>
+
+#include "ling_common.h"
+
+#include "os.h"
+#include "heap.h"
+#include "proc.h"
+#include "code_base.h"
+#include "scheduler.h"
+#include "term.h"
+#include "bignum.h"
+#include "mixed.h"
+#include "string.h"
+#include "atoms.h"
+#include "atom_defs.h"
+#include "bif.h"
+#include "catch_tab.h"
+#include "stringify.h"
+#include "stdlib.h"
+#include "msg_queue.h"
+#include "bits.h"
+#include "cluster.h"
+#include "getput.h"
+#include "time.h"
+#include "unicode.h"
+#include "term_util.h"
+#include "list_util.h"
+#include "outlet.h"
+#include "timers.h"
+#include "hash.h"
+
+// needed by purge_module
+extern hash_t *registry;
+
+#ifdef TRACE_HARNESS
+uint32_t trace_mask = 0; // TRACE_MASK_EXCEPTION;
+term_t trace_module = noval;
+#endif
+
+// tunable
+#define BS_INIT_FAIL_GC_THRESH	8000
+
+#define DELIVER_SIGNALS 	1
+
+int max_backtrace_depth = 8;	// 8 is in exception_SUITE.erl
+
+// Pointers to the code implementing special instructions; needed for stack
+// tracing.
+void *func_info_label = 0;
+void *int_code_end_label = 0;
+
+static opcode_info_t *ling_opcodes = 0;
+
+typedef struct pair_t pair_t;
+struct pair_t {
+	uint32_t f;
+	uint32_t s;
+};
+
+typedef struct mfa_t mfa_t;
+struct mfa_t {
+	term_t mod;
+	term_t fun;
+	int arity;
+};
+
+static int select_val_atoms_compare(const void *a, const void *b);
+
+static term_t get_stack_trace(uint32_t *ip, uint32_t *cp,
+			term_t *sp, term_t *sbot, mfa_t *first_mfa, term_t args0, heap_t *hp);
+
+static term_t invoke_bif(export_t *exp, proc_t *proc, term_t *rs, int live);
+
+static int send_to_outlet(outlet_t *outlet, term_t what, proc_t *proc);
+
+void proc_main(proc_t *proc)
+{
+	// current instruction pointer
+	register uint32_t *ip = 0;
+
+#define next() do { \
+   	goto *ip[0]; \
+} while (0)
+
+	// heap pointer
+	register uint32_t *htop = 0;
+	uint32_t *hend = 0;
+
+	// continuation pointer
+	uint32_t *cp = 0;
+
+	// stack pointers
+	term_t *sp = 0;
+	term_t *send;
+
+	// registers
+	register term_t r0 = noval;
+	term_t rs[NUM_REGS];
+
+	// temporary values
+	term_t tmp_arg1 = noval;
+	term_t tmp_arg2 = noval;
+
+	// binary put context (uninitialized)
+	bits_t bpc;
+
+	// floating-point registers
+	double fr[NUM_FREGS];
+
+	int reds_left = 0;
+
+	// must be filled in before jumping to raise_from_(arith_)bif
+	mfa_t raise_bif_mfa;
+
+#define swap_out() do { \
+	rs[0] = r0; \
+	heap_set_top0(&proc->hp, htop); \
+	proc_stack_set_top(proc, sp); \
+} while (0)
+
+#define swap_in() do { \
+	hend = heap_end(&proc->hp); \
+	htop = heap_top(&proc->hp); \
+	r0 = rs[0]; \
+} while (0)
+
+#define light_swap_out() do { \
+	heap_set_top0(&proc->hp, htop); \
+} while (0)
+
+#define light_swap_in() do { \
+	hend = heap_end(&proc->hp); \
+	htop = heap_top(&proc->hp); \
+} while (0)
+
+//
+// -4: &&func_info_0
+// -3: module
+// -2: function
+// -1: arity
+// ip is here
+//
+#define local_reduce() do { \
+	reds_left--; \
+	if (unlikely(reds_left <= 0)) { \
+		assert(ip[-4] == shrink_ptr(&&func_info_0)); \
+		proc->cap.live = ip[-1]; \
+		light_swap_out(); \
+		goto yield; \
+	} \
+	next(); \
+} while (0)
+
+#define badarg() do { \
+	goto badarg; \
+} while (0)
+
+#define bif_error1(reason, mod__, fun__, arg) do { \
+	raise_bif_mfa.mod = (mod__); \
+	raise_bif_mfa.fun = (fun__); \
+	raise_bif_mfa.arity = 1; \
+	rs[0] = (arg); \
+	rs[1] = (reason); \
+	goto raise_from_arith_bif; \
+} while (0)
+
+#define bif_error2(reason, mod__, fun__, arg1, arg2)	do { \
+	raise_bif_mfa.mod = (mod__); \
+	raise_bif_mfa.fun = (fun__); \
+	raise_bif_mfa.arity = 2; \
+	rs[0] = (arg1); \
+	rs[1] = (arg2); \
+	rs[2] = (reason); \
+	goto raise_from_arith_bif; \
+} while (0)
+
+#define raise_error(reason) do { \
+	light_swap_out(); \
+	rs[1] = A_ERROR; \
+	rs[2] = (reason); \
+	proc->stack_trace = noval; \
+	goto exception; \
+} while (0)
+
+	if (proc == 0)
+		goto initialize;	// initialization moved to the end of the function
+	
+	assert(*proc->cap.cp == shrink_ptr(&&int_code_end_0));
+	if (nalloc_no_memory())
+	{
+		// variables (other than proc) are not valid - do not touch
+		proc->result.what = SLICE_RESULT_ERROR;
+		proc->result.reason = A_NO_MEMORY;
+
+		// proc is swapped out (light)
+		proc = scheduler_next(proc, 0);
+		goto init_done;
+	}
+
+	// We are ready to execute the first iop - report how much time we have
+	// spent warming up.
+	//uint64_t startup_latency_us = (wall_clock() - start_of_day_wall_clock) /1000;
+	//printk("Started in %lu us\n", startup_latency_us);
+
+	// Start counting runtime
+	scheduler_runtime_start();
+
+	goto init_done;
+
+yield:
+	proc->result.what = SLICE_RESULT_YIELD;
+
+schedule:
+
+	// proc->cap.live must be set before jumping here
+	// must be swapped out (light)
+	
+	proc->cap.ip = ip;
+	proc->cap.cp = cp;
+
+	proc_stack_set_top(proc, sp);
+
+	if (proc->cap.live > 0)
+	{
+		rs[0] = r0;
+		memcpy(proc->cap.regs, rs, proc->cap.live*sizeof(term_t));
+	}
+	memcpy(proc->cap.fr, fr, NUM_FREGS*sizeof(double));
+
+	if (proc->result.what == SLICE_RESULT_YIELD)
+		proc_burn_fat(proc, 0, proc->cap.regs, proc->cap.live);
+
+	proc = scheduler_next(proc, reds_left);
+
+init_done:
+	sp = proc_stack_top(proc);
+	send = proc_stack_end(proc);
+
+	htop = heap_top(&proc->hp);
+	hend = heap_end(&proc->hp);
+
+	ip = proc->cap.ip;
+	cp = proc->cap.cp;
+
+	if (proc->cap.live > 0)
+	{
+		memcpy(rs, proc->cap.regs, proc->cap.live*sizeof(term_t));
+		r0 = rs[0];
+	}
+	memcpy(fr, proc->cap.fr, NUM_FREGS*sizeof(double));
+
+#ifdef TRACE_HARNESS
+if (unlikely(trace_mask & TRACE_MASK_CALL))
+{
+	uint32_t *fi = backstep_to_func_info(ip);
+	int disp = ip-fi;
+	if (fi != 0)
+	{
+		if (trace_module == noval || fi[1] == trace_module)
+		{
+			if (disp == 4)
+			{
+				printk("TRACE: %pt:%pt(", T(fi[1]), T(fi[2]));
+				int arity = fi[3];
+				for (int i = 0; i < arity; i++)
+					printk("%pt%s", T(rs[i]), (i < arity-1) ?", " :"");
+				printk(")\n");
+			}
+			else
+				printk("TRACE: %pt:%pt/%d +%d\n", T(fi[1]), T(fi[2]), fi[3], disp);
+		}
+	}
+
+	reds_left = 1;
+}
+else
+	reds_left = SLICE_REDUCTIONS;
+#else /*TRACE_HARNESS*/
+	reds_left = SLICE_REDUCTIONS;
+#endif
+
+	next();
+
+<% [variant(Index, Op, Id, Args, Wsz, Attrs) || {Index,Op,Id,Args,Wsz,Attrs} <- Variants] %>
+
+badarg:
+{
+	light_swap_out();
+	rs[1] = A_ERROR;
+	rs[2] = A_BADARG;
+	proc->stack_trace = noval;
+	goto exception;
+}
+
+// bif_error1() and bif_error2() end up here
+// TODO: simplify, disregard arguments
+//
+raise_from_arith_bif:
+{
+	// raise_bif_mfa must be filled
+	light_swap_out();
+
+	//rs[0] .. rs[arity-1] - arguments
+	//rs[arity] - reason
+	
+	proc->stack_trace = get_stack_trace(ip, cp,
+				sp, proc_stack_bottom(proc),
+				0, noval, &proc->hp);
+
+	term_t reason = rs[raise_bif_mfa.arity];
+	rs[1] = A_ERROR;
+	rs[2] = reason;
+	goto exception;
+}
+
+raise_from_bif:
+{
+	// raise_bif_mfa must be filled
+	light_swap_out();
+
+	//rs[0] .. rs[arity-1] - arguments
+	//rs[arity] - reason
+	
+	term_t args0 = heap_vector_to_list(&proc->hp,
+		   		rs, raise_bif_mfa.arity);
+	proc->stack_trace = get_stack_trace(ip, cp,
+				sp, proc_stack_bottom(proc),
+				&raise_bif_mfa, args0, &proc->hp);
+
+	term_t reason = rs[raise_bif_mfa.arity];
+	rs[1] = A_ERROR;
+	rs[2] = reason;
+	/* FALLTHROUGH */
+}
+
+exception:
+{
+	//
+	// must be swapped out (lightly)
+	// exception class (rs[1]), reason (rs[2])
+	// and proc->stack_trace must be set
+	//
+	
+	proc->last_excep_class = rs[1];		//XXX: save class for possible future (raise s,s)
+	
+	//if (rs[1] == A_ERROR && proc->stack_trace == noval)
+	if ((rs[1] == A_ERROR || rs[1] == A_THROW) && proc->stack_trace == noval)
+		proc->stack_trace = get_stack_trace(ip, cp,
+				sp, proc_stack_bottom(proc),
+				0, noval, &proc->hp);
+
+	uint32_t *sbot = proc_stack_bottom(proc);
+	uint32_t *ptr = sp;
+	while (ptr < sbot)
+	{
+		if (is_catch(*ptr))
+		{
+			int index = catch_index(*ptr);
+			do {
+				ptr--;
+			} while (!is_boxed(*ptr) || !is_cp(peel_boxed(*ptr)));
+
+			sp = ptr;
+			ip = catch_jump_to(index);
+			cp = 0;
+
+#ifdef TRACE_HARNESS
+			if (trace_mask & TRACE_MASK_EXCEPTION)
+			{
+				if (rs[1] == A_ERROR)
+					printk("TRACEEX: caught [%pt] error:%pt stack %pt\n",
+							T(proc->pid), T(rs[2]), T(proc->stack_trace));
+				else
+					printk("TRACEEX: caught [%pt] %pt:%pt\n",
+							T(proc->pid), T(rs[1]), T(rs[2]));
+			}
+#endif
+
+			r0 = noval;
+
+			light_swap_in();
+			next();
+		}
+		ptr++;
+	}
+
+#ifdef TRACE_HARNESS
+if (trace_mask & TRACE_MASK_EXCEPTION)
+{
+	if (rs[1] == A_ERROR)
+		printk("TRACEEX: [%pt] error:%pt stack %pt\n",
+				T(proc->pid), T(rs[2]), T(proc->stack_trace));
+	else
+		printk("TRACEEX: [%pt] %pt:%pt\n",
+				T(proc->pid), T(rs[1]), T(rs[2]));
+}
+#endif
+
+	if (rs[1] == A_THROW)
+		proc->result.what = SLICE_RESULT_THROW;
+	else if (rs[1] == A_EXIT)
+		proc->result.what = SLICE_RESULT_EXIT;
+	else // A_ERROR
+	{
+		assert(rs[1] == A_ERROR);
+
+		// Attach a stack trace to the error reason
+		rs[2] = heap_tuple2(&proc->hp, rs[2], proc->stack_trace);
+
+		proc->result.what = SLICE_RESULT_ERROR;
+	}
+
+	proc->result.reason = rs[2];
+
+	proc->cap.live = 0;
+	// is swapped out (light)
+	goto schedule;
+}
+
+initialize:
+{
+	static opcode_info_t opcodes[] = { 
+		<% [opcode_info(Op, Id, Wsz) || {_,Op,Id,_,Wsz,_} <- Variants] %>
+	};
+	ling_opcodes = opcodes;	// export to the file scope
+
+	// Let the label &&func_info_0 known on the file scope to let stack tracing
+	// work; &&int_code_end is also needed for correct stack tracing.
+	//
+	func_info_label = &&func_info_0;
+	int_code_end_label = &&int_code_end_0;
+
+	// defines the code of preloaded modules
+	#include "premod.inc"
+
+	assert(proc == 0); // completing initialization run
+}
+}
+
+uint32_t *backstep_to_func_info(uint32_t *p)
+{
+	//TODO: request the code boundaries from code_base_t and
+	// watch for runaway pointers
+	while (1) {
+		while (*p != shrink_ptr(func_info_label))
+			p--;
+		if (is_atom(p[1]) && is_atom(p[2]) && p[3] < 256)
+			return p;
+	}
+	/* NOTREACHED */
+}
+
+opcode_info_t *opcode_lookup(void *label)
+{
+	for (int i = 0; i < <% i2l(length(Variants)) %>; i++)
+		if (ling_opcodes[i].label == label)
+			return ling_opcodes + i;
+	return 0;
+}
+
+opcode_info_t *opcode_get(uint32_t n)
+{
+	if (n > <% i2l(length(Variants)) %>)
+		return 0;
+	return ling_opcodes + n;
+}
+
+#ifdef EXP_COUNT_IOPS
+void print_iop_counters(void)
+{
+	printk("\n================ iop counters ====================\n");
+	for (int i = 0; i < <% i2l(length(Variants)) %>; i++)
+	{
+		opcode_info_t *oi = &ling_opcodes[i];
+		printk("%12ld %s\n", oi->counter, oi->var_name);
+	}
+}
+#endif // EXP_COUNT_IOPS
+
+#ifdef EXP_RUNTIME_METRICS
+void print_variant_code_sizes(void)
+{
+	printk("\n================ variant code sizes ==============\n");
+	int num_vars = <% i2l(length(Variants)) %>;
+	opcode_info_t *ptr = ling_opcodes;
+	while (ptr < ling_opcodes +num_vars)
+	{
+		printk("%10ld %s\n", (uintptr_t)ptr->label, ptr->var_name);
+		ptr++;
+	}
+}
+#endif // EXP_RUNTIME_METRICS
+
+static term_t invoke_bif(export_t *exp, proc_t *proc, term_t *rs, int live)
+{
+	assert(exp->is_bif);
+
+	switch(exp->is_bif)
+	{
+	case BIF_TYPE_CALL:
+		return ((cbif_func_t)exp->entry)(proc, rs);
+	case BIF_TYPE_NORMAL_0:
+		return ((bif_func0_t)exp->entry)(proc);
+	case BIF_TYPE_NORMAL_1:
+		return ((bif_func1_t)exp->entry)(rs[0], proc);
+	case BIF_TYPE_NORMAL_2:
+		return ((bif_func2_t)exp->entry)(rs[0], rs[1], proc);
+	case BIF_TYPE_GC_1:
+		return ((gc_bif_func1_t)exp->entry)(rs[0], proc, rs, live);
+	case BIF_TYPE_GC_2:
+		return ((gc_bif_func2_t)exp->entry)(rs[0], rs[1], proc, rs, live);
+	default:
+	{
+		assert(exp->is_bif == BIF_TYPE_GC_3);
+		return ((gc_bif_func3_t)exp->entry)(rs[0], rs[1], rs[2], proc, rs, live);
+	}
+	}
+}
+
+static term_t build_location(uint32_t *ip, heap_t *hp)
+{
+	// [{file,File},{line,Line}]
+	char fn[256 +4];
+	int line = code_base_source_line(ip, fn, sizeof(fn));
+	if (line == 0)
+		return nil;
+
+	term_t file_name = heap_strz_N(hp, fn);
+	if (file_name == noval)
+		return noval;
+
+	uint32_t *htop = heap_alloc_N(hp, 1 +2);
+	if (htop == 0)
+		return noval;
+	heap_set_top(hp, htop +1 +2);
+	htop[0] = 2;
+	htop[1] = A_FILE;
+	htop[2] = file_name;
+	term_t tuple1 = tag_tuple(htop);
+
+	htop = heap_alloc_N(hp, 1 +2);
+	if (htop == 0)
+		return noval;
+	heap_set_top(hp, htop +1 +2);
+	htop[0] = 2;
+	htop[1] = A_LINE;
+	assert(fits_int(line));
+	htop[2] = tag_int(line);
+	term_t tuple2 = tag_tuple(htop);
+
+	htop = heap_alloc_N(hp, 4);
+	if (htop == 0)
+		return noval;
+	heap_set_top(hp, htop +4);
+	htop[0] = tuple1;
+	htop[1] = tag_cons(htop +2);
+	htop[2] = tuple2;
+	htop[3] = nil;
+
+	return tag_cons(htop);
+}
+
+static term_t get_stack_trace(uint32_t *ip, uint32_t *cp,
+			term_t *sp, term_t *sbot, mfa_t *first_mfa, term_t args0, heap_t *hp)
+{
+	term_t trace[max_backtrace_depth];
+	int ntrace = 0;
+
+	if (first_mfa != 0)
+	{
+		assert(args0 == noval || list_len(args0) == first_mfa->arity);
+		term_t args = (args0 == noval)
+			? tag_int(first_mfa->arity)
+			: args0;
+		args0 = noval;
+		uint32_t *htop = heap_alloc_N(hp, 1 +4);
+		if (htop == 0)
+			return nil;
+		heap_set_top(hp, htop +1 +4);
+		htop[0] = 4;
+		htop[1] = first_mfa->mod;
+		htop[2] = first_mfa->fun;
+		htop[3] = args;
+		htop[4] = nil;
+
+		assert(ntrace < max_backtrace_depth);
+		trace[ntrace++] = tag_tuple(htop);
+	}
+
+	uint32_t *fi = backstep_to_func_info(ip);
+	if (fi == 0)
+		return nil;
+	int arity = fi[3];
+
+
+	// length(args0) may be less than the arity as the current function may be a
+	// fun body with free variables passed as arguments
+	//
+	assert(args0 == noval || list_len(args0) <= arity);
+	term_t args = (args0 == noval)
+		? tag_int(arity)
+		: args0;
+
+	term_t loc = build_location(ip, hp);
+	if (loc == noval)
+		return nil;
+
+	uint32_t *htop = heap_alloc_N(hp, 1 +4);
+	if (htop == 0)
+		return nil;
+	heap_set_top(hp, htop +1 +4);
+	htop[0] = 4;
+	htop[1] = fi[1];
+	htop[2] = fi[2];
+	htop[3] = args;
+	htop[4] = loc;
+
+	assert(ntrace < max_backtrace_depth);
+	trace[ntrace++] = tag_tuple(htop);
+
+	if (cp == 0)	// after allocate, before call/apply
+	{
+		cp = demasquerade_pointer(sp[0]);
+		while (++sp < sbot)
+			if (is_boxed(*sp) && is_cp(peel_boxed(*sp)))
+				break;
+	}
+
+	do {
+		if (cp[0] == shrink_ptr(int_code_end_label))
+			break;
+		uint32_t *fi = backstep_to_func_info(cp);
+
+		term_t loc = build_location(cp -1, hp);		// NB: -1
+		if (loc == noval)
+			return nil;
+
+		uint32_t *htop = heap_alloc_N(hp, 1 +4);
+		if (htop == 0)
+			return nil;
+		heap_set_top(hp, htop +1 +4);
+		htop[0] = 4;
+		htop[1] = fi[1];
+		htop[2] = fi[2];
+		htop[3] = tag_int(fi[3]);
+		htop[4] = loc;
+
+		assert(ntrace < max_backtrace_depth);
+		trace[ntrace++] = tag_tuple(htop);
+		if (ntrace >= max_backtrace_depth)
+			break;
+
+		cp = demasquerade_pointer(sp[0]);
+		while (++sp < sbot)
+			if (is_boxed(*sp) && is_cp(peel_boxed(*sp)))
+				break;
+	} while (sp < sbot);
+
+	term_t tail = nil;
+	uint32_t *cons = heap_alloc_N(hp, ntrace *2);
+	if (cons == 0)
+		return nil;
+	for (int i = ntrace-1; i >= 0; i--)
+	{
+		cons[0] = trace[i];
+		cons[1] = tail;
+		tail = tag_cons(cons);
+		cons += 2;
+	}
+	heap_set_top(hp, cons);
+
+	return tail;
+}
+
+static int select_val_atoms_compare(const void *a, const void *b)
+{
+	return *(term_t *)a - *(term_t *)b;
+}
+
+static int send_to_outlet(outlet_t *ol, term_t what, proc_t *proc)
+{
+	// {Pid,{command,Data}}
+	// {Pid,{command$,Data}}
+	// {Pid,close}
+	// {Pid,close$}
+	// {Pid,{connect,NewPid}}
+	// {Pid,{connect$,NewPid}}
+	
+	if (!is_tuple(what))
+		return -BAD_ARG;
+
+	uint32_t *p = peel_tuple(what);
+	if (p[0] != 2 || !is_short_pid(p[1]))
+		return -BAD_ARG;
+
+	proc_t *cont_proc = scheduler_lookup(ol->owner);
+
+	if (p[2] == A_CLOSE || p[2] == ACLOSE__)
+	{
+		if (p[2] == A_CLOSE && p[1] != ol->owner)
+			goto badsig;
+
+		if ((p[2] == A_CLOSE && p[1] == ol->owner) || p[2] == ACLOSE__)
+		{
+			ol->notify_on_close = (p[2] == A_CLOSE);
+			proc->result.what = SLICE_RESULT_OUTLET_CLOSE;
+			proc->result.closing  = ol;
+			proc->result.why = A_NORMAL;
+			return DELIVER_SIGNALS;
+		}
+	}
+	else
+	{
+		if (!is_tuple(p[2]))
+			return -BAD_ARG;
+
+		uint32_t *q = peel_tuple(p[2]);
+		if (q[0] != 2)
+			return -BAD_ARG;
+
+		if (q[1] == A_COMMAND || q[1] == ACOMMAND__)
+		{
+			// {Pid,{command,Data}}
+			// {Pid,{command$,Data}}
+
+			if (q[1] == A_COMMAND && p[1] != ol->owner)
+				goto badsig;
+
+			int sz = iolist_size(q[2]);
+			if (sz < 0)
+			{
+				if (q[1] == ACOMMAND__)
+					return 0;	// ignore
+				else
+					goto badsig;
+			}
+
+			int x = 0;
+			uint8_t *data = outlet_get_send_buffer(ol, sz);
+			if (data == 0)
+				x = -TOO_LONG;
+			if (x == 0)
+			{
+				//
+				// {Pid,{command,Data}} - reply to owner
+				// {Pid,{command$,Data}} - reply to pid
+				//
+				iolist_flatten(q[2], data);
+				term_t reply_to = p[1];
+				x = outlet_send(ol, sz, reply_to);
+			}
+			if (x < 0)
+			{
+				proc->result.what = SLICE_RESULT_OUTLET_CLOSE;
+				proc->result.closing = ol;
+				proc->result.why = err_to_term(x);
+				return DELIVER_SIGNALS;
+			}
+		}
+		else if (q[1] == A_CONNECT || q[1] == ACONNECT__)
+		{
+			// {Pid,{connect,NewPid}}
+			// {Pid,{connect$,NewPid}}
+
+			term_t new_owner = q[2];
+			if (q[1] == A_CONNECT)
+			{
+				if (p[1] != ol->owner)
+					goto badsig;
+
+				if (outlet_notify_owner(ol, A_CONNECTED) < 0)
+					printk("send_to_outlet: connected msg not delivered to %pt\n", T(ol->owner));
+			}
+			else	// port_connect()
+			{
+				// Establish a link to the new owner
+				proc_t *owner_proc = scheduler_lookup(new_owner);
+				if (owner_proc == 0)
+					return -BAD_ARG;
+				if (!are_inter_linked(&ol->links, new_owner))
+				{
+					int x = inter_link_establish_N(&ol->links, new_owner);
+					if (x == 0)
+						x = inter_link_establish_N(&owner_proc->links, ol->oid);
+					if (x < 0)
+					{
+						ol->notify_on_close = 0;
+						proc->result.what = SLICE_RESULT_OUTLET_CLOSE;
+						proc->result.closing  = ol;
+						proc->result.why = A_NO_MEMORY;
+						return DELIVER_SIGNALS;
+					}
+				}
+			}
+
+			ol->owner = new_owner;
+		}
+		else
+			return -BAD_ARG;
+	}
+
+	return 0;
+
+badsig:
+	if (cont_proc == 0)
+		return 0;
+	proc->result.what = SLICE_RESULT_EXIT2;
+	proc->result.victim = cont_proc;
+	proc->result.reason2 = A_BADSIG;
+	return DELIVER_SIGNALS;
+}
+
+//EOF
+
+<%@ hc([hot]) %>
+ATTRIBUTE_HOT
+<%@ hc([cold]) %>
+ATTRIBUTE_COLD
+<%@ hc([]) %>
+
+<%@ inc(Index) %>
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[<% i2l(Index) %>].counter++;
+#endif
+
+<%@ opcode_info(Op, Id, Wsz) %>
+	{ .label = &&<% Id %>,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "<% Id %>",
+#endif
+	  .arg_size = <% i2l(Wsz) %> },
+
+<%@ call_fun_1(none, Wsz) %>
+uint32_t *saved_ip = ip +<% i2l(Wsz) %> +1;
+
+<%@ call_fun_1(NumSlots, _) %>
+uint32_t num_slots = <% arg(NumSlots) %>;
+
+<%@ call_fun_2(none) %>
+cp = saved_ip;
+local_reduce();
+
+<%@ call_fun_2(_) %>
+cp = demasquerade_pointer(sp[0]);
+sp += num_slots +1;
+local_reduce();
+
+<%@ call_fun_bif(none) %>
+ip = saved_ip;
+
+<%@ call_fun_bif(NumSlots) %>
+ip = demasquerade_pointer(sp[0]);
+sp += num_slots +1;
+cp = 0;
+
+<%@ call_fun(Index, Arity, Id, Wsz, Attrs, NumSlots) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+<% call_fun_1(NumSlots, Wsz) %> 
+rs[0] = r0;
+uint32_t arity = <% arg(Arity) %>;
+term_t t = rs[arity];		//what about {x,1023} mapped to {x,255}?
+if (!is_boxed(t))
+	goto <% Id %>_bad_fun;
+uint32_t *p = peel_boxed(t);
+if (boxed_tag(p) == SUBTAG_FUN)
+{
+	t_fun_t *fun = (t_fun_t *)p;
+	if (fun->fe == 0)
+		fatal_error("unloaded funs not implemented");
+	int num_free = fun_num_free(p);
+	if (fun_arity(p) != arity+num_free)
+		goto <% Id %>_bad_arity;
+	ip = fun->fe->entry;
+	term_t *src = fun->frozen;
+	term_t *dst = rs + arity;
+	int n = num_free;
+	while (n-- > 0)
+		*dst++ = *src++;
+	r0 = rs[0];
+}
+else if (boxed_tag(p) == SUBTAG_EXPORT)
+{
+	t_export_t *exp = (t_export_t *)p;
+	if (exp->e->is_bif)
+	{
+		swap_out();
+		term_t r = invoke_bif(exp->e, proc, rs, arity +1);		// +1 for export
+		swap_in();
+		if (r == noval)
+		{
+			raise_bif_mfa.mod = exp->e->module;
+			raise_bif_mfa.fun = exp->e->function;
+			raise_bif_mfa.arity = exp->e->arity;
+			rs[exp->e->arity] = proc->bif_excep_reason;
+			goto raise_from_bif;
+		}
+		r0 = r;
+		<% call_fun_bif(NumSlots) %>
+		next();
+	}
+	if (exp->e->entry == 0)
+	{
+		//rs[0] = r0;
+		light_swap_out();
+		term_t args = heap_vector_to_list(&proc->hp, rs, arity);
+		light_swap_in();
+		r0 = exp->e->module;
+		rs[1] = exp->e->function;
+		rs[2] = args;
+		ip = (EH_UNDEF_EXP)->entry;
+	}
+	else if (exp->e->arity != arity)
+	{
+<% Id %>_bad_arity:
+		light_swap_out();
+		term_t args = heap_vector_to_list(&proc->hp, rs, arity);
+		term_t fun_args = heap_tuple2(&proc->hp, t, args);
+		term_t reason = heap_tuple2(&proc->hp, A_BADARITY, fun_args);
+		light_swap_in();
+		raise_error(reason);
+	}
+	else
+		ip = exp->e->entry;
+}
+else
+{
+<% Id %>_bad_fun:
+	light_swap_out();
+	term_t reason = heap_tuple2(&proc->hp, A_BADFUN, t);
+	light_swap_in();
+	raise_error(reason);
+}
+<% call_fun_2(NumSlots) %>
+}
+
+<%@ variant(Index, int_code_end, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+proc->cap.live = 0;
+proc->result.what = SLICE_RESULT_DONE;
+light_swap_out();
+goto schedule;
+}
+
+<%@ variant(Index, func_info, Id, [M,F,A], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+light_swap_out();
+rs[0] = r0;
+term_t args = heap_vector_to_list(&proc->hp, rs, <% arg(A) %>);
+proc->stack_trace = get_stack_trace(ip, cp,
+		sp, proc_stack_bottom(proc),
+		0, args, &proc->hp);
+rs[2] = A_FUNCTION_CLAUSE;
+rs[1] = A_ERROR;
+goto exception;
+}
+
+<%@ variant(Index, send, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+void *next = (void *)expand_ptr(ip[<% i2l(Wsz+1) %>]);
+ip += <% i2l(Wsz+1) %>;
+term_t dst = r0;
+
+// {Dst,Node} fails except when Node is nonode@nohost
+if (is_tuple(r0))
+{
+	uint32_t *p = peel_tuple(r0);
+	if (p[0] != 2 || p[2] != ANONODE_NOHOST__)
+		badarg();	// TODO: distributed send
+	dst = p[1];
+}
+
+if (!is_atom(dst) && !is_short_pid(dst) && !is_short_oid(dst))
+	badarg();	// TODO: long pids/oids
+
+proc_t *to_proc = 0;
+outlet_t *to_outlet = 0;
+
+if (unlikely(is_atom(dst)))
+{
+	to_proc = scheduler_process_by_name(dst);
+	if (to_proc == 0)
+		to_outlet = outlet_lookup_by_name(dst);
+}
+else if (likely(is_short_pid(dst)))
+	to_proc = scheduler_lookup(dst);
+else
+	to_outlet = outlet_lookup(dst);
+
+if (to_proc != 0)
+{
+	term_t marshalled_message = rs[1];
+	if (to_proc != proc)	// was: dst == proc->pid
+	{
+		int x = heap_copy_terms_N(&to_proc->hp, &marshalled_message, 1);
+		if (x < 0)
+			raise_error(A_NOT_DELIVERED);
+	}
+
+	if (scheduler_new_local_mail_N(to_proc, marshalled_message) < 0)
+		raise_error(A_NOT_DELIVERED);
+}
+else if (to_outlet != 0)
+{
+	light_swap_out();
+	int rc = send_to_outlet(to_outlet, rs[1], proc);
+	if (rc == DELIVER_SIGNALS)
+	{
+		proc->cap.live = 2;
+		goto schedule;
+	}
+	else if (rc < 0)
+	{
+		rs[1] = A_ERROR;
+		rs[2] = err_to_term(rc);
+		proc->stack_trace = noval;
+		goto exception;
+	}
+	light_swap_in();
+}
+
+goto *next;
+}
+
+<%@ variant(Index, loop_rec_end, Id, [Fail], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+msg_queue_next(&proc->mailbox);
+<% jump(Fail) %>;
+}
+
+<%@ variant(Index, wait, Id, [Loop], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+//TODO: should we burn process fat here too?
+ip = <% arg(Loop) %>;
+proc->result.what = SLICE_RESULT_WAIT;
+proc->result.until_when = LING_INFINITY;
+//proc->result.jump_to not set
+
+proc->cap.live = 0;
+light_swap_out();
+goto schedule;
+}
+
+<%@ variant(Index, l_wait_timeout, Id, [Loop,Millis], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+void *next = (void *)expand_ptr(ip[<% i2l(Wsz +1) %>]);
+uint32_t millis = <% arg(Millis) %>;
+if (millis == 0)
+{
+	ip += <% i2l(Wsz +1) %>;
+	goto *next;
+}
+proc->result.what = SLICE_RESULT_WAIT;
+uint64_t now = monotonic_clock();
+proc->result.until_when = now + (uint64_t)millis * 1000000;
+proc->result.jump_to = ip + <% i2l(Wsz +1) %>;
+
+ip = <% arg(Loop) %>;
+
+proc->cap.live = 0;
+light_swap_out();
+goto schedule;
+}
+
+<%@ variant(Index, wait_timeout, Id, [Loop,Src], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+void *next = (void *)expand_ptr(ip[<% i2l(Wsz +1) %>]);
+term_t timeout = <% arg(Src) %>;
+if (timeout == A_INFINITY)
+{
+//TODO: change this into goto to wait iop
+ip = <% arg(Loop) %>;
+proc->result.what = SLICE_RESULT_WAIT;
+proc->result.until_when = LING_INFINITY;
+//proc->result.jump_to not set
+
+proc->cap.live = 0;
+light_swap_out();
+goto schedule;
+}
+
+if (!is_int(timeout) && !(is_boxed(timeout) && is_bignum(peel_boxed(timeout))))
+	raise_error(A_TIMEOUT_VALUE);
+
+light_swap_out();
+int64_t millis = (is_int(timeout))
+	?int_value(timeout)
+	:bignum_to_int((bignum_t *)peel_boxed(timeout));
+light_swap_in();
+if (millis < 0 || millis > 0xffffffff)
+	raise_error(A_TIMEOUT_VALUE);
+
+if (millis == 0)
+{
+	ip += <% i2l(Wsz +1) %>;
+	goto *next;
+}
+
+proc->result.what = SLICE_RESULT_WAIT;
+uint64_t now = monotonic_clock();
+proc->result.until_when = now + (uint64_t)millis *1000000;
+proc->result.jump_to = ip + <% i2l(Wsz +1) %>;
+
+ip = <% arg(Loop) %>;
+
+proc->cap.live = 0;
+light_swap_out();
+goto schedule;
+}
+
+<%@ variant(Index, l_wait_error, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+raise_error(A_TIMEOUT_VALUE);
+}
+
+<%@ variant(Index, l_yield, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+ip += <% i2l(Wsz) %> +1;
+r0 = A_TRUE;
+proc->cap.live = 1;
+light_swap_out();
+goto yield;
+}
+
+<%@ variant(Index, l_call, Id, [Label], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+cp = ip + <% i2l(Wsz+1) %>;
+ip = <% arg(Label) %>;
+local_reduce();
+}
+
+<%@ variant(Index, l_move_call, Id, [Src,Label], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+cp = ip + <% i2l(Wsz+1) %>;
+ip = <% arg(Label) %>;
+local_reduce();
+}
+
+<%@ variant(Index, l_call_only, Id, [Label], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+ip = <% arg(Label) %>;
+local_reduce();
+}
+
+<%@ variant(Index, l_move_call_only, Id, [Label,Src], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+ip = <% arg(Label) %>;
+local_reduce();
+}
+
+<%@ variant(Index, l_call_last, Id, [Label,NumSlots], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+cp = demasquerade_pointer(sp[0]);
+sp += <% arg(NumSlots) %>+1;
+ip = <% arg(Label) %>;
+local_reduce();
+}
+
+<%@ variant(Index, l_move_call_last, Id, [Label,NumSlots,Src], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+cp = demasquerade_pointer(sp[0]);
+sp += <% arg(NumSlots) %>+1;
+ip = <% arg(Label) %>;
+local_reduce();
+}
+
+<%@ variant(Index, l_call_ext, Id, [Export], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+cp = ip + <% i2l(Wsz+1) %>;
+<% reduce_exp(Export) %>;
+}
+
+<%@ variant(Index, l_move_call_ext, Id, [Src,Export], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+cp = ip + <% i2l(Wsz+1) %>;
+<% reduce_exp(Export) %>;
+}
+
+<%@ variant(Index, l_call_ext_last, Id, [Export,NumSlots], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+cp = demasquerade_pointer(sp[0]);
+sp += <% arg(NumSlots) %>+1;
+<% reduce_exp(Export) %>;
+}
+
+<%@ variant(Index, l_move_call_ext_last, Id, [Export,NumSlots,Src], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+cp = demasquerade_pointer(sp[0]);
+sp += <% arg(NumSlots) %>+1;
+<% reduce_exp(Export) %>;
+}
+
+<%@ variant(Index, l_call_ext_only, Id, [Export], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+<% reduce_exp(Export) %>;
+}
+
+<%@ variant(Index, l_move_call_ext_only, Id, [Export,Src], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+<% reduce_exp(Export) %>;
+}
+
+<%@ variant(Index, l_call_fun, Id, [Arity], Wsz, Attrs) %>
+<% call_fun(Index, Arity, Id, Wsz, Attrs, none) %>
+
+<%@ variant(Index, l_call_fun_last, Id, [Arity,NumSlots], Wsz, Attrs) %>
+<% call_fun(Index, Arity, Id, Wsz, Attrs, NumSlots) %>
+
+<%@ variant(Index, apply, Id, [Arity], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+<% apply(Arity) %>
+if (unlikely(exp->is_bif))
+{
+	swap_out();
+	term_t r = invoke_bif(exp, proc, rs, arity +2);		// +2 for module, function
+	swap_in();
+	if (r == noval)
+	{
+		raise_bif_mfa.mod = exp->module;
+		raise_bif_mfa.fun = exp->function;
+		raise_bif_mfa.arity = exp->arity;
+		rs[exp->arity] = proc->bif_excep_reason;
+		goto raise_from_bif;
+	}
+	r0 = r;
+	ip += <% i2l(Wsz+1) %>;
+	next();
+}
+else
+{
+	cp = ip + <% i2l(Wsz+1) %>;
+	ip = exp->entry;
+	local_reduce();
+}
+}
+
+<%@ variant(Index, apply_last, Id, [Arity,NumSlots], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+<% apply(Arity) %>
+cp = demasquerade_pointer(sp[0]);
+sp += <% arg(NumSlots) %>+1;
+if (unlikely(exp->is_bif))
+{
+	swap_out();
+	term_t r = invoke_bif(exp, proc, rs, arity +2);		// +2 for module, function
+	swap_in();
+	if (r == noval)
+	{
+		raise_bif_mfa.mod = exp->module;
+		raise_bif_mfa.fun = exp->function;
+		raise_bif_mfa.arity = exp->arity;
+		rs[exp->arity] = proc->bif_excep_reason;
+		goto raise_from_bif;
+	}
+	r0 = r;
+	ip = cp;
+	cp = 0; // not to confuse stack tracing
+	next();
+}
+else
+{
+	ip = exp->entry;
+	local_reduce();
+}
+}
+
+<%@ variant(Index, l_apply, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t args;
+
+// A stub implementation of l_hibernate needs this label
+//
+l_apply_entry:
+
+args = rs[2];
+if (!is_list(args))
+	badarg();
+int arity = list_len(args);
+if (arity < 0 || arity > 255)
+	badarg();
+export_t *exp = code_base_lookup(r0, rs[1], arity);
+if (unlikely(exp == 0 || exp->entry == 0))
+ 	exp = EH_UNDEF_EXP;
+else
+{
+	heap_list_to_vector(args, rs);
+	r0 = rs[0];
+
+	if (exp->is_bif)
+	{
+		swap_out();
+		term_t r = invoke_bif(exp, proc, rs, arity +2);		// +2 for module, function
+		swap_in();
+		if (r == noval)
+		{
+			raise_bif_mfa.mod = exp->module;
+			raise_bif_mfa.fun = exp->function;
+			raise_bif_mfa.arity = exp->arity;
+			rs[exp->arity] = proc->bif_excep_reason;
+			goto raise_from_bif;
+		}
+		r0 = r;
+		ip += <% i2l(Wsz) %> +1;
+		next();
+	}
+}
+cp = ip + <% i2l(Wsz) %>+1;
+ip = (uint32_t *)exp->entry;
+local_reduce();
+}
+
+<%@ variant(Index, l_apply_last, Id, [NumSlots], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t args = rs[2];
+if (!is_list(args))
+	badarg();
+int arity = list_len(args);
+if (arity < 0 || arity > 255)
+	badarg();
+cp = demasquerade_pointer(sp[0]);
+sp += <% arg(NumSlots) %>+1;
+export_t *exp = code_base_lookup(r0, rs[1], arity);
+if (unlikely(exp == 0 || exp->entry == 0))
+	exp = EH_UNDEF_EXP;
+else
+{
+	heap_list_to_vector(args, rs);
+	r0 = rs[0];
+
+	if (exp->is_bif)
+	{
+		swap_out();
+		term_t r = invoke_bif(exp, proc, rs, arity +2);		// +2 for module, function
+		swap_in();
+		if (r == noval)
+		{
+			raise_bif_mfa.mod = exp->module;
+			raise_bif_mfa.fun = exp->function;
+			raise_bif_mfa.arity = exp->arity;
+			rs[exp->arity] = proc->bif_excep_reason;
+			goto raise_from_bif;
+		}
+		r0 = r;
+		ip = cp;
+		cp = 0;
+		next();
+	}
+}
+ip = exp->entry;
+local_reduce();
+}
+
+<%@ variant(Index, l_apply_only, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t args = rs[2];
+if (!is_list(args))
+	badarg();
+int arity = list_len(args);
+if (arity < 0 || arity > 255)
+	badarg();
+export_t *exp = code_base_lookup(r0, rs[1], arity);
+if (unlikely(exp == 0 || exp->entry == 0))
+	exp = EH_UNDEF_EXP;
+else
+{
+	heap_list_to_vector(args, rs);
+	r0 = rs[0];
+
+	if (exp->is_bif)
+	{
+		swap_out();
+		term_t r = invoke_bif(exp, proc, rs, arity +2);		// +2 for module, function
+		swap_in();
+		if (r == noval)
+		{
+			raise_bif_mfa.mod = exp->module;
+			raise_bif_mfa.fun = exp->function;
+			raise_bif_mfa.arity = exp->arity;
+			rs[exp->arity] = proc->bif_excep_reason;
+			goto raise_from_bif;
+		}
+		r0 = r;
+		ip = cp;
+		cp = 0;
+		next();
+	}
+}
+ip = exp->entry;
+local_reduce();
+}
+
+<%@ variant(Index, l_apply_fun, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+uint32_t *saved_ip = ip;
+<% apply_fun(Id) %>
+cp = saved_ip + <% i2l(Wsz) %> +1;
+local_reduce();
+}
+
+<%@ variant(Index, l_apply_fun_last, Id, [NumSlots], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+int num_slots = <% arg(NumSlots) %>;
+<% apply_fun(Id) %>
+cp = demasquerade_pointer(sp[0]);
+sp += num_slots +1;
+local_reduce();
+}
+
+<%@ variant(Index, l_apply_fun_only, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+<% apply_fun(Id) %>
+local_reduce();
+}
+
+<%@ variant(Index, jump, Id, [Label], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+<% jump(Label) %>;
+}
+
+<%@ variant(Index, return, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+<%@ variant(Index, move_return, Id, [Src], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+<%@ variant(Index, move_deallocate_return, Id, [Src,NumSlots], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+cp = demasquerade_pointer(sp[0]);
+sp += <% arg(NumSlots) %>+1;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+<%@ variant(Index, deallocate_return, Id, [NumSlots], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+cp = demasquerade_pointer(sp[0]);
+sp += <% arg(NumSlots) %>+1;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+<%@ variant(Index, move_jump, Id, [Label,Src], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+r0 = <% arg(Src) %>;
+<% jump(Label) %>;
+}
+
+<%@ variant(Index, call_bif, Id, [{b,{value,{erlang,exit,1}}}], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+// r0 - reason
+light_swap_out();
+proc->stack_trace = noval;
+rs[2] = r0;
+rs[1] = A_EXIT;
+goto exception;
+}
+
+<%@ variant(Index, call_bif, Id, [{b,{value,{erlang,exit,2}}}], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+// r0 - pid or oid
+// rs[1] - reason
+ip += <% i2l(Wsz+1) %>;
+
+if (is_short_pid(r0))
+{
+proc_t *victim = scheduler_lookup(r0);
+if (victim != 0)
+{
+	proc->result.what = SLICE_RESULT_EXIT2;
+	proc->result.victim = victim;
+	proc->result.reason2 = rs[1];
+	r0 = A_TRUE;
+	proc->cap.live = 1;
+	light_swap_out();
+	goto schedule;
+}
+}
+else if (is_short_oid(r0))
+{
+outlet_t *ol = outlet_lookup(r0);
+if (ol != 0)
+{
+	proc->result.what = SLICE_RESULT_OUTLET_CLOSE;
+	proc->result.closing = ol;
+	proc->result.why = rs[1];
+	r0 = A_TRUE;
+	proc->cap.live = 1;
+	light_swap_out();
+	goto schedule;
+}
+}
+else
+	badarg();
+
+r0 = A_TRUE; 	// ignore
+next();
+}
+
+<%@ variant(Index, call_bif, Id, [{b,{value,{erlang,throw,1}}}], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+// r0 - reason
+light_swap_out();
+proc->stack_trace = noval;
+rs[2] = r0;
+rs[1] = A_THROW;
+goto exception;
+}
+
+<%@ variant(Index, call_bif, Id, [{b,{value,{erlang,error,1}}}], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+// r0 - reason
+light_swap_out();
+proc->stack_trace = noval;
+rs[2] = r0;
+rs[1] = A_ERROR;
+goto exception;
+}
+
+<%@ variant(Index, call_bif, Id, [{b,{value,{erlang,error,2}}}], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+// r0 - reason
+// rs[1] - args
+light_swap_out();
+proc->stack_trace = get_stack_trace(ip, cp,
+		sp, proc_stack_bottom(proc),
+		0, rs[1], &proc->hp);
+rs[2] = r0;
+rs[1] = A_ERROR;
+goto exception;
+}
+
+<%@ variant(Index, call_bif, Id, [{b,{value,{erlang,raise,3}}}], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+// r0 - class
+// rs[1] - reason
+// rs[2]- stack trace
+light_swap_out();
+
+if (!is_list(rs[2]))
+	proc->stack_trace = nil;
+else
+{
+	if (list_len(rs[2]) <= max_backtrace_depth)
+		proc->stack_trace = rs[2];
+	else
+	{
+		// truncate the stack trace to max_backtrace_depth
+		term_t t = rs[2];
+		term_t trace[max_backtrace_depth];
+		for (int i = 0; i < max_backtrace_depth; i++)
+		{
+			term_t *cons = peel_cons(t);
+			trace[i] = cons[0];
+			t = cons[1];
+		}
+		proc->stack_trace = heap_vector_to_list(&proc->hp,
+				trace, max_backtrace_depth);
+	}
+}
+
+rs[2] = rs[1];
+rs[1] = r0;
+goto exception;
+}
+
+<%@ variant(Index, call_bif, Id, [{b,{value,{erlang,purge_module,1}}}], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+// r0 - module
+if (!is_atom(r0))
+	badarg();
+
+ip += <% i2l(Wsz+1) %>;
+module_info_t *module = code_base_module_by_name(r0, 1);
+if (module == 0)	// no old code
+	badarg();
+
+// Collect all processes that require termination in the purgatory. The
+// scheduler will kill them upon yield.
+//
+hash_index_t hi;
+hash_start(registry, &hi);
+proc_t *q;
+while ((q = hash_next(&hi)) != 0)
+	if (proc_references_module(q, module))
+		scheduler_add_purged(q);
+
+code_base_purge(module);
+
+r0 = A_TRUE;
+proc->cap.live = 1;
+light_swap_out();
+
+proc->result.what = SLICE_RESULT_PURGE_PROCS;
+goto schedule;
+}
+
+<%@ variant(Index, raise, Id, [Val1,Val2], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t val1 = <% arg(Val1) %>;
+
+light_swap_out();
+
+//XXX: retrace stack?
+//proc->stack_trace = noval;
+rs[2] = val1;
+
+//XXX: a nasty hack for OTP compatibility
+assert(is_atom(proc->last_excep_class));
+rs[1] = proc->last_excep_class;
+proc->last_excep_class = noval;
+
+goto exception;
+}
+
+<%@ variant(Index, system_limit, Id, [Fail], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+<% jump_or_continue(Fail) %>;
+raise_error(A_SYSTEM_LIMIT);
+}
+
+<%@ variant(Index, badmatch, Id, [Value], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, <% arg(Value) %>);
+light_swap_in();
+raise_error(reason);
+}
+
+<%@ variant(Index, case_end, Id, [Expr], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_CASE_CLAUSE, <% arg(Expr) %>);
+light_swap_in();
+raise_error(reason);
+}
+
+<%@ variant(Index, try_case_end, Id, [Expr], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_TRY_CLAUSE, <% arg(Expr) %>);
+light_swap_in();
+raise_error(reason);
+}
+
+<%@ variant(Index, if_end, Id, [], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+raise_error(A_IF_CLAUSE);
+}
+
+<%@ variant(Index, l_select_val2, Id, [Src,Fail,Val1,Lab1,Val2,Lab2], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t v = <% arg(Src) %>;
+if (v == <% dir_arg(Val1) %>)
+	<% jump(Lab1) %>;
+if (v == <% dir_arg(Val2) %>)
+	<% jump(Lab2) %>;
+assert(<% arg(Fail) %> != 0);
+<% jump(Fail) %>;
+}
+
+<%@ variant(Index, l_select_val_atoms, Id, [Src,Fail,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+
+// NB: self-modifying code: for dynamically loaded modules
+// l_select_val_atoms iop points to &&l_select_val_atoms_N;
+// after sorting the list it changes to
+// &&l_select_val_atoms_N_sorted; statically loaded modules
+// use the second label as the list is already in order.
+
+	uint32_t nr_pairs = (<% arg(Len) %>)/2;
+	qsort(ip + <% i2l(Wsz+1) %>,
+		nr_pairs, 2*sizeof(uint32_t), select_val_atoms_compare);
+	
+	*ip = shrink_ptr(&&<% Id %>_sorted);
+}
+
+<% Id %>_sorted: {
+<% inc(Index) %>
+
+term_t v = <% arg(Src) %>;
+pair_t *alpha = (pair_t *)(ip + <% i2l(Wsz+1) %>);
+pair_t *beta = (pair_t *)((uint32_t *)alpha + <% arg(Len) %>);
+
+<% value_tab_dispatch(Fail) %>
+}
+
+<%@ variant(Index, l_select_val_smallints, Id, [Src,Fail,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t v = <% arg(Src) %>;
+pair_t *alpha = (pair_t *)(ip + <% i2l(Wsz+1) %>);
+pair_t *beta = (pair_t *)((uint32_t *)alpha + <% arg(Len) %>);
+
+<% value_tab_dispatch(Fail) %>
+}
+
+<%@ variant(Index, l_jump_on_val, Id, [Src,Fail,Base,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t v = <% arg(Src) %>;
+if (!is_int(v))
+	<% jump(Fail) %>;
+int base = (int)<% arg(Base) %>;
+int i = int_value(v);
+if (i < base || i >= base + (int)<% arg(Len) %>)
+	<% jump(Fail) %>;
+uint32_t *jump_tab = ip + <% i2l(Wsz+1) %>;
+ip = expand_ptr(jump_tab[i - base]);
+next();
+}
+
+<%@ variant(Index, l_select_tuple_arity2, Id, [Src,Fail,Ar1,Lab1,Ar2,Lab2], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t v = <% arg(Src) %>;
+if (!is_tuple(v))
+	<% jump(Fail) %>;
+int arity = *peel_tuple(v);
+if (arity == <% dir_arg(Ar1) %>)
+	<% jump(Lab1) %>;
+if (arity == <% dir_arg(Ar2) %>)
+	<% jump(Lab2) %>;
+assert(<% arg(Fail) %> != 0);
+<% jump(Fail) %>;
+}
+
+<%@ variant(Index, l_select_tuple_arity, Id, [Src,Fail,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t tuple = <% arg(Src) %>;
+if (!is_tuple(tuple))
+	<% jump(Fail) %>;
+uint32_t v = *peel_tuple(tuple);
+pair_t *alpha = (pair_t *)(ip + <% i2l(Wsz+1) %>);
+pair_t *beta = (pair_t *)((uint32_t *)alpha + <% arg(Len) %>);
+
+<% value_tab_dispatch(Fail) %>
+}
+
+<%@ variant(Index, l_put_tuple, Id, [Dst,Arity], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+uint32_t arity = <% arg(Arity) %>;
+term_t tuple;
+if (unlikely(arity == 0))
+	tuple = ZERO_TUPLE;
+else
+{
+	tuple = tag_tuple(htop);
+	*htop++ = arity;
+
+	term_t *pe = (term_t *)ip + <% i2l(Wsz+1) %>;
+	int n = arity;
+	while (n-- > 0)
+	{
+		if (is_reg(*pe))
+		{
+			int ri = reg_index(*pe);
+			if (ri == 0)
+				*htop++ = r0;
+			else
+				*htop++ = rs[ri];
+		}
+		else if (is_slot(*pe))
+		{
+			int si = slot_index(*pe);
+			*htop++ = sp[si+1];
+		}
+		else
+			*htop++ = *pe;
+
+		pe++;
+	}
+}
+<% set_dst(Dst, <<"tuple">>) %>
+
+ip += arity+<% i2l(Wsz+1) %>;
+next();
+}
+
+<%@ variant(Index, Op, Id, Args, Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+void *next = (void *)expand_ptr(ip[<% i2l(Wsz+1) %>]);
+<% iop(Op, Args) %>
+ip += <% i2l(Wsz+1) %>;
+goto *next;
+}
+
+<%!
+**
+**
+**	Ordinary iops	
+**
+**
+%>
+
+<%@ iop(recv_mark, [L]) %>
+msg_queue_mark(&proc->mailbox, <% arg(L) %>);
+
+<%@ iop(l_recv_set, []) %>
+msg_queue_restore(&proc->mailbox, ip +1);
+// ip+1 points to the next iop, supposedly l_loop_rec
+
+<%@ iop(l_loop_rec, [Fail]) %>
+term_t cur = msg_queue_current(&proc->mailbox);
+if (cur == noval)
+	<% jump(Fail) %>;
+r0 = cur;
+
+<%@ iop(remove_message, []) %>
+msg_queue_drop(&proc->mailbox);
+
+// The message queue must be reset as we may enter a different, potentially,
+// nested receive statement.
+//
+// Also 'timeout' below.
+
+msg_queue_reset(&proc->mailbox);
+
+<%@ iop(timeout, []) %>
+msg_queue_reset(&proc->mailbox);
+
+<%@ iop(self, [Dst]) %>
+<% set_dst(Dst, <<"proc->pid">>) %>
+
+<%@ iop(node, [Dst]) %>
+<% set_dst(Dst, <<"cluster_node">>) %>
+
+<%@ iop(move, [Src,Dst]) %>
+<% set_dst(Dst, arg(Src)) %>
+
+<%@ iop(move2, [Src1,Dst1,Src2,Dst2]) %>
+<% set_dst(Dst1, arg(Src1)) %>
+<% set_dst(Dst2, arg(Src2)) %>
+
+<%@ iop(l_fetch, [Src1,Src2]) %>
+tmp_arg1 = <% arg(Src1) %>;
+tmp_arg2 = <% arg(Src2) %>;
+
+<%@ iop(l_get, [Key,Dst]) %>
+term_t r = lookup_process_dictionary(<% arg(Key) %>, proc->dictionary);
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_trim, [NumSlots]) %>
+uint32_t masqueraded_cp = sp[0];
+sp += <% arg(NumSlots) %>;
+sp[0] = masqueraded_cp;
+
+<%@ iop(l_allocate, [NumSlots]) %>
+<% allocate(NumSlots) %>
+
+<%@ iop(allocate_heap, [NumSlots,HeapNeeded,Live]) %>
+<% test_heap(HeapNeeded, Live) %>
+<% allocate(NumSlots) %>
+
+<%@ iop(allocate_heap_zero, [NumSlots,HeapNeeded,Live]) %>
+<% test_heap(HeapNeeded, Live) %>
+<% allocate(NumSlots) %>
+int n = <% arg(NumSlots) %>;
+term_t *slots = sp+1;
+while (n-- > 0)
+	*slots++ = nil;
+
+<%@ iop(allocate_init, [NumSlots,{t,{word,W}}]) %>
+<% allocate(NumSlots) %>
+term_t y = <% word(W) %>;
+assert(is_slot(y));
+sp[slot_index(y)+1] = nil;
+
+<%@ iop(allocate_init, [NumSlots,Y]) %>
+<% allocate(NumSlots) %>
+<% arg(Y) %> = nil;
+
+<%@ iop(l_allocate_zero, [NumSlots]) %>
+<% allocate(NumSlots) %>
+int n = <% arg(NumSlots) %>;
+term_t *slots = sp+1;
+while (n-- > 0)
+	*slots++ = nil;
+
+<%@ iop(test_heap, [HeapNeeded,Live]) %>
+<% test_heap(HeapNeeded, Live) %>
+
+<%@ iop(test_heap_1_put_list, [HeapNeeded,Src]) %>
+<% test_heap(HeapNeeded, {u,{value,1}}) %>
+term_t hd = <% arg(Src) %>;
+term_t tl = r0;
+r0 = tag_cons(htop);
+*htop++ = hd;
+*htop++ = tl;
+
+<%@ iop(init, [{t,{word,W}}]) %>
+term_t y = <% word(W) %>;
+assert(is_slot(y));
+sp[slot_index(y)+1] = nil;
+
+<%@ iop(init, [Slot]) %>
+<% arg(Slot) %> = nil;
+
+<%@ iop(init2, [{t,{word,W1}},{t,{word,W2}}]) %>
+term_t y1 = <% word(W1) %>;
+term_t y2 = <% word(W2) %>;
+assert(is_slot(y1));
+assert(is_slot(y2));
+sp[slot_index(y1)+1] = nil;
+sp[slot_index(y2)+1] = nil;
+
+<%@ iop(init2, [Slot1,Slot2]) %>
+<% arg(Slot2) %> = <% arg(Slot1) %> = nil;
+
+<%@ iop(init3, [{t,{word,W1}},{t,{word,W2}},{t,{word,W3}}]) %>
+term_t y1 = <% word(W1) %>;
+term_t y2 = <% word(W2) %>;
+term_t y3 = <% word(W3) %>;
+assert(is_slot(y1));
+assert(is_slot(y2));
+assert(is_slot(y3));
+sp[slot_index(y1)+1] = nil;
+sp[slot_index(y2)+1] = nil;
+sp[slot_index(y3)+1] = nil;
+
+<%@ iop(init3, [Slot1,Slot2,Slot3]) %>
+<% arg(Slot3) %> = <% arg(Slot2) %> = <% arg(Slot1) %> = nil;
+
+<%@ iop(get_tuple_element, [Tuple,Pos,Dst]) %>
+//assert(is_tuple(<% arg(Tuple) %>));
+term_t elem = peel_tuple(<% arg(Tuple) %>)[<% arg(Pos) %>+1];	// Pos is 0-based
+<% set_dst(Dst, <<"elem">>) %>
+
+<%@ iop(extract_next_element, [Dst]) %>
+<% set_dst(Dst, <<"*(term_t *)expand_ptr(tmp_arg1)">>) %>
+tmp_arg1 += sizeof(term_t);
+
+<%@ iop(extract_next_element2, [Dst]) %>
+term_t *dst;
+<% dst_ref(Dst, <<"dst">>) %>
+dst[0] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[1] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+<%@ iop(extract_next_element3, [Dst]) %>
+term_t *dst;
+<% dst_ref(Dst, <<"dst">>) %>
+dst[0] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[1] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[2] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+<%@ iop(l_fast_element, [Tuple,Pos,Dst]) %>
+term_t tuple = <% arg(Tuple) %>;
+if (!is_tuple(tuple))
+	badarg();
+uint32_t *data = peel_tuple(tuple);
+uint32_t pos = <% arg(Pos) %>;
+if (pos > data[0])
+	badarg();
+<% set_dst(Dst, <<"data[pos]">>) %>
+
+<%@ iop(l_element, [Tuple,Pos,Dst]) %>
+term_t tuple = <% arg(Tuple) %>;
+if (!is_tuple(tuple))
+	badarg();
+uint32_t *data = peel_tuple(tuple);
+term_t t = <% arg(Pos) %>;
+if (!is_int(t))
+	badarg();
+int pos = int_value(t);
+if (pos < 1 || pos > data[0])
+	badarg();
+<% set_dst(Dst, <<"data[pos]">>) %>
+
+<%@ iop(set_tuple_element, [Elem,Tuple,Pos]) %>
+term_t tuple = <% arg(Tuple) %>;
+assert(is_tuple(tuple));
+(peel_tuple(tuple))[<% arg(Pos) %>+1] = <% arg(Elem) %>;
+
+<%@ iop(put_list, [Head,Tail,Dst]) %>
+htop[0] = <% arg(Head) %>;
+htop[1] = <% arg(Tail) %>;
+<% set_dst(Dst, <<"tag_cons(htop)">>) %>
+htop += 2;
+
+<%@ iop(get_list, [Cons,Head,Tail]) %>
+assert(is_cons(<% arg(Cons) %>));
+term_t *pair = peel_cons(<% arg(Cons) %>);
+<% set_dst(Head, <<"pair[0]">>) %>
+<% set_dst(Tail, <<"pair[1]">>) %>
+
+<%@ iop(is_tuple_of_arity, [Fail,Src,Arity]) %>
+term_t src = <% arg(Src) %>;
+if (!is_tuple(src) || *peel_tuple(src) != <% arg(Arity) %>)
+	<% jump(Fail) %>;
+tmp_arg1 = shrink_ptr(peel_tuple(src)+1);	// prepare for extract_element
+
+<%@ iop(test_arity, [Fail,Src,Arity]) %>
+term_t src = <% arg(Src) %>;
+assert(is_tuple(src));
+if (*peel_tuple(src) != <% arg(Arity) %>)
+	<% jump(Fail) %>;
+tmp_arg1 = shrink_ptr(peel_tuple(src)+1);	// prepare for extract_element
+
+<%@ iop(l_is_eq_exact_immed, [Fail,Src,Val]) %>
+if (<% arg(Src) %> != <% dir_arg(Val) %>)
+	<% jump(Fail) %>;
+
+<%@ iop(l_is_eq_exact_literal, [Fail,Src1,Src2]) %>
+term_t a = <% arg(Src1) %>;
+term_t b = <% arg(Src2) %>;
+if (a != b && !are_terms_equal(a, b, 1))
+	<% jump(Fail) %>;
+
+<%@ iop(l_is_eq_exact, [Fail]) %>
+if (tmp_arg1 != tmp_arg2)
+{
+	if (are_both_immed(tmp_arg1, tmp_arg2))
+		<% jump(Fail) %>;
+	if (!are_terms_equal(tmp_arg1, tmp_arg2, 1))
+		<% jump(Fail) %>;
+}
+
+<%@ iop(l_is_eq, [Fail]) %>
+if (tmp_arg1 != tmp_arg2)
+{
+	if (are_both_immed(tmp_arg1, tmp_arg2))
+		<% jump(Fail) %>;
+	if (!are_terms_equal(tmp_arg1, tmp_arg2, 0))
+		<% jump(Fail) %>;
+}
+
+<%@ iop(l_is_ne_exact_immed, [Fail,Src,Val]) %>
+if (<% arg(Src) %> == <% dir_arg(Val) %>)
+	<% jump(Fail) %>;
+
+<%@ iop(l_is_ne_exact_literal, [Fail,Src1,Src2]) %>
+term_t a = <% arg(Src1) %>;
+term_t b = <% arg(Src2) %>;
+if (a == b || are_terms_equal(a, b, 1))
+	<% jump(Fail) %>;
+
+<%@ iop(l_is_ne_exact, [Fail]) %>
+if (tmp_arg1 == tmp_arg2)
+	<% jump(Fail) %>;
+if (!are_both_immed(tmp_arg1, tmp_arg2)
+		&& are_terms_equal(tmp_arg1, tmp_arg2, 1))
+	<% jump(Fail) %>;
+
+<%@ iop(l_is_ne, [Fail]) %>
+if (tmp_arg1 == tmp_arg2)
+	<% jump(Fail) %>;
+if (!are_both_immed(tmp_arg1, tmp_arg2)
+		&& are_terms_equal(tmp_arg1, tmp_arg2, 0))
+	<% jump(Fail) %>;
+
+<%@ iop(l_is_ge, [Fail]) %>
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	if ((int)tmp_arg1 < (int)tmp_arg2)
+		<% jump(Fail) %>;
+}
+else
+{
+	if (is_term_smaller(tmp_arg1, tmp_arg2))
+		<% jump(Fail) %>;
+}
+
+<%@ iop(l_is_lt, [Fail]) %>
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	if ((int)tmp_arg1 >= (int)tmp_arg2)
+		<% jump(Fail) %>;
+}
+else
+{
+	if (!is_term_smaller(tmp_arg1, tmp_arg2))
+		<% jump(Fail) %>;
+}
+
+<%@ iop(is_nil, [Fail,Src]) %>
+if (<% arg(Src) %> != nil)
+	<% jump(Fail) %>;
+
+<%@ iop(is_list, [Fail,Src]) %>
+term_t l = <% arg(Src) %>;
+if (!is_list(l))
+	<% jump(Fail) %>;
+
+<%@ iop(is_nonempty_list, [Fail,Src]) %>
+if (!is_cons(<% arg(Src) %>))
+	<% jump(Fail) %>;
+
+<%@ iop(is_nonempty_list_allocate, [Fail,Src,NumSlots]) %>
+if (!is_cons(<% arg(Src) %>))
+	<% jump(Fail) %>;
+
+<% allocate(NumSlots) %>
+
+<%@ iop(is_nonempty_list_test_heap, [Fail,Needed,Live]) %>
+if (!is_cons(r0))
+	<% jump(Fail) %>;
+
+<% test_heap(Needed, Live) %>
+
+<%@ iop(is_tuple, [Fail,Src]) %>
+if (!is_tuple(<% arg(Src) %>))
+	<% jump(Fail) %>;
+
+<%@ iop(is_atom, [Fail,Src]) %>
+if (!is_atom(<% arg(Src) %>))
+	<% jump(Fail) %>;
+
+<%@ iop(is_boolean, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (v != A_FALSE && v != A_TRUE)
+	<% jump(Fail) %>;
+
+<%@ iop(is_integer, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_int(v))
+{
+	if (!is_boxed(v) || (*peel_boxed(v) & SUBTAG_BIGNUM_MASK) != SUBTAG_BIGNUM)
+		<% jump(Fail) %>;
+}
+
+<%@ iop(is_integer_allocate, [Fail,Src,NumSlots]) %>
+term_t v = <% arg(Src) %>;
+if (!is_int(v) && !(is_boxed(v) && is_bignum(peel_boxed(v))))
+	<% jump(Fail) %>;
+
+<% allocate(NumSlots) %>
+
+<%@ iop(is_bigint, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_boxed(v) || (*peel_boxed(v) & SUBTAG_BIGNUM_MASK) != SUBTAG_BIGNUM)
+	<% jump(Fail) %>;
+
+<%@ iop(is_float, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_boxed(v) || boxed_tag(peel_boxed(v)) != SUBTAG_FLOAT)
+	<% jump(Fail) %>;
+
+<%@ iop(is_number, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_int(v))
+{
+	if (!is_boxed(v))
+		<% jump(Fail) %>;
+	uint32_t bt = boxed_tag(peel_boxed(v));
+	if (bt != SUBTAG_POS_BIGNUM &&
+		bt != SUBTAG_NEG_BIGNUM &&
+		bt != SUBTAG_FLOAT)
+		<% jump(Fail) %>;
+}
+
+<%@ iop(is_bitstr, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_boxed(v) || (*peel_boxed(v) & SUBTAG_BINARY_MASK) != SUBTAG_BINARY)
+	<% jump(Fail) %>;
+
+<%@ iop(is_binary, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_boxed(v))
+	<% jump(Fail) %>;
+uint32_t *p = peel_boxed(v);
+switch (boxed_tag(p))
+{
+case SUBTAG_PROC_BIN:
+	break;
+case SUBTAG_HEAP_BIN:
+	break;
+case SUBTAG_MATCH_CTX:
+{
+	t_match_ctx_t *ctx = (t_match_ctx_t *)p;
+	if ((ctx->bs.ends-ctx->bs.starts) % 8 != 0)
+		<% jump(Fail) %>;
+	break;
+}
+case SUBTAG_SUB_BIN:
+{
+	t_sub_bin_t *sb = (t_sub_bin_t *)p;
+	if ((sb->ends - sb->starts) % 8 == 0)
+		break;
+	/* fall through */
+}
+default:
+	<% jump(Fail) %>;
+}
+
+<%@ iop(is_pid, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_short_pid(v))
+{
+	if (!is_boxed(v) || boxed_tag(peel_boxed(v)) != SUBTAG_PID)
+		<% jump(Fail) %>;
+}
+
+<%@ iop(is_port, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_short_oid(v))
+{
+	if (!is_boxed(v) || boxed_tag(peel_boxed(v)) != SUBTAG_OID)
+		<% jump(Fail) %>;
+}
+
+<%@ iop(is_reference, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_boxed(v) || boxed_tag(peel_boxed(v)) != SUBTAG_REF)
+	<% jump(Fail) %>;
+
+<%@ iop(is_function, [Fail,Src]) %>
+term_t v = <% arg(Src) %>;
+if (!is_boxed(v) || (boxed_tag(peel_boxed(v)) != SUBTAG_FUN &&
+					 boxed_tag(peel_boxed(v)) != SUBTAG_EXPORT))
+	<% jump(Fail) %>;
+
+<%@ iop(is_function2, [Fail,Src,Arity]) %>
+term_t v = <% arg(Src) %>;
+term_t a = <% arg(Arity) %>;
+if (!is_int(a))
+	<% jump(Fail) %>;
+int arity = int_value(a);
+if (!is_boxed(v))
+	<% jump(Fail) %>;
+uint32_t *p = peel_boxed(v);
+if (boxed_tag(p) == SUBTAG_FUN)
+{
+	if (fun_arity(p) != arity+fun_num_free(p))
+		<% jump(Fail) %>;
+}
+else if (boxed_tag(p) == SUBTAG_EXPORT)
+{
+	t_export_t *exp = (t_export_t *)p;
+	if (exp->e->arity != arity)
+		<% jump(Fail) %>;
+}
+else
+	<% jump(Fail) %>;
+
+<%@ iop(l_is_function2, [Fail,Src,Arity]) %>
+term_t v = <% arg(Src) %>;
+uint32_t arity = <% arg(Arity) %>;
+if (!is_boxed(v))
+	<% jump(Fail) %>;
+uint32_t *p = peel_boxed(v);
+if (boxed_tag(p) == SUBTAG_FUN)
+{
+	if (fun_arity(p) != arity+fun_num_free(p))
+		<% jump(Fail) %>;
+}
+else if (boxed_tag(p) == SUBTAG_EXPORT)
+{
+	t_export_t *exp = (t_export_t *)p;
+	if (exp->e->arity != arity)
+		<% jump(Fail) %>;
+}
+else
+	<% jump(Fail) %>;
+
+<%@ iop(l_make_fun, [FunEntry]) %>
+fun_entry_t *fe = <% arg(FunEntry) %>;
+
+light_swap_out();
+int needed = WSIZE(t_fun_t) + fe->num_free;
+uint32_t *p = heap_alloc(&proc->hp, needed);
+term_t fun = tag_boxed(p);
+rs[0] = r0;
+box_fun(p,
+	fe->num_free,
+	fe->arity,
+	proc->pid,
+	fe->module,
+	fe->index,
+	fe->uniq,
+	fe->old_index,
+	fe->old_uniq,
+	fe,
+	rs);
+heap_set_top(&proc->hp, p);
+light_swap_in();
+r0 = fun;
+
+<%@ iop(l_make_export, [{e,{word,W}}=Exp]) %>
+
+//
+// TODO:
+//
+// - remove translation of all erlang:make_fun/3 call to l_make_export
+// - add erlang:make_fun3 BIF
+// - remove {e,0} as a possible iop argument from static and dynamic code
+// loading
+// - assert that e != 0 here
+//
+
+export_t *e = <% arg(Exp) %>;
+if (e == 0)
+{
+	e = code_base_lookup_or_create_N(r0, rs[1], int_value(rs[2]));
+	if (e == 0)
+		raise_error(A_NO_MEMORY);
+}
+
+light_swap_out();
+int needed = WSIZE(t_export_t);
+uint32_t *p = heap_alloc(&proc->hp, needed);
+term_t fun = tag_boxed(p);
+box_export(p, e);
+heap_set_top(&proc->hp, p);
+light_swap_in();
+r0 = fun;
+
+<%@ iop(l_increment, [Src,Inc,Live,Dst]) %>
+int i = (int)<% arg(Inc) %>;
+term_t src = <% arg(Src) %>;
+term_t r;
+if (is_int(src))
+{
+	int v = int_value(src) + i;
+	if (likely(fits_int(v)))
+		r = tag_int(v);
+	else
+	{
+		light_swap_out();
+		bignum_t *bn = bignum_from_int(&proc->hp, v);
+		light_swap_in();
+		r = tag_boxed(bn);
+	}
+}
+else
+{
+	light_swap_out();
+	r = mixed_add_immed(src, i, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+		bif_error2(r, A_ERLANG, APLUS__, src, tag_int(i));
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_plus, [Fail,Live,Dst]) %>
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	int v = int_value(tmp_arg1) + int_value(tmp_arg2);
+	if (likely(fits_int(v)))
+	{
+		<% set_dst(Dst, <<"tag_int(v)">>) %>
+	}
+	else
+	{
+		light_swap_out();
+		bignum_t *bn = bignum_from_int(&proc->hp, v);
+		light_swap_in();
+		<% set_dst(Dst, <<"tag_boxed(bn)">>) %>
+	}
+}
+else
+{
+	light_swap_out();
+	term_t r = mixed_add(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(r, A_ERLANG, APLUS__, tmp_arg1, tmp_arg2);
+	}
+	<% set_dst(Dst, <<"r">>) %>
+}
+
+<%@ iop(l_minus, [Fail,Live,Dst]) %>
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	int v = int_value(tmp_arg1) - int_value(tmp_arg2);
+	if (likely(fits_int(v)))
+	{
+		<% set_dst(Dst, <<"tag_int(v)">>) %>
+	}
+	else
+	{
+		light_swap_out();
+		bignum_t *bn = bignum_from_int(&proc->hp, v);
+		light_swap_in();
+		<% set_dst(Dst, <<"tag_boxed(bn)">>) %>
+	}
+}
+else
+{
+	swap_out();
+	term_t r = mixed_sub(tmp_arg1, tmp_arg2, &proc->hp);
+	swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(r, A_ERLANG, AMINUS__, tmp_arg1, tmp_arg2);
+	}
+	<% set_dst(Dst, <<"r">>) %>
+}
+
+<%@ iop(l_times, [Fail,Live,Dst]) %>
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	int64_t v = (int64_t)int_value(tmp_arg1) * int_value(tmp_arg2);
+	if (likely(fits_int(v)))
+	{
+		<% set_dst(Dst, <<"tag_int(v)">>) %>
+	}
+	else
+	{
+		light_swap_out();
+		bignum_t *bn = bignum_from_int(&proc->hp, v);
+		light_swap_in();
+		<% set_dst(Dst, <<"tag_boxed(bn)">>) %>
+	}
+}
+else
+{
+	light_swap_out();
+	term_t r = mixed_mul(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(r, A_ERLANG, ATIMES__, tmp_arg1, tmp_arg2);
+	}
+	<% set_dst(Dst, <<"r">>) %>
+}
+
+<%@ iop(l_m_div, [Fail0,Live,Dst]) %>
+double a = term_to_float(tmp_arg1);
+double b = term_to_float(tmp_arg2);
+term_t r = A_BADARG;
+if (b == 0.0 || !isfinite(a) || !isfinite(b))
+	goto m_div_badarith;
+light_swap_out();
+r = heap_float_with_check(&proc->hp, a / b);
+light_swap_in();
+if (is_atom(r))
+{
+m_div_badarith:
+	<% jump_or_continue(Fail0) %>;
+	bif_error2(r, A_ERLANG, ADIV__, tmp_arg1, tmp_arg2);
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_int_div, [Fail,Live,Dst]) %>
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	int denom = int_value(tmp_arg2);
+	if (denom == 0)
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(A_BADARITH, A_ERLANG, A_DIV, tmp_arg1, tmp_arg2);
+	}
+	int v = int_value(tmp_arg1) / denom;
+	assert(fits_int(v));
+	r = tag_int(v);
+}
+else
+{
+	light_swap_out();
+	r = mixed_int_div(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(r, A_ERLANG, A_DIV, tmp_arg1, tmp_arg2);
+	}
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_rem, [Fail,Live,Dst]) %>
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	int denom = int_value(tmp_arg2);
+	if (denom == 0)
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(A_BADARITH, A_ERLANG, A_REM, tmp_arg1, tmp_arg2);
+	}
+	int v = int_value(tmp_arg1) % denom;
+	// always fits int
+	<% set_dst(Dst, <<"tag_int(v)">>) %>
+}
+else
+{
+	swap_out();
+	term_t r = mixed_rem(tmp_arg1, tmp_arg2, &proc->hp);
+	swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(r, A_ERLANG, A_REM, tmp_arg1, tmp_arg2);
+	}
+	<% set_dst(Dst, <<"r">>) %>
+}
+
+<%@ iop(l_band, [Fail,Live,Dst]) %>
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+	r = tmp_arg1 & tmp_arg2;	//tag intact, never a carry
+else
+{
+	light_swap_out();
+	r = mixed_band(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(r, A_ERLANG, A_BAND, tmp_arg1, tmp_arg2);
+	}
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_bor, [Fail,Live,Dst]) %>
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+	r = tmp_arg1 | tmp_arg2;	//tag intact, never a carry
+else
+{
+	light_swap_out();
+	r = mixed_bor(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(r, A_ERLANG, A_BOR, tmp_arg1, tmp_arg2);
+	}
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_bxor, [Fail,Live,Dst]) %>
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+	r = tag_int(int_value(tmp_arg1) ^ int_value(tmp_arg2));
+else
+{
+	light_swap_out();
+	r = mixed_bxor(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error2(r, A_ERLANG, A_BXOR, tmp_arg1, tmp_arg2);
+	}
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_int_bnot, [Fail,Src,Live,Dst]) %>
+term_t t = <% arg(Src) %>;
+term_t r;
+if (is_int(t))
+	r = tag_int(~int_value(t));
+else
+{
+	light_swap_out();
+	r = mixed_bnot(t, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		<% jump_or_continue(Fail) %>;
+		bif_error1(r, A_ERLANG, A_BNOT, t);
+	}
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_bsl, [Fail,Live,Dst]) %>
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	int64_t v1 = int_value(tmp_arg1);
+	int v2 = int_value(tmp_arg2);
+
+	if (v2 <= 32 +TAG_IMMED1_SIZE)
+	{
+		int64_t v = (v2 <= -64)
+			?((v1 < 0) ?-1 :0)
+			:((v2 > 0) ?v1 << v2 :v1 >> -v2);
+		if (fits_int(v))
+			r = tag_int(v);
+		else
+		{
+			light_swap_out();
+			bignum_t *bn = bignum_from_int(&proc->hp, v);
+			light_swap_in();
+			r = tag_boxed(bn);
+		}
+	}
+	else
+	{
+		light_swap_out();
+		r = mixed_bsl_i(v1, v2, &proc->hp);
+		light_swap_in();
+	}
+}
+else
+{
+	light_swap_out();
+	r = mixed_bsl(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+}
+if (is_atom(r))
+{
+	<% jump_or_continue(Fail) %>;
+	bif_error2(r, A_ERLANG, A_BSL, tmp_arg1, tmp_arg2);
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_bsr, [Fail,Live,Dst]) %>
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	int64_t v1 = int_value(tmp_arg1);
+	int v2 = int_value(tmp_arg2);
+
+	if (v2 >= -32 -TAG_IMMED1_SIZE)
+	{
+		int64_t v = (v2 >= 64)
+			?((v1 < 0) ?-1 :0)
+			:((v2 > 0) ?v1 >> v2 :v1 << -v2);
+		if (fits_int(v))
+			r = tag_int(v);
+		else
+		{
+			light_swap_out();
+			bignum_t *bn = bignum_from_int(&proc->hp, v);
+			light_swap_in();
+			r = tag_boxed(bn);
+		}
+	}
+	else
+	{
+		light_swap_out();
+		r = mixed_bsr_i(v1, v2, &proc->hp);
+		light_swap_in();
+	}
+}
+else
+{
+	light_swap_out();
+	r = mixed_bsr(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+}
+if (is_atom(r))
+{
+	<% jump_or_continue(Fail) %>;
+	bif_error2(r, A_ERLANG, A_BSR, tmp_arg1, tmp_arg2);
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_fadd, [A,B,Dst]) %>
+double d = <% arg(A) %> + <% arg(B) %>;
+if (!isfinite(d))
+	raise_error(A_BADARITH);
+<% arg(Dst) %> = d;
+
+<%@ iop(l_fsub, [A,B,Dst]) %>
+double d = <% arg(A) %> - <% arg(B) %>;
+if (!isfinite(d))
+	raise_error(A_BADARITH);
+<% arg(Dst) %> = d;
+
+<%@ iop(l_fmul, [A,B,Dst]) %>
+double d = <% arg(A) %> * <% arg(B) %>;
+if (!isfinite(d))
+	raise_error(A_BADARITH);
+<% arg(Dst) %> = d;
+
+<%@ iop(l_fdiv, [A,B,Dst]) %>
+double val = <% arg(B) %>;
+if (val == 0.0)
+	raise_error(A_BADARITH);
+double d = <% arg(A) %> / val;
+if (!isfinite(d))
+	raise_error(A_BADARITH);
+<% arg(Dst) %> = d;
+
+<%@ iop(l_fnegate, [A,Dst]) %>
+double val = <% arg(A) %>;
+// never overflows
+<% arg(Dst) %> = -val;
+
+<%@ iop(fconv, [Src,Dst]) %>
+term_t v = <% arg(Src) %>;
+double converted = term_to_float(v);
+if (!isfinite(converted))
+	raise_error(A_BADARITH);
+<% arg(Dst) %> = converted;
+
+<%@ iop(fmove_1, [Src,Dst]) %>	// s fr
+term_t v = <% arg(Src) %>;
+assert(is_boxed(v) && boxed_tag(peel_boxed(v)) == SUBTAG_FLOAT);
+uint32_t *tdata = peel_boxed(v);
+<% arg(Dst) %> = float_value(tdata);
+
+<%@ iop(fmove_2, [Src,Dst]) %>	// fr s
+double dbl = <% arg(Src) %>;
+term_t v = tag_boxed(htop);
+assert(hend - htop >= WSIZE(t_float_t));	// compiler should care
+((t_float_t *)htop)->hdr = HDR_IS_NOT_CP | SUBTAG_FLOAT;
+((t_float_t *)htop)->val = dbl;
+htop += WSIZE(t_float_t);
+<% set_dst(Dst, <<"v">>) %>
+
+<%@ iop(fclearerror, []) %>
+
+//debug("fclearerror ignored\n");
+//TODO: ignore for now
+
+<%@ iop(l_fcheckerror, []) %>
+
+//debug("l_fcheckerror ignored\n");
+//TODO: ignore for now
+
+<%@ iop(l_gc_bif1, [Fail0,Bif,Arg,Live,Dst]) %>
+term_t t = <% arg(Arg) %>;
+swap_out();
+term_t r = ((gc_bif_func1_t)<% arg(Bif) %>)
+					(t, proc, rs, <% arg(Live) %>);
+swap_in();
+if (r == noval)
+{
+	<% jump_or_continue(Fail0) %>;
+	bif_func_t entry = <% arg(Bif) %>;
+	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+	assert(bif_exp != 0);
+	assert(bif_exp->arity == 1);
+	raise_bif_mfa.mod = bif_exp->module;
+	raise_bif_mfa.fun = bif_exp->function;
+	raise_bif_mfa.arity = 1;
+	rs[0] = t;
+	rs[1] = proc->bif_excep_reason;
+	goto raise_from_bif;
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_gc_bif2, [Fail0,Bif,Live,Dst]) %>
+// tmp_arg1 - Arg1
+// tmp_arg2 - Arg2
+swap_out();
+term_t r = ((gc_bif_func2_t)<% arg(Bif) %>)
+					(tmp_arg1, tmp_arg2, proc, rs, <% arg(Live) %>);
+swap_in();
+if (r == noval)
+{
+	<% jump_or_continue(Fail0) %>;
+	bif_func_t entry = <% arg(Bif) %>;
+	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+	assert(bif_exp != 0);
+	assert(bif_exp->arity == 2);
+	raise_bif_mfa.mod = bif_exp->module;
+	raise_bif_mfa.fun = bif_exp->function;
+	raise_bif_mfa.arity = 2;
+	rs[0] = tmp_arg1;
+	rs[1] = tmp_arg2;
+	rs[2] = proc->bif_excep_reason;
+	goto raise_from_bif;
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_gc_bif3, [Fail0,Bif,Src,Live,Dst]) %>
+// Src - Arg1
+// tmp_arg1 - Arg2
+// tmp_arg2 - Arg3
+term_t t = <% arg(Src) %>;
+swap_out();
+term_t r = ((gc_bif_func3_t)<% arg(Bif) %>)
+					(t, tmp_arg1, tmp_arg2, proc, rs, <% arg(Live) %>);
+swap_in();
+if (r == noval)
+{
+	<% jump_or_continue(Fail0) %>;
+	bif_func_t entry = <% arg(Bif) %>;
+	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+	assert(bif_exp != 0);
+	assert(bif_exp->arity == 3);
+	raise_bif_mfa.mod = bif_exp->module;
+	raise_bif_mfa.fun = bif_exp->function;
+	raise_bif_mfa.arity = 3;
+	rs[0] = t;
+	rs[1] = tmp_arg1;
+	rs[2] = tmp_arg2;
+	rs[3] = proc->bif_excep_reason;
+	goto raise_from_bif;
+}
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_bif1, [Fail,Bif,Arg,Dst]) %>
+term_t r = ((bif_func1_t)<% arg(Bif) %>)(<% arg(Arg) %>, proc);
+if (r == noval)
+	<% jump(Fail) %>;
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(bif1_body, [Bif,Arg,Dst]) %>
+term_t r = ((bif_func1_t)<% arg(Bif) %>)(<% arg(Arg) %>, proc);
+if (r == noval)
+	raise_error(proc->bif_excep_reason);
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_bif2, [Fail,Bif,Dst]) %>
+term_t r = ((bif_func2_t)<% arg(Bif) %>)(tmp_arg1, tmp_arg2, proc);
+if (r == noval)
+	<% jump(Fail) %>;
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(bif2_body, [Bif,Dst]) %>
+term_t r = ((bif_func2_t)<% arg(Bif) %>)(tmp_arg1, tmp_arg2, proc);
+if (r == noval)
+	raise_error(proc->bif_excep_reason);
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(call_bif, [Bif]) %>
+bif_func_t entry = <% arg(Bif) %>;
+
+//
+//TODO: The following two assignments are needed for erlang:process_info/2 and
+// erlang:process_display/2 only. Check the performance impact.
+//
+proc->cap.ip = ip;
+proc->cap.cp = cp;
+
+#ifdef TRACE_HARNESS
+if (trace_mask & TRACE_MASK_BIF)
+{
+export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+assert(bif_exp != 0);
+printk("TRACEBIF: %pt:%pt/%d\n", T(bif_exp->module), T(bif_exp->function), bif_exp->arity);
+}
+#endif
+
+swap_out();
+term_t r = ((cbif_func_t)entry)(proc, rs);
+swap_in();
+if (r == noval)
+{
+	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+	assert(bif_exp != 0);
+
+	raise_bif_mfa.mod = bif_exp->module;
+	raise_bif_mfa.fun = bif_exp->function;
+	raise_bif_mfa.arity = bif_exp->arity;
+	rs[bif_exp->arity] = proc->bif_excep_reason;
+	goto raise_from_bif;
+}
+r0 = r;
+
+<%@ iop(l_catch, [{t,{word,W}},Catch]) %>
+term_t y = <% word(W) %>;
+assert(is_slot(y));
+sp[slot_index(y)+1] = <% arg(Catch) %>;
+proc->catch_level++;
+
+<%@ iop(l_catch, [{y,{value,N}},Catch]) %>
+sp[<% i2l(N) %>+1] = <% arg(Catch) %>;
+proc->catch_level++;
+
+<%@ iop(catch_end, [{t,{word,W}}]) %>
+term_t y = <% word(W) %>;
+assert(is_slot(y));
+sp[slot_index(y)+1] = nil;
+proc->catch_level--;
+
+<% catch_it() %>
+
+<%@ iop(catch_end, [{y,{value,N}}]) %>
+sp[<% i2l(N) %>+1] = nil;
+proc->catch_level--;
+
+<% catch_it() %>
+
+<%@ iop(try_end, [{y,{value,N}}]) %>
+sp[<% i2l(N) %>+1] = nil;
+proc->catch_level--;
+
+if (r0 == noval)
+{
+	r0 = rs[1];		// class
+	rs[1] = rs[2];  // reason
+
+	//TODO: consider gc round here
+}
+
+<%@ iop(try_end, [{t,{word,W}}]) %>
+term_t y = <% word(W) %>;
+assert(is_slot(y));
+sp[slot_index(y)+1] = nil;
+proc->catch_level--;
+
+if (r0 == noval)
+{
+	r0 = rs[1];		// class
+	rs[1] = rs[2];  // reason
+
+	//TODO: consider gc round here
+}
+
+<%@ iop(l_bs_add, [Fail,Unit,Dst]) %>
+uint32_t bcount1, bcount2;
+int x = bits_calc_bit_size(tmp_arg1, 1, &bcount1);
+int y = bits_calc_bit_size(tmp_arg2, <% arg(Unit) %>, &bcount2);
+if (x == 0 && y == 0)
+{
+	int64_t bcount = (int64_t)bcount1 + bcount2;
+	if (bcount > MAX_BIT_SIZE)
+	{
+		<% jump_or_continue(Fail) %>;
+		raise_error(A_SYSTEM_LIMIT);
+	}
+	light_swap_out();
+	term_t v = int_to_term(bcount, &proc->hp);
+	light_swap_in();
+	<% set_dst(Dst, <<"v">>) %>
+}
+else if (x == -BAD_ARG || y == -BAD_ARG)
+{
+	<% jump_or_continue(Fail) %>;
+	badarg();
+}
+else
+{
+	<% jump_or_continue(Fail) %>;
+	raise_error(A_SYSTEM_LIMIT);
+}
+
+<%@ iop(l_bs_append, [Fail0,Extra,Live,Unit,Dst]) %>
+swap_out();
+int live = <% arg(Live) %>;
+rs[live] = tmp_arg1;
+rs[live+1] = tmp_arg2;
+proc_burn_fat(proc, 0, rs, live +2);
+tmp_arg2 = rs[live +1];
+tmp_arg1 = rs[live];
+
+// tmp_arg1 - bit size in units
+// tmp_arg2 - binary
+term_t bin = bits_bs_append(tmp_arg2,
+		tmp_arg1, <% arg(Unit) %>, <% arg(Extra) %>, &bpc, &proc->hp);
+assert(bpc.ends >= bpc.starts);
+swap_in();
+if (bin == A_SYSTEM_LIMIT || bin == A_BADARG)
+{
+	<% jump_or_continue(Fail0) %>;
+	raise_error(bin);
+}
+<% set_dst(Dst, <<"bin">>) %>
+
+<%@ iop(l_bs_private_append, [Fail0,Unit,Dst]) %>
+// tmp_arg1 - bit size in units
+// tmp_arg2 - writable sub bin or a proc bin (refc=1)
+assert(is_boxed(tmp_arg2) && boxed_tag(peel_boxed(tmp_arg2)) == SUBTAG_SUB_BIN);
+assert(sub_bin_is_writable(peel_boxed(tmp_arg2)));
+
+light_swap_out();
+int x = bits_bs_private_append(tmp_arg2,
+		tmp_arg1, <% arg(Unit) %>, &bpc, &proc->hp);
+light_swap_in();
+if (x < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+<% set_dst(Dst, <<"tmp_arg2">>) %>
+
+<%@ iop(l_bs_init, [Sz,Extra,Live,Dst]) %>
+uint32_t osz = <% arg(Sz) %>;
+binnode_t *node = binnode_make(osz);
+int needed = WSIZE(t_proc_bin_t) + WSIZE(t_sub_bin_t) + <% arg(Extra) %>;
+light_swap_out();
+uint32_t *p = heap_alloc_N(&proc->hp, needed);
+if (p == 0)
+{
+	binnode_destroy(node);
+	no_memory_signal();
+}
+t_proc_bin_t *pb = (t_proc_bin_t *)p;
+box_proc_bin(p, osz, node);
+heap_set_top0(&proc->hp, p);
+proc_bin_link(&proc->hp.proc_bins, pb, &proc->hp.total_pb_size);
+light_swap_in();
+bits_get_real(pb, &bpc);
+<% set_dst(Dst, <<"tag_boxed(pb)">>) %>
+
+<%@ iop(l_bs_init_fail, [Extra,Fail0,Live,Dst]) %>
+// tmp_arg1 is the byte size of the binary
+
+uint32_t osz;
+int x = bits_calc_byte_size(tmp_arg1, &osz);
+if (x == -TOO_LONG)
+{
+	<% jump_or_continue(Fail0) %>;
+	raise_error(A_SYSTEM_LIMIT);
+}
+if (x < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+if (osz >= BS_INIT_FAIL_GC_THRESH)
+{
+	swap_out();
+	proc_burn_fat(proc, 0, rs, <% arg(Live) %>);
+	swap_in();
+}
+
+binnode_t *node = binnode_make(osz);
+int needed = WSIZE(t_proc_bin_t) + WSIZE(t_sub_bin_t) + <% arg(Extra) %>;
+light_swap_out();
+uint32_t *p = heap_alloc_N(&proc->hp, needed);
+if (p == 0)
+{
+	binnode_destroy(node);
+	no_memory_signal();
+}
+t_proc_bin_t *pb = (t_proc_bin_t *)p;
+box_proc_bin(p, osz, node);
+heap_set_top0(&proc->hp, p);
+proc_bin_link(&proc->hp.proc_bins, pb, &proc->hp.total_pb_size);
+light_swap_in();
+bits_get_real(pb, &bpc);
+<% set_dst(Dst, <<"tag_boxed(pb)">>) %>
+
+<%@ iop(l_bs_init_heap_bin, [Sz,Extra,Live,Dst]) %>
+int osz = <% arg(Sz) %>;
+int needed = WSIZE(t_heap_bin_t) + (osz +3)/4 +
+			 WSIZE(t_sub_bin_t) + <% arg(Extra) %>;
+light_swap_out();
+uint32_t *p = heap_alloc(&proc->hp, needed);
+t_heap_bin_t *hb = (t_heap_bin_t *)p;
+box_heap_bin(p, osz, 0);
+heap_set_top0(&proc->hp, p);
+light_swap_in();
+bits_init_buf(hb->data, osz, &bpc);
+<% set_dst(Dst, <<"tag_boxed(hb)">>) %>
+
+<%@ iop(bs_init_writable, []) %>
+uint32_t size;
+UNUSED int x = bits_calc_byte_size(r0, &size);
+assert(x == 0);
+light_swap_out();
+r0 = bits_bs_init_writable(size, &proc->hp);
+light_swap_in();
+
+<%@ iop(l_bs_init_bits_fail, [Extra,Fail0,Live,Dst]) %>
+uint32_t bsz;
+int x = bits_calc_bit_size(tmp_arg1, 1, &bsz);
+if (x == -TOO_LONG)
+{
+	<% jump_or_continue(Fail0) %>;
+	raise_error(A_SYSTEM_LIMIT);
+}
+if (x < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+<% bs_init_bits(Extra, Live, Dst) %>
+
+<%@ iop(l_bs_init_bits, [Sz,Extra,Live,Dst]) %>
+uint32_t bsz = <% arg(Sz) %>;
+<% bs_init_bits(Extra, Live, Dst) %>
+
+<%@ iop(l_new_bs_put_integer_imm, [Fail0,BSz,Flags,Src]) %>
+uint32_t bsz = <% arg(BSz) %>;
+assert(bpc.ends-bpc.starts >= bsz);
+term_t v = <% arg(Src) %>;
+uint8_t flags = <% arg(Flags) %>;
+if (is_int(v))
+{
+	light_swap_out();
+	bits_put_integer(&bpc, int_value(v), bsz, flags & BSF_LITTLE);
+	light_swap_in();
+}
+else if (is_boxed(v) && is_bignum(peel_boxed(v)))
+{
+	light_swap_out();
+	bits_put_bignum(&bpc, (bignum_t *)peel_boxed(v), bsz, flags & BSF_LITTLE);
+	light_swap_in();
+}
+else
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+<%@ iop(l_new_bs_put_integer, [Fail0,Sz,Unit,Flags,Src]) %>
+term_t sz = <% arg(Sz) %>;
+uint32_t bsz;
+if (bits_calc_bit_size(sz, <% arg(Unit) %>, &bsz) < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+assert(bpc.ends-bpc.starts >= bsz);
+term_t v = <% arg(Src) %>;
+uint8_t flags = <% arg(Flags) %>;
+if (is_int(v))
+{
+	light_swap_out();
+	bits_put_integer(&bpc, int_value(v), bsz, flags & BSF_LITTLE);
+	light_swap_in();
+}
+else if (is_boxed(v) && is_bignum(peel_boxed(v)))
+{
+	light_swap_out();
+	bits_put_bignum(&bpc, (bignum_t *)peel_boxed(v), bsz, flags & BSF_LITTLE);
+	light_swap_in();
+}
+else
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+<%@ iop(l_bs_get_float2, [Fail0,Ms,Live,Sz,Unit,Flags,Dst]) %>
+term_t bin = <% arg(Ms) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t bcount;
+int x = bits_calc_bit_size(<% arg(Sz) %>, <% arg(Unit) %>, &bcount);
+if (x == -TOO_LONG)
+{
+	<% jump_or_continue(Fail0) %>;
+	raise_error(A_SYSTEM_LIMIT);
+}
+if (x < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+uint8_t flags = <% arg(Flags) %>;
+light_swap_out();
+term_t v = bits_bs_get_float(mc, bcount, flags & BSF_LITTLE, &proc->hp);
+light_swap_in();
+if (v == A_BADARG)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+<% set_dst(Dst, <<"v">>) %>
+
+<%@ iop(l_new_bs_put_float_imm, [Fail0,BSz,Flags,Src]) %>
+uint32_t bcount = <% arg(BSz) %>;
+uint8_t flags = <% arg(Flags) %>;
+term_t v = <% arg(Src) %>;
+light_swap_out();
+int x = bits_bs_put_float(v, bcount, flags & BSF_LITTLE, &bpc);
+light_swap_in();
+if (x < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+<%@ iop(l_new_bs_put_float, [Fail0,Size,Unit,Flags,Src]) %>
+term_t sz = <% arg(Size) %>;
+assert(is_int(sz) || (is_boxed(sz) && is_bignum(peel_boxed(sz))));
+
+uint32_t bcount;
+if (bits_calc_bit_size(sz, <% arg(Unit) %>, &bcount) < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+uint8_t flags = <% arg(Flags) %>;
+term_t v = <% arg(Src) %>;
+light_swap_out();
+int x = bits_bs_put_float(v, bcount, flags & BSF_LITTLE, &bpc);
+light_swap_in();
+if (x < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+<%@ iop(l_new_bs_put_binary_imm, [Fail0,BSz,Flags,Src]) %>
+uint32_t bcount = <% arg(BSz) %>;
+//NB: Flags not used
+term_t bin = <% arg(Src) %>;
+if (!is_boxed(bin) || !is_binary(peel_boxed(bin)))
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+bits_t bs;
+bits_get_real(peel_boxed(bin), &bs);
+if (bs.ends - bs.starts < bcount)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+assert(bpc.ends - bpc.starts >= bcount);
+bs.ends = bs.starts +bcount;
+bits_copy(&bs, &bpc);
+
+<%@ iop(l_new_bs_put_binary_all, [Fail,Src,Unit]) %>
+// Fail is unused
+term_t bin = <% arg(Src) %>;
+assert(is_boxed(bin) && is_binary(peel_boxed(bin)));
+
+bits_t bs;
+bits_get_real(peel_boxed(bin), &bs);
+bits_copy(&bs, &bpc);
+
+<%@ iop(l_new_bs_put_binary, [Fail0,Size,Unit,Flags,Src]) %>
+term_t sz = <% arg(Size) %>;
+uint32_t bcount;
+if (bits_calc_bit_size(sz, <% arg(Unit) %>, &bcount) < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+assert(bpc.ends - bpc.starts >= bcount);
+term_t bin = <% arg(Src) %>;
+if (!is_boxed(bin) || !is_binary(peel_boxed(bin)))
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+bits_t bs;
+bits_get_real(peel_boxed(bin), &bs);
+if (bs.ends - bs.starts < bcount)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+bs.ends = bs.starts +bcount;
+bits_copy(&bs, &bpc);
+
+<%@ iop(l_bs_start_match2, [Bin,Fail,Live,NumSlots,Dst]) %>
+term_t bin = <% arg(Bin) %>;
+if (!is_boxed(bin) || !is_binary(peel_boxed(bin)))
+	<% jump(Fail) %>;
+uint32_t *bdata = peel_boxed(bin);
+int num_slots = <% arg(NumSlots) %> +1;	//NB: +1
+if (boxed_tag(bdata) != SUBTAG_MATCH_CTX
+			|| match_ctx_num_slots(bdata) < num_slots)
+{
+	//NB: Live unused, burn some fat?
+	light_swap_out();
+	bin = bits_bs_start_match2(bin, num_slots, &proc->hp);
+	light_swap_in();
+}
+else
+{
+	// reused matching context - offset should be saved anyway
+	t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+	mc->saved_offsets[0] = mc->bs.starts;
+}
+<% set_dst(Dst, <<"bin">>) %>
+
+<%@ iop(l_bs_test_tail_imm2, [Fail,MatchCtx,N]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t bcount = <% arg(N) %>;
+if (mc->bs.ends - mc->bs.starts != bcount)
+	<% jump(Fail) %>;
+
+<%@ iop(l_bs_test_zero_tail2, [Fail,MatchCtx]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+if (mc->bs.ends > mc->bs.starts)
+	<% jump(Fail) %>;
+
+<%@ iop(l_bs_test_unit_8, [Fail,MatchCtx]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+if (((mc->bs.ends - mc->bs.starts) & 7) != 0)
+	<% jump(Fail) %>;
+
+<%@ iop(l_bs_test_unit, [Fail,MatchCtx,Unit]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t unit = <% arg(Unit) %>;
+if (((mc->bs.ends - mc->bs.starts) % unit) != 0)
+	<% jump(Fail) %>;
+
+<%@ iop(l_bs_skip_bits_imm2, [Fail0,MatchCtx,BSz]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t bcount = <% arg(BSz) %>;
+if (bcount < 0 || bcount > (mc->bs.ends - mc->bs.starts))
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+mc->bs.starts += bcount;
+
+<%@ iop(l_bs_skip_bits2, [Fail0,MatchCtx,Sz,Unit]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+term_t sz = <% arg(Sz) %>;
+uint32_t bcount;
+if (bits_calc_bit_size(sz, <% arg(Unit) %>, &bcount) < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+if (bcount > (mc->bs.ends - mc->bs.starts))
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+mc->bs.starts += bcount;
+
+<%@ iop(l_bs_skip_bits_all2, [Fail0,MatchCtx,Unit]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint8_t u = <% arg(Unit) %>;
+uint32_t skipped = mc->bs.ends - mc->bs.starts;
+if (skipped % u != 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+mc->bs.starts = mc->bs.ends;
+
+<%@ iop(l_bs_match_string, [MatchCtx,Fail,BSz,Data]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t bcount = <% arg(BSz) %>;
+if (mc->bs.ends - mc->bs.starts < bcount)
+	<% jump(Fail) %>;
+bits_t bs1 = {
+	.data = <% arg(Data) %>,
+	.starts = 0,
+	.ends = bcount
+};
+bits_t bs2 = {
+	.data = mc->bs.data,
+	.starts = mc->bs.starts,
+	.ends = mc->bs.starts +bcount
+};
+//NB: bits_compare garbles both bs1 and bs2
+if (bits_compare(&bs1, &bs2) != 0)
+	<% jump(Fail) %>;
+
+mc->bs.starts += bcount;
+
+<%@ iop(l_bs_put_string, [Len,Data]) %>
+bits_t src;
+bits_init_buf(<% arg(Data) %>, <% arg(Len) %>, &src);
+bits_copy(&src, &bpc);
+
+<%@ iop(l_bs_get_integer_8, [MatchCtx,Fail,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+if (mc->bs.ends - mc->bs.starts < 8)
+	<% jump(Fail) %>;
+uint32_t v;
+bits_get_octet(&mc->bs, v);
+<% set_dst(Dst, <<"tag_int(v)">>) %>
+
+<%@ iop(l_bs_get_integer_16, [MatchCtx,Fail,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+if (mc->bs.ends - mc->bs.starts < 16)
+	<% jump(Fail) %>;
+uint32_t vh, vl;
+bits_get_octet(&mc->bs, vh);
+bits_get_octet(&mc->bs, vl);
+uint32_t v = (vh << 8) | vl;
+<% set_dst(Dst, <<"tag_int(v)">>) %>
+
+<%@ iop(l_bs_get_integer_32, [MatchCtx,Fail,Live,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+if (mc->bs.ends - mc->bs.starts < 32)
+	<% jump(Fail) %>;
+uint32_t v;
+bits_get_word(&mc->bs, v);
+light_swap_out();
+term_t r = int_to_term(v, &proc->hp);
+light_swap_in();
+<% set_dst(Dst, <<"r">>) %>
+
+<%@ iop(l_bs_get_integer_small_imm, [MatchCtx,BSz,Fail,Flags,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t bcount = <% arg(BSz) %>;
+assert(bcount <= 32 -3);	//fits_int()
+if (mc->bs.ends - mc->bs.starts < bcount)
+	<% jump(Fail) %>;
+uint32_t slack = 32-bcount;
+uint8_t flags = <% arg(Flags) %>;
+uint8_t buf[4] = {0, 0, 0, 0};
+int v;
+if (flags & BSF_LITTLE)
+{
+	bits_t bs = {
+		.data = buf,
+		.starts = 0,
+		.ends = bcount
+	};
+	bits_fill(&mc->bs, &bs);
+	uint32_t v0 = GET_UINT_32_LE(buf);
+	int bo = slack & 7;
+	v = (flags & BSF_SIGNED)
+		?(int)(v0 << slack) >> (slack +bo)
+		:v0 >> bo;
+}
+else
+{
+	bits_t bs = {
+		.data = buf,
+		.starts = slack,
+		.ends = 32
+	};
+	bits_fill(&mc->bs, &bs);
+	uint32_t v0 = GET_UINT_32(buf);
+	v = (flags & BSF_SIGNED)
+		?((int)(v0 << slack)) >> slack
+		:v0;
+}
+<% set_dst(Dst, <<"tag_int(v)">>) %>
+
+<%@ iop(l_bs_get_integer_imm, [MatchCtx,BSz,Live,Fail,Flags,Dst]) %>
+//NB: Live not used
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t bcount = <% arg(BSz) %>;
+if (mc->bs.ends - mc->bs.starts < bcount)
+	<% jump(Fail) %>;
+uint8_t flags = <% arg(Flags) %>;
+light_swap_out();
+term_t v = bits_bs_get_integer_imm(mc,
+	bcount, flags & BSF_SIGNED, flags & BSF_LITTLE, &proc->hp);
+light_swap_in();
+<% set_dst(Dst, <<"v">>) %>
+
+<%@ iop(l_bs_get_integer, [Fail0,Live,Unit,Flags,Dst]) %>
+//tmp_arg1: MatchCtx
+//tmp_arg2: Sz
+assert(is_boxed(tmp_arg1) && boxed_tag(peel_boxed(tmp_arg1)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(tmp_arg1);
+if (!is_int(tmp_arg2) && !(is_boxed(tmp_arg2) && is_bignum(peel_boxed(tmp_arg2))))
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+uint32_t bcount;
+if (bits_calc_bit_size(tmp_arg2, <% arg(Unit) %>, &bcount) < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+if (mc->bs.ends - mc->bs.starts < bcount)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+uint8_t flags = <% arg(Flags) %>;
+light_swap_out();
+term_t v = bits_bs_get_integer_imm(mc,
+	bcount, flags & BSF_SIGNED, flags & BSF_LITTLE, &proc->hp);
+light_swap_in();
+<% set_dst(Dst, <<"v">>) %>
+
+<%@ iop(l_bs_get_utf8, [MatchCtx,Fail0,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+
+light_swap_out();
+term_t point = unicode_decode_utf8(mc);
+light_swap_in();
+if (point == A_BADARG)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+<% set_dst(Dst, <<"point">>) %>
+
+<%@ iop(l_bs_get_utf16, [MatchCtx,Fail0,Flags,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+
+uint8_t flags = <% arg(Flags) %>;
+light_swap_out();
+term_t point = unicode_decode_utf16(mc, flags & BSF_LITTLE);
+light_swap_in();
+if (point == A_BADARG)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+<% set_dst(Dst, <<"point">>) %>
+
+<%@ iop(l_bs_utf8_size, [Src,Dst]) %>
+term_t point = <% arg(Src) %>;
+int sz = 4;
+if (is_int(point))
+{
+int n = int_value(point);
+if (n >= 0)
+{
+	if (n <= 0x7f)
+		sz = 1;
+	else if (n <= 0x7ff)
+		sz = 2;
+	else if (n <= 0xffff)
+		sz = 3;
+}
+}
+<% set_dst(Dst, <<"tag_int(sz)">>) %>
+
+<%@ iop(l_bs_utf16_size, [Src,Dst]) %>
+term_t point = <% arg(Src) %>;
+int sz = 4;
+if (is_int(point))
+{
+int n = int_value(point);
+if (n >= 0)
+{
+	if (n <= 0xffff)
+		sz = 2;
+}
+}
+<% set_dst(Dst, <<"tag_int(sz)">>) %>
+
+<%@ iop(l_bs_put_utf8, [Fail0,Src]) %>
+term_t point = <% arg(Src) %>;
+if (unicode_encode_utf8(point, &bpc) < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+<%@ iop(l_bs_put_utf16, [Fail0,Flags,Src]) %>
+term_t point = <% arg(Src) %>;
+uint8_t flags = <% arg(Flags) %>;
+if (unicode_encode_utf16(point, flags & BSF_LITTLE, &bpc) < 0)
+{
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+<%@ iop(l_bs_validate_unicode, [Fail0,Src]) %>
+term_t point = <% arg(Src) %>;
+if (!is_int(point))
+	goto invalid_codepoint;
+int n = int_value(point);
+if (n < 0 || n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff))
+{
+invalid_codepoint:
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+<%@ iop(l_bs_validate_unicode_retract, [Fail0]) %>
+assert(is_boxed(tmp_arg2) && boxed_tag(peel_boxed(tmp_arg2)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(tmp_arg2);
+if (!is_int(tmp_arg1))	// all bignums are invalid code points
+	goto rectract;
+int n = int_value(tmp_arg1);
+if (n < 0 || n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff))
+{
+rectract:
+	mc->bs.starts -= 32;	// rectract 32 bits
+	<% jump_or_continue(Fail0) %>;
+	badarg();
+}
+
+<%@ iop(l_bs_get_binary2, [Fail,MatchCtx,Live,Sz,Unit,Flags,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+
+term_t s = <% arg(Sz) %>;
+if (!is_int(s) && !(is_boxed(s) && is_bignum(peel_boxed(s))))
+	<% jump(Fail) %>;
+uint32_t bcount;
+if (bits_calc_bit_size(s, <% arg(Unit) %>, &bcount) < 0)
+	<% jump(Fail) %>;
+if (mc->bs.ends - mc->bs.starts < bcount)
+	<% jump(Fail) %>;
+
+light_swap_out();
+int needed = WSIZE(t_sub_bin_t);
+uint32_t *p = heap_alloc(&proc->hp, needed);
+t_sub_bin_t *sb = (t_sub_bin_t *)p;
+box_sub_bin(p, mc->parent, mc->bs.starts, mc->bs.starts+bcount, 0);
+heap_set_top(&proc->hp, p);
+light_swap_in();
+
+mc->bs.starts += bcount;
+<% set_dst(Dst, <<"tag_boxed(sb)">>) %>
+
+<%@ iop(l_bs_get_binary_all2, [Fail,MatchCtx,Live,Unit,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+
+uint32_t bcount = mc->bs.ends - mc->bs.starts;
+if ((bcount % <% arg(Unit) %>) != 0)
+{
+	<% jump_or_continue(Fail) %>;
+	badarg();
+}
+
+light_swap_out();
+int needed = WSIZE(t_sub_bin_t);
+uint32_t *p = heap_alloc(&proc->hp, needed);
+t_sub_bin_t *sb = (t_sub_bin_t *)p;
+box_sub_bin(p, mc->parent, mc->bs.starts, mc->bs.ends, 0);
+heap_set_top(&proc->hp, p);
+light_swap_in();
+
+mc->bs.starts = mc->bs.ends;
+<% set_dst(Dst, <<"tag_boxed(sb)">>) %>
+
+<%@ iop(l_bs_get_binary_imm2, [Fail,MatchCtx,Live,BSz,Flags,Dst]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t bcount = <% arg(BSz) %>;
+if (mc->bs.ends - mc->bs.starts < bcount)
+	<% jump(Fail) %>;
+
+light_swap_out();
+int needed = WSIZE(t_sub_bin_t);
+uint32_t *p = heap_alloc(&proc->hp, needed);
+t_sub_bin_t *sb = (t_sub_bin_t *)p;
+box_sub_bin(p, mc->parent, mc->bs.starts, mc->bs.starts+bcount, 0);
+heap_set_top(&proc->hp, p);
+light_swap_in();
+
+mc->bs.starts += bcount;
+<% set_dst(Dst, <<"tag_boxed(sb)">>) %>
+
+<%@ iop(l_bs_get_binary_all_reuse, [MatchCtx,Fail,Unit]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint8_t u = <% arg(Unit) %>;
+if (((mc->bs.ends - mc->bs.starts) % u) != 0)
+	<% jump(Fail) %>;
+assert(sizeof(t_sub_bin_t) < sizeof(t_match_ctx_t));
+term_t parent = mc->parent;
+int64_t starts = mc->bs.starts;
+int64_t ends = mc->bs.ends;
+uint32_t *p = (uint32_t *)mc;	//same spot
+box_sub_bin(p, parent, starts, ends, 0);
+//sub_bin and match_ctx share tag (boxed)
+
+<%@ iop(l_bs_save2, [MatchCtx,Index]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+int i = <% arg(Index) %>;
+assert(i >= 0 && i < match_ctx_num_slots(peel_boxed(bin)));
+mc->saved_offsets[i] = mc->bs.starts;
+
+<%@ iop(l_bs_restore2, [MatchCtx,Index]) %>
+term_t bin = <% arg(MatchCtx) %>;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+int i = <% arg(Index) %>;
+assert(i >= 0 && i < match_ctx_num_slots(peel_boxed(bin)));
+mc->bs.starts = mc->saved_offsets[i];
+
+<%@ iop(bs_context_to_binary, [MatchCtx]) %>
+term_t bin = <% arg(MatchCtx) %>;
+if (is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX)
+{
+	t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+
+	light_swap_out();
+	uint32_t *p = heap_alloc(&proc->hp, WSIZE(t_sub_bin_t));
+	t_sub_bin_t *sb = (t_sub_bin_t *)p;
+
+	// Use the offset from the slot zero as a better start
+	int64_t starts = mc->saved_offsets[0];
+
+	box_sub_bin(p, mc->parent, starts, mc->bs.ends, 0);
+	heap_set_top(&proc->hp, p);
+	light_swap_in();
+
+	<% set_dst(MatchCtx, <<"tag_boxed(sb)">>) %>
+}
+
+<%@ iop(l_hibernate, []) %>
+
+// TODO
+// TODO A STUB
+// TODO
+// TODO stack not dropped - gc not run - process not put to sleep
+// TODO
+
+goto l_apply_entry;
+
+<%@ iop(Op, _Args) %>
+
+//printk("TODO: iop <% atom_to_list(Op) %> not implemented\n");
+printk("TODO: iop <% io_lib:format("~p", [{Op,_Args}]) %> not implemented\n");
+
+light_swap_out();
+term_t op_name = heap_strz(&proc->hp, "<% atom_to_list(Op) %>");
+term_t reason = heap_tuple2(&proc->hp, A_NOT_IMPLEMENTED, op_name);
+light_swap_in();
+
+raise_error(reason);
+
+<%@ catch_it() %>
+if (r0 == noval)
+{
+	assert(rs[1] == A_ERROR || rs[1] == A_THROW || rs[1] == A_EXIT);
+	if (rs[1] == A_THROW)
+		r0 = rs[2];
+	else
+	{
+		// A very nice spot for a garbage collection:
+		// a few live registers and a portion of the
+		// stack just gone.
+		//
+		
+		swap_out();
+		proc_burn_fat(proc, 0, rs, 3);
+
+		// Both error and exit exceptions are converted to {'EXIT',Reason}
+	
+		if (rs[1] == A_ERROR)
+			rs[2] = heap_tuple2(&proc->hp, rs[2], proc->stack_trace);
+		rs[0] = heap_tuple2(&proc->hp, AEXIT__, rs[2]);
+		swap_in();
+	}
+}
+
+<%@ bs_init_bits(Extra, Live, Dst) %>
+int uneven = (bsz & 7) != 0;
+uint32_t osz = (bsz +7) /8;
+int needed = (osz <= MAX_HEAP_BIN)
+	?WSIZE(t_heap_bin_t) + (osz +3)/4
+	:WSIZE(t_proc_bin_t);
+if (uneven)
+	needed += WSIZE(t_sub_bin_t);
+needed += <% arg(Extra) %>;
+light_swap_out();
+uint32_t *p = heap_alloc(&proc->hp, needed);
+term_t bin = tag_boxed(p);
+int is_writable = 1;
+if (osz <= MAX_HEAP_BIN)
+{
+	box_heap_bin(p, osz, 0);
+	is_writable = 0;
+}
+else
+{
+	binnode_t *node = binnode_make(osz);
+	t_proc_bin_t *pb = (t_proc_bin_t *)p;
+	box_proc_bin(p, osz, node);
+	proc_bin_link(&proc->hp.proc_bins, pb, &proc->hp.total_pb_size);
+}
+if (uneven)
+{
+	term_t parent = bin;
+	bin = tag_boxed(p);
+	box_sub_bin(p, parent, 0, bsz, is_writable);
+}
+heap_set_top0(&proc->hp, p);
+light_swap_in();
+bits_get_real(peel_boxed(bin), &bpc);
+<% set_dst(Dst, <<"bin">>) %>
+
+<%@ apply(Arity) %>
+
+//
+// NB: BEAM uses a function call for this, not a macro
+//
+
+int arity = <% arg(Arity) %>;
+term_t m = (arity == 0) ?r0 :rs[arity];
+term_t f = rs[arity+1];
+
+term_t this = noval;	// abstract module?
+if (!is_atom(f))
+	badarg();
+if (!is_atom(m))
+{
+	if (!is_tuple(m))
+		badarg();
+	uint32_t *p = peel_tuple(m);
+	if (p[0] < 1)
+		badarg();
+	this = m;
+	m = p[1];
+	if (!is_atom(m))
+		badarg();
+}
+
+if (this != noval)
+{
+	if (arity == 0)
+		r0 = this;
+	else
+		rs[arity] = this;
+	arity++;
+}
+
+export_t *exp = code_base_lookup(m, f, arity);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, arity);
+	light_swap_in();
+	r0 = m;
+	rs[1] = f;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+
+<%@ apply_fun(Id) %>
+if (!is_boxed(r0))
+	goto <% Id %>_bad_fun;
+uint32_t *p = peel_boxed(r0);
+term_t args = rs[1];
+if (!is_list(args))
+	badarg();
+int arity = list_len(args);
+if (arity < 0 || arity > 255)
+	goto <% Id %>_bad_fun;
+if (boxed_tag(p) == SUBTAG_FUN)
+{
+	t_fun_t *fun = (t_fun_t *)p;
+	if (fun->fe == 0)
+		not_implemented("unloaded funs");
+	int num_free = fun_num_free(p);
+	if (fun_arity(p) != arity + num_free)
+		goto <% Id %>_bad_arity;
+	memcpy(rs+arity, fun->frozen, num_free*sizeof(term_t));
+	ip = fun->fe->entry;
+	heap_list_to_vector(args, rs);
+	r0 = rs[0];
+}
+else if (boxed_tag(p) == SUBTAG_EXPORT)
+{
+	t_export_t *exp = (t_export_t *)p;
+	if (exp->e->is_bif)
+		not_implemented("bifs as exports");
+	if (exp->e->entry == 0)
+	{
+		r0 = exp->e->module;
+		rs[1] = exp->e->function;
+		rs[2] = args;
+		ip = (EH_UNDEF_EXP)->entry;
+	}
+	else if (exp->e->arity != arity)
+	{
+<% Id %>_bad_arity:
+		light_swap_out();
+		term_t fun_args = heap_tuple2(&proc->hp, r0, args);
+		term_t reason = heap_tuple2(&proc->hp, A_BADARITY, fun_args);
+		light_swap_in();
+		raise_error(reason);
+	}
+	else
+	{
+		ip = exp->e->entry;
+		heap_list_to_vector(args, rs);
+		r0 = rs[0];
+	}
+}
+else
+{
+<% Id %>_bad_fun:
+	light_swap_out();
+	term_t reason = heap_tuple2(&proc->hp, A_BADFUN, r0);
+	light_swap_in();
+	raise_error(reason);
+}
+
+<%@ value_tab_dispatch(Fail) %>
+if (v < alpha->f || v > beta[-1].f)
+	<% jump(Fail) %>;
+
+//TODO: in BEAM the binary search parameters are
+// made into unsigned values for performance
+
+while (beta > alpha+1)	// at least 2 pairs
+{
+	pair_t *mid = alpha + (beta - alpha +1)/2;
+	if ((term_t)mid->f > v)
+		beta = mid;
+	else
+		alpha = mid;
+}
+
+assert(beta == alpha+1);
+if (alpha->f == v)
+{
+	ip = (uint32_t *)expand_ptr(alpha->s);
+	next();
+}
+
+<% jump(Fail) %>;
+
+<%@ allocate(NumSlots) %>
+int gap = <% arg(NumSlots) %>+1;
+if (unlikely(sp - send < gap))
+{
+	proc_stack_set_top(proc, sp);
+	proc_stack_ensure(proc, gap);
+	sp = proc_stack_top(proc);
+	send = proc_stack_end(proc);
+
+	// In a rare case proc_stack_ensure() may enlarge the space available for
+	// the heap
+	//
+	hend = heap_end(&proc->hp);
+}
+sp -= gap;
+*sp = masquerade_as_boxed(cp);
+cp = 0; // not to confuse stack tracing
+
+<%@ test_heap(HeapNeeded, Live) %>
+if (unlikely(hend - htop < <% arg(HeapNeeded) %>))
+{
+	swap_out();
+	int nr_regs = proc_count_root_regs(proc);
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, <% arg(Live) %>);
+		heap_ensure(&proc->hp, <% arg(HeapNeeded) %>, root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, <% arg(HeapNeeded) %>);
+	swap_in();
+}
+
+<%@ reduce_exp(Export) %>
+export_t *exp = <% arg(Export) %>;
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+<%@ set_dst({t,{word,W}}, Src) %>
+{
+	term_t dst__ = <% word(W) %>;
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = <% Src %>;
+		else
+			rs[reg__] = <% Src %>;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = <% Src %>;
+	}
+}
+<%@ set_dst({x8,{bits,W,B}}, Src) %>
+{
+	int reg__ = <% bits(W, B) %>;
+	if (reg__ == 0)
+		r0 = <% Src %>;
+	else
+		rs[reg__] = <% Src %>;
+}
+<%@ set_dst(Dst, Src) %><%
+	arg(Dst)
+%> = <%
+	Src
+%>;<%@ eat2 %>
+
+<%@ dst_ref({t,{word,W}}, Ref) %>
+term_t dst__ = ip[<% i2l(W+1) %>];
+if (is_reg(dst__))
+{
+	int reg__ = reg_index(dst__);
+	assert(reg__ != 0);
+	<% Ref %> = rs + reg__;
+}
+else
+{
+	assert(is_slot(dst__));
+	<% Ref %> = sp + slot_index(dst__)+1;
+}
+
+<%@ dst_ref({x,{value,N}}, Ref) %>
+<% Ref %> = rs + <% i2l(N) %>;
+
+<%@ dst_ref({y,{value,N}}, Ref) %>
+<% Ref %> = sp + <% i2l(N +1) %>;
+
+<%@ jump(Fail) %>
+do {
+ip = <% arg(Fail) %>;
+next();
+} while (0)<%@ eat3 %>
+
+<%@ jump_or_continue(Fail) %>
+do {
+	uint32_t *fail__ = <% arg(Fail) %>;
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
+
+<%! EOF %>
