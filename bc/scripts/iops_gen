@@ -1,0 +1,101 @@
+#!/usr/bin/env escript
+%%! -pa ..
+
+%% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+%% 
+%% Redistribution and use in source and binary forms, with or without
+%% modification, are permitted provided that the following conditions are met:
+%% 
+%% * Redistributions of source code must retain the above copyright notice, this
+%% list of conditions and the following disclaimer.
+%% 
+%% * Redistributions in binary form must reproduce the above copyright notice,
+%% this list of conditions and the following disclaimer in the documentation
+%% and/or other materials provided with the distribution.
+%% 
+%% * Redistributions in any form must be accompanied by information on how to
+%% obtain complete source code for the LING software and any accompanying
+%% software that uses the LING software. The source code must either be included
+%% in the distribution or be available for no more than the cost of distribution
+%% plus a nominal fee, and must be freely redistributable under reasonable
+%% conditions.  For an executable file, complete source code means the source
+%% code for all modules it contains. It does not include source code for modules
+%% or files that typically accompany the major components of the operating
+%% system on which the executable file runs.
+%% 
+%% THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+%% IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+%% DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+%% INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%% (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%% ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%% (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-mode(compile).
+
+main([IopsTabFile,IopsTabErl]) ->
+
+	{ok,File} = file:open(IopsTabFile, [read]),
+	
+	Tab = read_iops_tab(File, []),
+	check_iops_tab(Tab),
+
+	ok = erltl:compile("scripts/iops_tab_erl.et"),	%%TODO: make an arg
+	Data = {Tab},
+	C = iops_tab_erl:render(Data),
+
+	{ok,Out} = file:open(IopsTabErl, [write]),
+	io:format(Out, "~s~n", [C]),
+	file:close(Out);
+
+main(_) ->
+	io:format("usage: iops_gen iops.tab iops_tab.erl~n").
+
+read_iops_tab(File, Acc) ->
+	case file:read_line(File) of
+	{ok,"%" ++ _} ->
+		read_iops_tab(File, Acc);
+	{ok,"\n"} ->
+		read_iops_tab(File, Acc);
+	{ok,L_eol} ->
+		L = string:strip(L_eol, right, $\n),
+		OpInfo = iop_toks(string:tokens(L, " ")),
+		read_iops_tab(File, [OpInfo|Acc]);
+	eof ->
+		file:close(File),
+		lists:reverse(Acc)
+	end.
+
+iop_toks([OpL|As]) ->
+	Op = list_to_atom(OpL),
+	{ANs1,Opts1} = lists:foldr(fun("-" ++ OL, {ANs,Opts}) ->
+		O = list_to_atom(OL),
+		{ANs,[O|Opts]};
+	(Tok, {ANs,Opts}) ->
+		case string:tokens(Tok, "/") of
+		[TypeL] ->
+			Type = list_to_atom(TypeL),
+			{[{Type,undefined}|ANs],Opts};
+		[TypeL,Name] ->
+			Type = list_to_atom(TypeL),
+			{[{Type,Name}|ANs],Opts}
+		end
+	end, {[],[]}, As),
+
+	{Types,Names} = lists:unzip(ANs1),
+	{Op,Types,[{names,Names}|Opts1]}.
+
+check_iops_tab(Tab) ->
+	check_dups(lists:keysort(1, Tab)).
+
+check_dups([]) ->
+	ok;
+check_dups([{Op,_,_},{Op,_,_}|_]) ->
+	erlang:error({duplicate_opcode,Op});
+check_dups([_|Tab]) ->
+	check_dups(Tab).
+
+%%EOF

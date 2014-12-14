@@ -1,0 +1,58 @@
+<%?
+	{IopsTab} = Data,
+	OpNames = lists:map(fun({Op,Types,Opts}) ->
+		Names = proplists:get_value(names, Opts),
+		case lists:all(fun(N) -> N =:= undefined end, Names) of
+		true ->
+			{Op,length(Types)};
+		false ->
+			{Names2,_} = lists:mapfoldl(fun(undefined, N) ->
+				{"Arg" ++ integer_to_list(N),N+1};
+			(Name, N) ->
+				{Name, N+1}
+			end, 0, Names),
+			{Op,Names2}
+		end
+	end, IopsTab)
+%>
+-module(iops_tab).
+-export([opcodes/0]).
+-export([arg_types/1]).
+-export([arg_names/1]).
+
+opcodes() ->
+[
+<% opcodes([Op || {Op,_,_} <- IopsTab]) %>
+].
+
+<% arg_types([{Op,Types} || {Op,Types,_} <- IopsTab]) %>
+
+<% [arg_names(Op, Names) || {Op,Names} <- OpNames] %>
+arg_names(Op) -> erlang:error({nonames,Op}).
+
+generic(N) ->
+	["Arg" ++ integer_to_list(X) ||
+				X <- lists:seq(0, N-1)].
+
+%%EOF
+
+<%@ opcodes([Op]) %>
+	<% atom_to_list(Op) %>
+<%@ opcodes([Op|Ops]) %>
+	<% atom_to_list(Op) %>,
+<% opcodes(Ops) %><%@ eat1 %>
+
+<%@ arg_types([]) %>
+arg_types(Op) ->
+	erlang:error({notypes,Op}).
+<%@ arg_types([{Op,Types}|Rest]) %>
+arg_types(<% atom_to_list(Op) %>) ->
+	<% io_lib:format("~p", [Types]) %>;
+<% arg_types(Rest) %><%@ eat2 %>
+
+<%@ arg_names(Op, N) when is_integer(N) %>
+arg_names(<% atom_to_list(Op) %>) ->
+	generic(<% integer_to_list(N) %>);
+<%@ arg_names(Op, Names) %>
+arg_names(<% atom_to_list(Op) %>) ->
+	<% io_lib:format("~p", [Names]) %>;

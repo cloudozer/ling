@@ -1,0 +1,297 @@
+%%
+%%	This file is NOT generated automatically
+%%
+
+%% *** The following opcode(s) are present in iops.tab but never occured:
+%% l_hibernate
+%% l_bs_test_unit
+%% deallocate
+%% l_gc_bif2
+%% l_gc_bif3
+
+self d
+node d
+
+l_get s d
+
+l_allocate u/NumSlots
+allocate_heap u/NumSlots u/HeapNeeded u8/Live
+allocate_heap_zero u/NumSlots u/HeapNeeded u8/Live
+l_allocate_zero u/NumSlots
+
+allocate_init u y
+
+apply u8
+apply_last u8 u
+
+l_apply
+l_apply_last u
+l_apply_only
+l_apply_fun
+l_apply_fun_last u
+l_apply_fun_only
+
+l_yield
+l_hibernate
+
+badmatch s
+
+system_limit f
+
+%l_bif0 b d
+bif1_body b s d
+l_bif1 f b s d
+bif2_body b d
+l_bif2 f b d
+
+call_bif b
+
+l_bs_add f u8 d
+l_bs_append f u u8 u8 d
+l_bs_private_append f u8 d
+
+bs_context_to_binary d
+
+l_bs_get_binary_all_reuse x f u8
+l_bs_get_binary_all2 f x u8 u8 d
+l_bs_get_binary_imm2 f x u8 u u8 d
+l_bs_get_binary2 f x u8 s u8 u8 d 
+
+l_bs_get_float2 f x u8 s u8 u8 x
+
+l_bs_get_integer_8 x f d
+l_bs_get_integer_16 x f d
+l_bs_get_integer_32 x f u8 d
+l_bs_get_integer_small_imm x u f u8 d
+l_bs_get_integer_imm x u u8 f u8 d
+l_bs_get_integer f u8 u8 u8 d
+
+l_bs_get_utf8 x f d
+l_bs_get_utf16 x f u8 d
+
+l_bs_validate_unicode f d
+l_bs_validate_unicode_retract f
+
+l_bs_init u u u8 d
+l_bs_init_heap_bin u u u8 d
+l_bs_init_fail u f u8 d 
+
+l_bs_init_bits u u u8 d 
+l_bs_init_bits_fail u f u8 d
+bs_init_writable
+
+l_bs_match_string x f u str
+
+l_new_bs_put_binary_all f s u8
+l_new_bs_put_binary_imm f u u8 s
+l_new_bs_put_binary f s u8 u8 s
+
+l_new_bs_put_float_imm f u u8 s
+l_new_bs_put_float f s u8 u8 s
+
+l_new_bs_put_integer_imm f u u8 s
+l_new_bs_put_integer f s u8 u8 s
+
+l_bs_utf16_size x x
+l_bs_utf8_size x x
+
+l_bs_put_utf8 f x
+l_bs_put_utf16 f u8 x
+
+l_bs_put_string u str
+
+l_bs_restore2 x u
+l_bs_save2 x u
+
+l_bs_skip_bits_all2 f x u8
+l_bs_skip_bits_imm2 f x u
+l_bs_skip_bits2 f x s u8
+
+l_bs_start_match2 d f u8 u x
+
+l_bs_test_zero_tail2 f x
+l_bs_test_tail_imm2 f x u
+
+l_bs_test_unit_8 f x
+l_bs_test_unit f x u8
+
+l_call f
+l_call_last f u
+l_call_only f
+l_move_call s f
+l_move_call_last f u s
+l_move_call_only f s
+
+l_call_ext e
+l_call_ext_last e u
+l_call_ext_only e
+l_move_call_ext s e
+l_move_call_ext_last e u s
+l_move_call_ext_only e s
+
+l_call_fun u8
+l_call_fun_last u8 u
+
+case_end d
+l_catch y ca
+catch_end y
+deallocate u
+
+l_fadd fr fr fr
+l_fsub fr fr fr
+l_fmul fr fr fr
+l_fdiv fr fr fr
+l_fnegate fr fr
+
+l_fcheckerror
+fclearerror 
+
+fconv s fr
+fmove_1 s fr
+fmove_2 fr d
+
+l_increment d u u8 d
+l_plus f u8 d
+l_minus f u8 d
+l_times f u8 d
+l_m_div f u8 d
+l_int_div f u8 d
+l_rem f u8 d
+
+l_bsl f u8 d
+l_bsr f u8 d
+l_band f u8 d
+l_bor f u8 d
+l_bxor f u8 d
+
+l_int_bnot f s u8 d
+
+func_info a a u8
+
+l_gc_bif1 f b d u8 d
+l_gc_bif2 f b u8 d
+l_gc_bif3 f b s u8 d
+
+get_list d d d
+
+get_tuple_element d u d
+extract_next_element d
+extract_next_element2 d
+extract_next_element3 d
+
+l_fast_element d u d
+l_element s s d
+
+if_end 
+
+init y
+init2 y y
+init3 y y y
+
+int_code_end 
+
+is_atom f d
+is_binary f d
+is_bitstr f d
+is_boolean f d
+
+is_integer f d
+is_integer_allocate f x u
+
+is_bigint f d
+is_list f d
+is_float f d
+is_function f d
+is_function2 f d d
+is_nil f d
+
+l_is_function2 f d u8
+
+is_nonempty_list f d
+is_nonempty_list_allocate f x u
+is_nonempty_list_test_heap f u u8
+
+is_number f d
+is_pid f d
+is_port f d
+is_reference f d
+is_tuple f d
+is_tuple_of_arity f d u
+
+l_fetch s s
+
+l_is_eq_exact_immed f s s
+l_is_eq_exact_literal f s s
+l_is_eq_exact f
+
+l_is_ne_exact_immed f s s
+l_is_ne_exact_literal f s s
+l_is_ne_exact f
+
+l_is_eq f
+l_is_ge f
+l_is_lt f
+l_is_ne f
+
+jump f
+
+label u
+line u
+
+l_loop_rec f
+loop_rec_end f
+
+l_make_fun fu
+l_make_export e
+
+move s d
+move_jump f s
+move2 d d d d
+move_return s
+move_deallocate_return s u
+deallocate_return u
+
+on_load 
+put_list s s d
+
+l_put_tuple -list d u
+
+raise d d
+
+recv_mark f
+recv_set f
+l_recv_set
+remove_message 
+
+return 
+
+l_select_tuple_arity -list d f u
+l_select_tuple_arity2 d f u f u f
+
+l_select_val_atoms -list d f u
+l_select_val_smallints -list d f u
+l_jump_on_val -list d f u u
+l_select_val2 d f s f s f
+
+set_tuple_element s x u
+test_arity f d u
+
+test_heap u/HeapNeeded u8/Live
+test_heap_1_put_list u s
+
+timeout 
+
+l_trim u/NumSlots
+
+%% try y f
+%% try_case y
+try_case_end x
+try_end y
+
+wait f
+wait_timeout f s
+l_wait_timeout f u
+l_wait_error
+send 
+
+%%EOF
