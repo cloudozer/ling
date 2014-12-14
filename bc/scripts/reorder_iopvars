@@ -1,0 +1,62 @@
+#!/usr/bin/env escript
+%%! -pa gentab
+%% vim: set filetype=erlang :
+
+-mode(compile).
+
+main([IopVarsTab,HotColdIops,IopVarsErl]) ->
+	{ok,[Variants]} = file:consult(IopVarsTab),
+
+	%% {Freq,Op,VarNo,ArgTypes}
+
+	Variants1 = case hot_cold(HotColdIops) of
+	[] ->
+		Variants;
+	Hs ->
+		io:format("L1 = ~w\n", [length(Variants)]),
+		io:format("L2 = ~w\n", [length(Hs)]),
+		true = length(Variants) =:= length(Hs),
+		%% {Hits,Op,VarNo}
+		[{Hits,Op,VarNo,ArgTypes} || {_,Op,VarNo,ArgTypes} <- Variants,
+									      {Hits,Op1,VarNo1} <- Hs,
+				Op =:= Op1,
+				VarNo =:= VarNo1]
+	end,
+
+	TrueOrder = lists:reverse(lists:keysort(1, Variants1)),
+
+	%% iopvars.erl
+	%% var_order() -> [{Op,VarNo}]
+	%% fit_args(Op, Args) -> VarNo
+	%% var_args(Op, VarNo) -> ArgType
+	%% var_index(Op, VarNo) -> Index
+	%% var_by_index(Index) -> {Op,VarNo}
+
+	ok = erltl:compile("scripts/iopvars_erl.et"),
+	Data = {TrueOrder},
+	C = iopvars_erl:render(Data),
+
+	io:format("Writing ~s...~n", [IopVarsErl]),
+	{ok,Out} = file:open(IopVarsErl, [write]),
+	io:format(Out, "~s~n", [C]),
+	file:close(Out),
+	io:format("Done~n");
+
+main(_) ->
+	io:format("usage: reorder_iopvars iopvars.tab hot_cold_iops iopvars.erl~n").
+
+hot_cold(HotColdIops) ->
+	case file:read_file(HotColdIops) of
+	{ok,Bin} ->
+		lists:map(fun(L) ->
+			{match,[Hits,Op,No]} = re:run(L, "^ *([0-9]+) (.*)_([0-9]+)$",
+												[{capture,[1,2,3],list}]),
+			{list_to_integer(Hits),
+			 list_to_atom(Op),
+			 list_to_integer(No)}
+		end, re:split(Bin, "\n", [trim]));
+	_ ->
+		[]
+	end.
+
+%%EOF
