@@ -1109,8 +1109,6 @@ var_order() -> [
 	{l_rem,2},
 	{l_bs_get_integer_small_imm,2},
 	{l_bsl,2},
-	{get_map_elements,0},
-	{has_map_fields,0},
 	{on_load,0},
 	{move2,10},
 	{l_int_div,2},
@@ -1121,11 +1119,15 @@ var_order() -> [
 	{l_apply_fun_last,0},
 	{l_select_val_smallints,2},
 	{update_map_assoc,0},
+	{get_map_elements,0},
+	{has_map_fields,0},
 	{is_function2,0},
 	{l_apply_only,0},
 	{l_apply_fun_only,0},
 	{l_band,2},
 	{update_map_exact,0},
+	{get_map_element,0},
+	{has_map_field,0},
 	{test_heap,1},
 	{func_info,0},
 	{call_bif,0},
@@ -1367,6 +1369,7 @@ fit_args(get_list, [{x,_},{y,Arg1},{x,_}]) when Arg1 >= 0, Arg1 =< 255 -> 10;
 fit_args(get_list, [_,{x,0},_]) -> 7;
 fit_args(get_list, [_,{x,_},{y,Arg2}]) when Arg2 >= 0, Arg2 =< 255 -> 4;
 fit_args(get_list, [_,_,_]) -> 12;
+fit_args(get_map_element, [{f,_},_,_,_]) -> 0;
 fit_args(get_map_elements, [{f,_},_,_]) -> 0;
 fit_args(get_tuple_element, [{x,0},1,{x,0}]) -> 6;
 fit_args(get_tuple_element, [{x,0},Arg1,{x,_}]) when Arg1 >= 0, Arg1 =< 255 -> 0;
@@ -1380,6 +1383,7 @@ fit_args(get_tuple_element, [{x,_},Arg1,{y,Arg2}]) when Arg1 >= 0, Arg1 =< 255, 
 fit_args(get_tuple_element, [{y,Arg0},Arg1,{y,Arg2}]) when Arg0 >= 0, Arg0 =< 255, Arg1 >= 0, Arg1 =< 255, Arg2 >= 0, Arg2 =< 255 -> 10;
 fit_args(get_tuple_element, [_,0,{x,0}]) -> 2;
 fit_args(get_tuple_element, [_,_,_]) -> 11;
+fit_args(has_map_field, [{f,_},_,_]) -> 0;
 fit_args(has_map_fields, [{f,_},_,_]) -> 0;
 fit_args(if_end, []) -> 0;
 fit_args(init, [{y,1}]) -> 0;
@@ -3405,8 +3409,6 @@ var_args(l_new_bs_put_binary_imm, 0) -> [f,u32,u8,t];
 var_args(l_rem, 2) -> [f,u8,t];
 var_args(l_bs_get_integer_small_imm, 2) -> [t,u32,f,u8,t];
 var_args(l_bsl, 2) -> [f,u8,t];
-var_args(get_map_elements, 0) -> [f,t,u32];
-var_args(has_map_fields, 0) -> [f,t,u32];
 var_args(on_load, 0) -> [];
 var_args(move2, 10) -> [t,t,t,t];
 var_args(l_int_div, 2) -> [f,u8,t];
@@ -3417,11 +3419,15 @@ var_args(l_hibernate, 0) -> [];
 var_args(l_apply_fun_last, 0) -> [u32];
 var_args(l_select_val_smallints, 2) -> [t,f,u32];
 var_args(update_map_assoc, 0) -> [t,t,u32];
+var_args(get_map_elements, 0) -> [f,t,u32];
+var_args(has_map_fields, 0) -> [f,t,u32];
 var_args(is_function2, 0) -> [f,t,t];
 var_args(l_apply_only, 0) -> [];
 var_args(l_apply_fun_only, 0) -> [];
 var_args(l_band, 2) -> [f,u8,t];
 var_args(update_map_exact, 0) -> [f,t,t,u32];
+var_args(get_map_element, 0) -> [f,t,t,t];
+var_args(has_map_field, 0) -> [f,t,t];
 var_args(test_heap, 1) -> [u32,u8];
 var_args(func_info, 0) -> [t,t,u8];
 var_args(call_bif, 0) -> [{b,{erlang,purge_module,1}}];
@@ -4553,49 +4559,51 @@ var_index(l_new_bs_put_binary_imm, 0) -> 1098;
 var_index(l_rem, 2) -> 1099;
 var_index(l_bs_get_integer_small_imm, 2) -> 1100;
 var_index(l_bsl, 2) -> 1101;
-var_index(get_map_elements, 0) -> 1102;
-var_index(has_map_fields, 0) -> 1103;
-var_index(on_load, 0) -> 1104;
-var_index(move2, 10) -> 1105;
-var_index(l_int_div, 2) -> 1106;
-var_index(l_bs_test_unit, 0) -> 1107;
-var_index(l_select_val_atoms, 3) -> 1108;
-var_index(l_m_div, 0) -> 1109;
-var_index(l_hibernate, 0) -> 1110;
-var_index(l_apply_fun_last, 0) -> 1111;
-var_index(l_select_val_smallints, 2) -> 1112;
-var_index(update_map_assoc, 0) -> 1113;
+var_index(on_load, 0) -> 1102;
+var_index(move2, 10) -> 1103;
+var_index(l_int_div, 2) -> 1104;
+var_index(l_bs_test_unit, 0) -> 1105;
+var_index(l_select_val_atoms, 3) -> 1106;
+var_index(l_m_div, 0) -> 1107;
+var_index(l_hibernate, 0) -> 1108;
+var_index(l_apply_fun_last, 0) -> 1109;
+var_index(l_select_val_smallints, 2) -> 1110;
+var_index(update_map_assoc, 0) -> 1111;
+var_index(get_map_elements, 0) -> 1112;
+var_index(has_map_fields, 0) -> 1113;
 var_index(is_function2, 0) -> 1114;
 var_index(l_apply_only, 0) -> 1115;
 var_index(l_apply_fun_only, 0) -> 1116;
 var_index(l_band, 2) -> 1117;
 var_index(update_map_exact, 0) -> 1118;
-var_index(test_heap, 1) -> 1119;
-var_index(func_info, 0) -> 1120;
-var_index(call_bif, 0) -> 1121;
-var_index(l_bs_get_utf16, 2) -> 1122;
-var_index(l_put_tuple, 9) -> 1123;
-var_index(get_tuple_element, 11) -> 1124;
-var_index(allocate_init, 1) -> 1125;
-var_index(l_call_fun_last, 1) -> 1126;
-var_index(set_tuple_element, 2) -> 1127;
-var_index(l_bsr, 2) -> 1128;
-var_index(l_bs_get_integer_32, 3) -> 1129;
-var_index(allocate_heap, 1) -> 1130;
-var_index(is_tuple_of_arity, 4) -> 1131;
-var_index(test_arity, 4) -> 1132;
-var_index(is_nonempty_list_allocate, 2) -> 1133;
-var_index(l_bs_append, 2) -> 1134;
-var_index(try_case_end, 1) -> 1135;
-var_index(init3, 1) -> 1136;
-var_index(l_select_tuple_arity2, 3) -> 1137;
-var_index(init2, 1) -> 1138;
-var_index(l_bs_get_binary_all2, 2) -> 1139;
-var_index(is_nonempty_list_test_heap, 1) -> 1140;
-var_index(allocate_heap_zero, 1) -> 1141;
-var_index(l_bs_init_heap_bin, 1) -> 1142;
-var_index(l_plus, 3) -> 1143;
-var_index(l_bs_get_integer, 1) -> 1144;
+var_index(get_map_element, 0) -> 1119;
+var_index(has_map_field, 0) -> 1120;
+var_index(test_heap, 1) -> 1121;
+var_index(func_info, 0) -> 1122;
+var_index(call_bif, 0) -> 1123;
+var_index(l_bs_get_utf16, 2) -> 1124;
+var_index(l_put_tuple, 9) -> 1125;
+var_index(get_tuple_element, 11) -> 1126;
+var_index(allocate_init, 1) -> 1127;
+var_index(l_call_fun_last, 1) -> 1128;
+var_index(set_tuple_element, 2) -> 1129;
+var_index(l_bsr, 2) -> 1130;
+var_index(l_bs_get_integer_32, 3) -> 1131;
+var_index(allocate_heap, 1) -> 1132;
+var_index(is_tuple_of_arity, 4) -> 1133;
+var_index(test_arity, 4) -> 1134;
+var_index(is_nonempty_list_allocate, 2) -> 1135;
+var_index(l_bs_append, 2) -> 1136;
+var_index(try_case_end, 1) -> 1137;
+var_index(init3, 1) -> 1138;
+var_index(l_select_tuple_arity2, 3) -> 1139;
+var_index(init2, 1) -> 1140;
+var_index(l_bs_get_binary_all2, 2) -> 1141;
+var_index(is_nonempty_list_test_heap, 1) -> 1142;
+var_index(allocate_heap_zero, 1) -> 1143;
+var_index(l_bs_init_heap_bin, 1) -> 1144;
+var_index(l_plus, 3) -> 1145;
+var_index(l_bs_get_integer, 1) -> 1146;
 
 var_index(Op, No) -> erlang:error({noindex,Op,No}).
 
@@ -5701,49 +5709,51 @@ var_by_index(1098) -> {l_new_bs_put_binary_imm, 0};
 var_by_index(1099) -> {l_rem, 2};
 var_by_index(1100) -> {l_bs_get_integer_small_imm, 2};
 var_by_index(1101) -> {l_bsl, 2};
-var_by_index(1102) -> {get_map_elements, 0};
-var_by_index(1103) -> {has_map_fields, 0};
-var_by_index(1104) -> {on_load, 0};
-var_by_index(1105) -> {move2, 10};
-var_by_index(1106) -> {l_int_div, 2};
-var_by_index(1107) -> {l_bs_test_unit, 0};
-var_by_index(1108) -> {l_select_val_atoms, 3};
-var_by_index(1109) -> {l_m_div, 0};
-var_by_index(1110) -> {l_hibernate, 0};
-var_by_index(1111) -> {l_apply_fun_last, 0};
-var_by_index(1112) -> {l_select_val_smallints, 2};
-var_by_index(1113) -> {update_map_assoc, 0};
+var_by_index(1102) -> {on_load, 0};
+var_by_index(1103) -> {move2, 10};
+var_by_index(1104) -> {l_int_div, 2};
+var_by_index(1105) -> {l_bs_test_unit, 0};
+var_by_index(1106) -> {l_select_val_atoms, 3};
+var_by_index(1107) -> {l_m_div, 0};
+var_by_index(1108) -> {l_hibernate, 0};
+var_by_index(1109) -> {l_apply_fun_last, 0};
+var_by_index(1110) -> {l_select_val_smallints, 2};
+var_by_index(1111) -> {update_map_assoc, 0};
+var_by_index(1112) -> {get_map_elements, 0};
+var_by_index(1113) -> {has_map_fields, 0};
 var_by_index(1114) -> {is_function2, 0};
 var_by_index(1115) -> {l_apply_only, 0};
 var_by_index(1116) -> {l_apply_fun_only, 0};
 var_by_index(1117) -> {l_band, 2};
 var_by_index(1118) -> {update_map_exact, 0};
-var_by_index(1119) -> {test_heap, 1};
-var_by_index(1120) -> {func_info, 0};
-var_by_index(1121) -> {call_bif, 0};
-var_by_index(1122) -> {l_bs_get_utf16, 2};
-var_by_index(1123) -> {l_put_tuple, 9};
-var_by_index(1124) -> {get_tuple_element, 11};
-var_by_index(1125) -> {allocate_init, 1};
-var_by_index(1126) -> {l_call_fun_last, 1};
-var_by_index(1127) -> {set_tuple_element, 2};
-var_by_index(1128) -> {l_bsr, 2};
-var_by_index(1129) -> {l_bs_get_integer_32, 3};
-var_by_index(1130) -> {allocate_heap, 1};
-var_by_index(1131) -> {is_tuple_of_arity, 4};
-var_by_index(1132) -> {test_arity, 4};
-var_by_index(1133) -> {is_nonempty_list_allocate, 2};
-var_by_index(1134) -> {l_bs_append, 2};
-var_by_index(1135) -> {try_case_end, 1};
-var_by_index(1136) -> {init3, 1};
-var_by_index(1137) -> {l_select_tuple_arity2, 3};
-var_by_index(1138) -> {init2, 1};
-var_by_index(1139) -> {l_bs_get_binary_all2, 2};
-var_by_index(1140) -> {is_nonempty_list_test_heap, 1};
-var_by_index(1141) -> {allocate_heap_zero, 1};
-var_by_index(1142) -> {l_bs_init_heap_bin, 1};
-var_by_index(1143) -> {l_plus, 3};
-var_by_index(1144) -> {l_bs_get_integer, 1};
+var_by_index(1119) -> {get_map_element, 0};
+var_by_index(1120) -> {has_map_field, 0};
+var_by_index(1121) -> {test_heap, 1};
+var_by_index(1122) -> {func_info, 0};
+var_by_index(1123) -> {call_bif, 0};
+var_by_index(1124) -> {l_bs_get_utf16, 2};
+var_by_index(1125) -> {l_put_tuple, 9};
+var_by_index(1126) -> {get_tuple_element, 11};
+var_by_index(1127) -> {allocate_init, 1};
+var_by_index(1128) -> {l_call_fun_last, 1};
+var_by_index(1129) -> {set_tuple_element, 2};
+var_by_index(1130) -> {l_bsr, 2};
+var_by_index(1131) -> {l_bs_get_integer_32, 3};
+var_by_index(1132) -> {allocate_heap, 1};
+var_by_index(1133) -> {is_tuple_of_arity, 4};
+var_by_index(1134) -> {test_arity, 4};
+var_by_index(1135) -> {is_nonempty_list_allocate, 2};
+var_by_index(1136) -> {l_bs_append, 2};
+var_by_index(1137) -> {try_case_end, 1};
+var_by_index(1138) -> {init3, 1};
+var_by_index(1139) -> {l_select_tuple_arity2, 3};
+var_by_index(1140) -> {init2, 1};
+var_by_index(1141) -> {l_bs_get_binary_all2, 2};
+var_by_index(1142) -> {is_nonempty_list_test_heap, 1};
+var_by_index(1143) -> {allocate_heap_zero, 1};
+var_by_index(1144) -> {l_bs_init_heap_bin, 1};
+var_by_index(1145) -> {l_plus, 3};
+var_by_index(1146) -> {l_bs_get_integer, 1};
 
 var_by_index(Index) -> erlang:error({novarat,Index}).
 

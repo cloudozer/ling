@@ -875,10 +875,10 @@ tr([{put_map_exact,[F,S,D,_Live,L]}|Code]) ->
 	[{move,[S,?TMP_X]},{update_map_exact,[F,?TMP_X,D,L]}|Code];
 
 tr([{get_map_elements,[F,S,{list,[K,D]}]}|Code]) ->
-	tr([{get_map_element,[F,S,K,D]}|Code]);
+	[{get_map_element,[F,S,K,D]}|Code];
 
 tr([{has_map_fields,[F,S,{list,[K]}]}|Code]) ->
-	tr([{has_map_field,[F,S,K]}|Code]);
+	[{has_map_field,[F,S,K]}|Code];
 
 tr(_) -> intact.
 

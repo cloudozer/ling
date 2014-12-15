@@ -174,6 +174,14 @@ static term_t invoke_bif(export_t *exp, proc_t *proc, term_t *rs, int live);
 
 static int send_to_outlet(outlet_t *outlet, term_t what, proc_t *proc);
 
+static int map_key_index(term_t k, term_t keys);
+static int map_merge(term_t *ks, term_t *vs, int n,
+					 term_t *kvs, term_t nkvs,
+					 term_t *ks1, term_t *vs1);
+static int map_merge_exact(term_t *ks, term_t *vs, int n,
+						   term_t *kvs, int nkvs,
+						   term_t *vs1);
+
 void proc_main(proc_t *proc)
 {
 	// current instruction pointer
@@ -909,6 +917,119 @@ badsig:
 	proc->result.victim = cont_proc;
 	proc->result.reason2 = A_BADSIG;
 	return DELIVER_SIGNALS;
+}
+
+static int map_key_index(term_t k, term_t keys)
+{
+	assert(is_tuple(keys));
+	term_t *p = peel_tuple(keys);
+	uint32_t size = *p++;
+	if (size == 0)
+		return -1;
+	term_t *alpha = p;
+	term_t *beta = p +size;
+	while (beta > alpha+1)
+	{
+		term_t *mid = alpha + (beta -alpha +1)/2;
+		if (is_term_smaller(k, *mid))
+			beta = mid;
+		else
+			alpha = mid;
+	}
+	assert(beta == alpha+1);
+	if (!are_terms_equal(k, *alpha, 1))
+		return -1;
+	return alpha -p;
+}
+
+static int map_merge(term_t *ks, term_t *vs, int n,
+					 term_t *kvs, term_t nkvs,
+					 term_t *ks1, term_t *vs1)
+{
+	int sz = 0;
+	while (n > 0 && nkvs > 0)
+	{
+		term_t a = *ks;
+		term_t b = *kvs;
+		if (is_term_smaller(a, b))
+		{
+			*ks1++ = *ks++;
+			*vs1++ = *vs++;
+			n--;
+		}
+		else if (are_terms_equal(a, b, 1))
+		{
+			ks++; vs++;
+			n--;
+			*ks1++ = *kvs++;
+			*vs1++ = *kvs++;
+			nkvs--;
+		}
+		else
+		{
+			*ks1++ = *kvs++;
+			*vs1++ = *kvs++;
+			nkvs--;
+		}
+		sz++;
+	}
+
+	while (n-- > 0)
+	{
+		*ks1++ = *ks++;
+		*vs1++ = *vs++;
+		sz++;
+	}
+
+	while (nkvs-- > 0)
+	{
+		*ks1++ = *kvs++;
+		*vs1++ = *kvs++;
+		sz++;
+	}
+
+	return sz;
+}
+
+static int map_merge_exact(term_t *ks, term_t *vs, int n,
+						   term_t *kvs, int nkvs,
+						   term_t *vs1)
+{
+	int sz = 0;
+	while (n > 0 && nkvs > 0)
+	{
+		term_t a = *ks;
+		term_t b = *kvs;
+		if (is_term_smaller(a, b))
+		{
+			ks++;
+			*vs1++ = *vs++;
+			n--;
+		}
+		else if (are_terms_equal(a, b, 1))
+		{
+			ks++; vs++;
+			n--;
+			kvs++;
+			*vs1++ = *kvs++;
+			nkvs--;
+		}
+		else
+			return -1;
+
+		sz++;
+	}
+
+	while (n-- > 0)
+	{
+		*vs1++ = *vs++;
+		sz++;
+	}
+
+	if (nkvs > 0)
+		return -1;
+
+	return sz;
 }
 
 //EOF
@@ -1943,6 +2064,197 @@ else
 <% set_dst(Dst, <<"tuple">>) %>
 
 ip += arity+<% i2l(Wsz+1) %>;
+next();
+}
+
+<%@ variant(Index, new_map, Id, [Dst,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+uint32_t size = <% arg(Len) %> >> 1;
+assert(size > 0);
+term_t *kv = (term_t *)ip + <% i2l(Wsz+1) %>;
+
+// keys: size
+// keys: key1
+// keys: key2
+// ...
+// map: hdr
+// map: keys
+// map: value1
+// map: value2
+// ...
+
+int needed = 1 +size +2 +size;
+
+light_swap_out();
+uint32_t *p = heap_alloc(&proc->hp, needed);
+term_t keys = tag_tuple(p);
+*p++ = size;
+term_t *k = p;
+p += size;
+term_t map = tag_boxed(p);
+term_t *v = p +2;
+int n = size;
+while (n-- > 0)
+{
+	*k++ = *kv++;
+	uint32_t what = *kv++;
+	if (is_reg(what))
+	{
+		int ri = reg_index(what);
+		*v++ = (ri == 0) ?r0 :rs[ri];
+	}
+	else if (is_slot(what))
+	{
+		int si = slot_index(what);
+		*v++ = sp[si+1];
+	}
+	else
+		*v++ = what;
+}
+box_map(p, size, keys);
+heap_set_top(&proc->hp, p);
+light_swap_in();
+
+<% set_dst(Dst, <<"tuple">>) %>
+
+ip += size +size +<% i2l(Wsz+1) %>;
+next();
+}
+
+<%@ variant(Index, update_map_assoc, Id, [Src,Dst,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t t = <% arg(Src) %>;
+if (!is_boxed_map(t))
+	badarg();
+t_map_t *map = (t_map_t *)peel_boxed(t);
+term_t *p = peel_tuple(map->keys);
+int size0 = *p++;
+uint32_t nkv = <% arg(Len) %> >> 1;
+term_t *kv = (term_t *)ip + <% i2l(Wsz+1) %>;
+term_t mkeys[size0 +nkv];
+term_t mvals[size0 +nkv];
+int size1 = map_merge(p, map->values, size0, kv, nkv, mkeys, mvals);
+assert(size1 > 0);
+
+term_t out;
+light_swap_out();
+if (size1 == size0)
+{
+	//reuse map->keys
+	int needed = 2 +size1;
+	uint32_t *h = heap_alloc(&proc->hp, needed);
+	out = tag_boxed(h);
+	memcpy(h +2, mvals, size1 *sizeof(term_t));
+	box_map(h, size1, map->keys);
+	heap_set_top(&proc->hp, h);
+}
+else
+{
+	int needed = 1 +size1 +2 +size1;
+	uint32_t *h = heap_alloc(&proc->hp, needed);
+	term_t keys = tag_tuple(h);
+	*h++ = size1;
+	memcpy(h, mkeys, size1 *sizeof(term_t));
+	h += size1;
+	out = tag_boxed(h);
+	memcpy(h +2, mvals, size1 *sizeof(term_t));
+	box_map(h, size1, keys);
+	heap_set_top(&proc->hp, h);
+}
+light_swap_in();
+
+<% set_dst(Dst, <<"out">>) %>
+
+ip += nkv +nkv +<% i2l(Wsz+1) %>;
+next();
+}
+
+<%@ variant(Index, update_map_exact, Id, [Fail,Src,Dst,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t t = <% arg(Src) %>;
+if (!is_boxed_map(t))
+	badarg();
+t_map_t *map = (t_map_t *)peel_boxed(t);
+term_t *p = peel_tuple(map->keys);
+int size0 = *p++;
+uint32_t nkv = <% arg(Len) %> >> 1;
+term_t *kv = (term_t *)ip + <% i2l(Wsz+1) %>;
+term_t mvals[size0]; //TODO: avoid copying
+int ok = map_merge_exact(p, map->values, size0, kv, nkv, mvals);
+if (ok < 0)
+	<% jump(Fail) %>;
+
+term_t out;
+light_swap_out();
+int needed = 2 +size0;
+uint32_t *h = heap_alloc(&proc->hp, needed);
+out = tag_boxed(h);
+memcpy(h +2, mvals, size0 *sizeof(term_t));
+box_map(h, size0, map->keys);
+heap_set_top(&proc->hp, h);
+light_swap_in();
+
+<% set_dst(Dst, <<"out">>) %>
+
+ip += nkv +nkv +<% i2l(Wsz+1) %>;
+next();
+}
+
+<%@ variant(Index, get_map_elements, Id, [Fail,Src,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t t = <% arg(Src) %>;
+if (!is_boxed_map(t))
+	<% jump(Fail) %>;
+t_map_t *map = (t_map_t *)peel_boxed(t);
+uint32_t nkv = <% arg(Len) %> >> 1;
+ip += nkv +nkv +<% i2l(Wsz+1) %>;
+term_t *kv = (term_t *)ip + <% i2l(Wsz+1) %>;
+while (nkv-- > 0)
+{
+	term_t k = *kv++;
+	uint32_t v = *kv++;
+	int index = map_key_index(k, map->keys);
+	if (index < 0)
+		<% jump(Fail) %>;
+	if (is_reg(v))
+	{
+		int ri = reg_index(v);
+		if (ri == 0)
+			r0 = map->values[index];
+		else
+			rs[ri] = map->values[index];
+	}
+	else
+	{
+		assert(is_slot(v));
+		int si = slot_index(v);
+		sp[si+1] = map->values[index];
+	}
+}
+next();
+}
+
+<%@ variant(Index, has_map_fields, Id, [Fail,Src,Len], Wsz, Attrs) %>
+<% Id %>: <% hc(Attrs) %> {
+<% inc(Index) %>
+term_t t = <% arg(Src) %>;
+if (!is_boxed_map(t))
+	<% jump(Fail) %>;
+t_map_t *map = (t_map_t *)peel_boxed(t);
+uint32_t nks = <% arg(Len) %>;
+ip += nks +<% i2l(Wsz+1) %>;
+term_t *ks = (term_t *)ip + <% i2l(Wsz+1) %>;
+while (nks-- > 0)
+{
+	term_t k = *ks++;
+	int index = map_key_index(k, map->keys);
+	if (index < 0)
+		<% jump(Fail) %>;
+}
 next();
 }
 
@@ -3879,7 +4191,27 @@ term_t v = <% arg(Src) %>;
 if (!is_boxed_map(v))
 	<% jump(Fail) %>;
 
-// TODO: maps
+<%@ iop(get_map_element, [Fail,Src,Key,Dst]) %>
+term_t t = <% arg(Src) %>;
+if (!is_boxed_map(t))
+	<% jump(Fail) %>;
+t_map_t *map = (t_map_t *)peel_boxed(t);
+term_t k = <% arg(Key) %>;
+int index = map_key_index(k, map->keys);
+if (index < 0)
+	<% jump(Fail) %>;
+term_t v = map->values[index];
+<% set_dst(Dst, <<"v">>) %>
+
+<%@ iop(has_map_field, [Fail,Src,Key]) %>
+term_t t = <% arg(Src) %>;
+if (!is_boxed_map(t))
+	<% jump(Fail) %>;
+t_map_t *map = (t_map_t *)peel_boxed(t);
+term_t k = <% arg(Key) %>;
+int index = map_key_index(k, map->keys);
+if (index < 0)
+	<% jump(Fail) %>;
 
 <%@ iop(Op, _Args) %>
 

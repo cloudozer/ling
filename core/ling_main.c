@@ -108,6 +108,14 @@ static term_t invoke_bif(export_t *exp, proc_t *proc, term_t *rs, int live);
 
 static int send_to_outlet(outlet_t *outlet, term_t what, proc_t *proc);
 
+static int map_key_index(term_t k, term_t keys);
+static int map_merge(term_t *ks, term_t *vs, int n,
+					 term_t *kvs, term_t nkvs,
+					 term_t *ks1, term_t *vs1);
+static int map_merge_exact(term_t *ks, term_t *vs, int n,
+						   term_t *kvs, int nkvs,
+						   term_t *vs1);
+
 void proc_main(proc_t *proc)
 {
 	// current instruction pointer
@@ -28467,8 +28475,6 @@ ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
 
-// TODO: maps
-
 
 ip += 3;
 goto *next;
@@ -31578,60 +31584,10 @@ goto *next;
 }
 
 
-get_map_elements_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1102].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[4]);
-
-//printk("TODO: iop get_map_elements not implemented\n");
-printk("TODO: iop {get_map_elements,[{f,{word,0}},{t,{word,1}},{u32,{word,2}}]} not implemented\n");
-
-light_swap_out();
-term_t op_name = heap_strz(&proc->hp, "get_map_elements");
-term_t reason = heap_tuple2(&proc->hp, A_NOT_IMPLEMENTED, op_name);
-light_swap_in();
-
-raise_error(reason);
-
-
-ip += 4;
-goto *next;
-}
-
-
-has_map_fields_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1103].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[4]);
-
-//printk("TODO: iop has_map_fields not implemented\n");
-printk("TODO: iop {has_map_fields,[{f,{word,0}},{t,{word,1}},{u32,{word,2}}]} not implemented\n");
-
-light_swap_out();
-term_t op_name = heap_strz(&proc->hp, "has_map_fields");
-term_t reason = heap_tuple2(&proc->hp, A_NOT_IMPLEMENTED, op_name);
-light_swap_in();
-
-raise_error(reason);
-
-
-ip += 4;
-goto *next;
-}
-
-
 on_load_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1104].counter++;
+	ling_opcodes[1102].counter++;
 #endif
 
 
@@ -31656,7 +31612,7 @@ goto *next;
 move2_10: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1105].counter++;
+	ling_opcodes[1103].counter++;
 #endif
 
 
@@ -31705,7 +31661,7 @@ goto *next;
 l_int_div_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1106].counter++;
+	ling_opcodes[1104].counter++;
 #endif
 
 
@@ -31779,7 +31735,7 @@ goto *next;
 l_bs_test_unit_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1107].counter++;
+	ling_opcodes[1105].counter++;
 #endif
 
 
@@ -31818,7 +31774,7 @@ l_select_val_atoms_3:
 
 l_select_val_atoms_3_sorted: {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1108].counter++;
+	ling_opcodes[1106].counter++;
 #endif
 
 
@@ -31863,7 +31819,7 @@ next();
 l_m_div_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1109].counter++;
+	ling_opcodes[1107].counter++;
 #endif
 
 
@@ -31918,7 +31874,7 @@ goto *next;
 l_hibernate_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1110].counter++;
+	ling_opcodes[1108].counter++;
 #endif
 
 
@@ -31941,7 +31897,7 @@ goto *next;
 l_apply_fun_last_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1111].counter++;
+	ling_opcodes[1109].counter++;
 #endif
 
 
@@ -32014,7 +31970,7 @@ local_reduce();
 l_select_val_smallints_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1112].counter++;
+	ling_opcodes[1110].counter++;
 #endif
 
 
@@ -32058,27 +32014,146 @@ next();
 update_map_assoc_0: 
  {
 #ifdef EXP_COUNT_IOPS
+	ling_opcodes[1111].counter++;
+#endif
+
+
+term_t t = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+if (!is_boxed_map(t))
+	badarg();
+t_map_t *map = (t_map_t *)peel_boxed(t);
+term_t *p = peel_tuple(map->keys);
+int size0 = *p++;
+uint32_t nkv = ip[3] >> 1;
+term_t *kv = (term_t *)ip + 4;
+term_t mkeys[size0 +nkv];
+term_t mvals[size0 +nkv];
+int size1 = map_merge(p, map->values, size0, kv, nkv, mkeys, mvals);
+assert(size1 > 0);
+
+term_t out;
+light_swap_out();
+if (size1 == size0)
+{
+	//reuse map->keys
+	int needed = 2 +size1;
+	uint32_t *h = heap_alloc(&proc->hp, needed);
+	out = tag_boxed(h);
+	memcpy(h +2, mvals, size1 *sizeof(term_t));
+	box_map(h, size1, map->keys);
+	heap_set_top(&proc->hp, h);
+}
+else
+{
+	int needed = 1 +size1 +2 +size1;
+	uint32_t *h = heap_alloc(&proc->hp, needed);
+	term_t keys = tag_tuple(h);
+	*h++ = size1;
+	memcpy(h, mkeys, size1 *sizeof(term_t));
+	h += size1;
+	out = tag_boxed(h);
+	memcpy(h +2, mvals, size1 *sizeof(term_t));
+	box_map(h, size1, keys);
+	heap_set_top(&proc->hp, h);
+}
+light_swap_in();
+
+{
+	term_t dst__ = ip[2];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = out;
+		else
+			rs[reg__] = out;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = out;
+	}
+}
+
+
+ip += nkv +nkv +4;
+next();
+}
+
+get_map_elements_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1112].counter++;
+#endif
+
+
+term_t t = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed_map(t))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+t_map_t *map = (t_map_t *)peel_boxed(t);
+uint32_t nkv = ip[3] >> 1;
+ip += nkv +nkv +4;
+term_t *kv = (term_t *)ip + 4;
+while (nkv-- > 0)
+{
+	term_t k = *kv++;
+	uint32_t v = *kv++;
+	int index = map_key_index(k, map->keys);
+	if (index < 0)
+		do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+	if (is_reg(v))
+	{
+		int ri = reg_index(v);
+		if (ri == 0)
+			r0 = map->values[index];
+		else
+			rs[ri] = map->values[index];
+	}
+	else
+	{
+		assert(is_slot(v));
+		int si = slot_index(v);
+		sp[si+1] = map->values[index];
+	}
+}
+next();
+}
+
+has_map_fields_0: 
+ {
+#ifdef EXP_COUNT_IOPS
 	ling_opcodes[1113].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[4]);
-
-//printk("TODO: iop update_map_assoc not implemented\n");
-printk("TODO: iop {update_map_assoc,[{t,{word,0}},{t,{word,1}},{u32,{word,2}}]} not implemented\n");
-
-light_swap_out();
-term_t op_name = heap_strz(&proc->hp, "update_map_assoc");
-term_t reason = heap_tuple2(&proc->hp, A_NOT_IMPLEMENTED, op_name);
-light_swap_in();
-
-raise_error(reason);
-
-
-ip += 4;
-goto *next;
+term_t t = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed_map(t))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+t_map_t *map = (t_map_t *)peel_boxed(t);
+uint32_t nks = ip[3];
+ip += nks +4;
+term_t *ks = (term_t *)ip + 4;
+while (nks-- > 0)
+{
+	term_t k = *ks++;
+	int index = map_key_index(k, map->keys);
+	if (index < 0)
+		do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 }
-
+next();
+}
 
 is_function2_0: ATTRIBUTE_COLD
  {
@@ -32307,17 +32382,94 @@ update_map_exact_0:
 #endif
 
 
-void *next = (void *)expand_ptr(ip[5]);
+term_t t = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed_map(t))
+	badarg();
+t_map_t *map = (t_map_t *)peel_boxed(t);
+term_t *p = peel_tuple(map->keys);
+int size0 = *p++;
+uint32_t nkv = ip[4] >> 1;
+term_t *kv = (term_t *)ip + 5;
+term_t mvals[size0]; //TODO: avoid copying
+int ok = map_merge_exact(p, map->values, size0, kv, nkv, mvals);
+if (ok < 0)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
-//printk("TODO: iop update_map_exact not implemented\n");
-printk("TODO: iop {update_map_exact,[{f,{word,0}},{t,{word,1}},{t,{word,2}},{u32,{word,3}}]} not implemented\n");
-
+term_t out;
 light_swap_out();
-term_t op_name = heap_strz(&proc->hp, "update_map_exact");
-term_t reason = heap_tuple2(&proc->hp, A_NOT_IMPLEMENTED, op_name);
+int needed = 2 +size0;
+uint32_t *h = heap_alloc(&proc->hp, needed);
+out = tag_boxed(h);
+memcpy(h +2, mvals, size0 *sizeof(term_t));
+box_map(h, size0, map->keys);
+heap_set_top(&proc->hp, h);
 light_swap_in();
 
-raise_error(reason);
+{
+	term_t dst__ = ip[3];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = out;
+		else
+			rs[reg__] = out;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = out;
+	}
+}
+
+
+ip += nkv +nkv +5;
+next();
+}
+
+get_map_element_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1119].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[5]);
+term_t t = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed_map(t))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+t_map_t *map = (t_map_t *)peel_boxed(t);
+term_t k = (term_t)(is_reg(ip[3]) ?(ip[3] == reg0) ?r0 :rs[reg_index(ip[3])] :is_slot(ip[3]) ?sp[slot_index(ip[3])+1] :ip[3]);
+int index = map_key_index(k, map->keys);
+if (index < 0)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+term_t v = map->values[index];
+{
+	term_t dst__ = ip[4];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = v;
+		else
+			rs[reg__] = v;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = v;
+	}
+}
+
 
 
 ip += 5;
@@ -32325,10 +32477,39 @@ goto *next;
 }
 
 
+has_map_field_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1120].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[4]);
+term_t t = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed_map(t))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+t_map_t *map = (t_map_t *)peel_boxed(t);
+term_t k = (term_t)(is_reg(ip[3]) ?(ip[3] == reg0) ?r0 :rs[reg_index(ip[3])] :is_slot(ip[3]) ?sp[slot_index(ip[3])+1] :ip[3]);
+int index = map_key_index(k, map->keys);
+if (index < 0)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 4;
+goto *next;
+}
+
+
 test_heap_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1119].counter++;
+	ling_opcodes[1121].counter++;
 #endif
 
 
@@ -32359,7 +32540,7 @@ goto *next;
 func_info_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1120].counter++;
+	ling_opcodes[1122].counter++;
 #endif
 
 
@@ -32377,7 +32558,7 @@ goto exception;
 call_bif_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1121].counter++;
+	ling_opcodes[1123].counter++;
 #endif
 
 
@@ -32413,7 +32594,7 @@ goto schedule;
 l_bs_get_utf16_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1122].counter++;
+	ling_opcodes[1124].counter++;
 #endif
 
 
@@ -32467,7 +32648,7 @@ goto *next;
 l_put_tuple_9: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1123].counter++;
+	ling_opcodes[1125].counter++;
 #endif
 
 
@@ -32528,7 +32709,7 @@ next();
 get_tuple_element_11: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1124].counter++;
+	ling_opcodes[1126].counter++;
 #endif
 
 
@@ -32562,7 +32743,7 @@ goto *next;
 allocate_init_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1125].counter++;
+	ling_opcodes[1127].counter++;
 #endif
 
 
@@ -32598,7 +32779,7 @@ goto *next;
 l_call_fun_last_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1126].counter++;
+	ling_opcodes[1128].counter++;
 #endif
 
 
@@ -32695,7 +32876,7 @@ local_reduce();
 set_tuple_element_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1127].counter++;
+	ling_opcodes[1129].counter++;
 #endif
 
 
@@ -32713,7 +32894,7 @@ goto *next;
 l_bsr_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1128].counter++;
+	ling_opcodes[1130].counter++;
 #endif
 
 
@@ -32793,7 +32974,7 @@ goto *next;
 l_bs_get_integer_32_3: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1129].counter++;
+	ling_opcodes[1131].counter++;
 #endif
 
 
@@ -32838,7 +33019,7 @@ goto *next;
 allocate_heap_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1130].counter++;
+	ling_opcodes[1132].counter++;
 #endif
 
 
@@ -32887,7 +33068,7 @@ goto *next;
 is_tuple_of_arity_4: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1131].counter++;
+	ling_opcodes[1133].counter++;
 #endif
 
 
@@ -32909,7 +33090,7 @@ goto *next;
 test_arity_4: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1132].counter++;
+	ling_opcodes[1134].counter++;
 #endif
 
 
@@ -32932,7 +33113,7 @@ goto *next;
 is_nonempty_list_allocate_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1133].counter++;
+	ling_opcodes[1135].counter++;
 #endif
 
 
@@ -32971,7 +33152,7 @@ goto *next;
 l_bs_append_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1134].counter++;
+	ling_opcodes[1136].counter++;
 #endif
 
 
@@ -33031,7 +33212,7 @@ goto *next;
 try_case_end_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1135].counter++;
+	ling_opcodes[1137].counter++;
 #endif
 
 
@@ -33044,7 +33225,7 @@ raise_error(reason);
 init3_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1136].counter++;
+	ling_opcodes[1138].counter++;
 #endif
 
 
@@ -33068,7 +33249,7 @@ goto *next;
 l_select_tuple_arity2_3: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1137].counter++;
+	ling_opcodes[1139].counter++;
 #endif
 
 
@@ -33099,7 +33280,7 @@ next();
 init2_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1138].counter++;
+	ling_opcodes[1140].counter++;
 #endif
 
 
@@ -33120,7 +33301,7 @@ goto *next;
 l_bs_get_binary_all2_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1139].counter++;
+	ling_opcodes[1141].counter++;
 #endif
 
 
@@ -33181,7 +33362,7 @@ goto *next;
 is_nonempty_list_test_heap_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1140].counter++;
+	ling_opcodes[1142].counter++;
 #endif
 
 
@@ -33218,7 +33399,7 @@ goto *next;
 allocate_heap_zero_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1141].counter++;
+	ling_opcodes[1143].counter++;
 #endif
 
 
@@ -33271,7 +33452,7 @@ goto *next;
 l_bs_init_heap_bin_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1142].counter++;
+	ling_opcodes[1144].counter++;
 #endif
 
 
@@ -33313,7 +33494,7 @@ goto *next;
 l_plus_3: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1143].counter++;
+	ling_opcodes[1145].counter++;
 #endif
 
 
@@ -33412,7 +33593,7 @@ goto *next;
 l_bs_get_integer_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1144].counter++;
+	ling_opcodes[1146].counter++;
 #endif
 
 
@@ -40244,18 +40425,6 @@ initialize:
 #endif
 	  .arg_size = 3 },
 
-	{ .label = &&get_map_elements_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "get_map_elements_0",
-#endif
-	  .arg_size = 3 },
-
-	{ .label = &&has_map_fields_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "has_map_fields_0",
-#endif
-	  .arg_size = 3 },
-
 	{ .label = &&on_load_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "on_load_0",
@@ -40316,6 +40485,18 @@ initialize:
 #endif
 	  .arg_size = 3 },
 
+	{ .label = &&get_map_elements_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "get_map_elements_0",
+#endif
+	  .arg_size = 3 },
+
+	{ .label = &&has_map_fields_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "has_map_fields_0",
+#endif
+	  .arg_size = 3 },
+
 	{ .label = &&is_function2_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_function2_0",
@@ -40345,6 +40526,18 @@ initialize:
 	  .var_name = "update_map_exact_0",
 #endif
 	  .arg_size = 4 },
+
+	{ .label = &&get_map_element_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "get_map_element_0",
+#endif
+	  .arg_size = 4 },
+
+	{ .label = &&has_map_field_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "has_map_field_0",
+#endif
+	  .arg_size = 3 },
 
 	{ .label = &&test_heap_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -40534,7 +40727,7 @@ uint32_t *backstep_to_func_info(uint32_t *p)
 
 opcode_info_t *opcode_lookup(void *label)
 {
-	for (int i = 0; i < 1145; i++)
+	for (int i = 0; i < 1147; i++)
 		if (ling_opcodes[i].label == label)
 			return ling_opcodes + i;
 	return 0;
@@ -40542,7 +40735,7 @@ opcode_info_t *opcode_lookup(void *label)
 
 opcode_info_t *opcode_get(uint32_t n)
 {
-	if (n > 1145)
+	if (n > 1147)
 		return 0;
 	return ling_opcodes + n;
 }
@@ -40551,7 +40744,7 @@ opcode_info_t *opcode_get(uint32_t n)
 void print_iop_counters(void)
 {
 	printk("\n================ iop counters ====================\n");
-	for (int i = 0; i < 1145; i++)
+	for (int i = 0; i < 1147; i++)
 	{
 		opcode_info_t *oi = &ling_opcodes[i];
 		printk("%12ld %s\n", oi->counter, oi->var_name);
@@ -40563,7 +40756,7 @@ void print_iop_counters(void)
 void print_variant_code_sizes(void)
 {
 	printk("\n================ variant code sizes ==============\n");
-	int num_vars = 1145;
+	int num_vars = 1147;
 	opcode_info_t *ptr = ling_opcodes;
 	while (ptr < ling_opcodes +num_vars)
 	{
@@ -40890,6 +41083,119 @@ badsig:
 	proc->result.victim = cont_proc;
 	proc->result.reason2 = A_BADSIG;
 	return DELIVER_SIGNALS;
+}
+
+static int map_key_index(term_t k, term_t keys)
+{
+	assert(is_tuple(keys));
+	term_t *p = peel_tuple(keys);
+	uint32_t size = *p++;
+	if (size == 0)
+		return -1;
+	term_t *alpha = p;
+	term_t *beta = p +size;
+	while (beta > alpha+1)
+	{
+		term_t *mid = alpha + (beta -alpha +1)/2;
+		if (is_term_smaller(k, *mid))
+			beta = mid;
+		else
+			alpha = mid;
+	}
+	assert(beta == alpha+1);
+	if (!are_terms_equal(k, *alpha, 1))
+		return -1;
+	return alpha -p;
+}
+
+static int map_merge(term_t *ks, term_t *vs, int n,
+					 term_t *kvs, term_t nkvs,
+					 term_t *ks1, term_t *vs1)
+{
+	int sz = 0;
+	while (n > 0 && nkvs > 0)
+	{
+		term_t a = *ks;
+		term_t b = *kvs;
+		if (is_term_smaller(a, b))
+		{
+			*ks1++ = *ks++;
+			*vs1++ = *vs++;
+			n--;
+		}
+		else if (are_terms_equal(a, b, 1))
+		{
+			ks++; vs++;
+			n--;
+			*ks1++ = *kvs++;
+			*vs1++ = *kvs++;
+			nkvs--;
+		}
+		else
+		{
+			*ks1++ = *kvs++;
+			*vs1++ = *kvs++;
+			nkvs--;
+		}
+		sz++;
+	}
+
+	while (n-- > 0)
+	{
+		*ks1++ = *ks++;
+		*vs1++ = *vs++;
+		sz++;
+	}
+
+	while (nkvs-- > 0)
+	{
+		*ks1++ = *kvs++;
+		*vs1++ = *kvs++;
+		sz++;
+	}
+
+	return sz;
+}
+
+static int map_merge_exact(term_t *ks, term_t *vs, int n,
+						   term_t *kvs, int nkvs,
+						   term_t *vs1)
+{
+	int sz = 0;
+	while (n > 0 && nkvs > 0)
+	{
+		term_t a = *ks;
+		term_t b = *kvs;
+		if (is_term_smaller(a, b))
+		{
+			ks++;
+			*vs1++ = *vs++;
+			n--;
+		}
+		else if (are_terms_equal(a, b, 1))
+		{
+			ks++; vs++;
+			n--;
+			kvs++;
+			*vs1++ = *kvs++;
+			nkvs--;
+		}
+		else
+			return -1;
+
+		sz++;
+	}
+
+	while (n-- > 0)
+	{
+		*vs1++ = *vs++;
+		sz++;
+	}
+
+	if (nkvs > 0)
+		return -1;
+
+	return sz;
 }
 
 //EOF
