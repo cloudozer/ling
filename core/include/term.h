@@ -410,14 +410,14 @@ struct t_map_t {
 
 #ifdef LING_DEBUG
 #define box_map(p, sz, k)		__box_map(&(p), (sz), (k))
-#define map_size(m)				__map_size((p))
+#define map_size(p)				__map_size((p))
 #else
 #define box_map(p, sz, k) do { \
 	((t_map_t *)(p))->hdr = HDR_IS_NOT_CP | ((sz) << 4) | SUBTAG_MAP; \
 	((t_map_t *)(p))->keys = (k); \
 	(p) += WSIZE(t_map_t) + (sz); \
 } while (0)
-#define map_size(m)				((((t_map_t *)(p))->hdr >> 4) & 0x7ffffff)
+#define map_size(p)				((((t_map_t *)(p))->hdr >> 4) & 0x7ffffff)
 #endif // LING_DEBUG
 
 struct t_proc_bin_t {
