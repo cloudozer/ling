@@ -2741,28 +2741,10 @@ goto *next;
 }
 
 
-l_trim_2: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[105].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-uint32_t masqueraded_cp = sp[0];
-sp += 3;
-sp[0] = masqueraded_cp;
-
-
-ip += 1;
-goto *next;
-}
-
-
 get_list_3: ATTRIBUTE_HOT
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[106].counter++;
+	ling_opcodes[105].counter++;
 #endif
 
 
@@ -2790,6 +2772,24 @@ r0 = pair[0];
 
 
 ip += 2;
+goto *next;
+}
+
+
+l_trim_2: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[106].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+uint32_t masqueraded_cp = sp[0];
+sp += 3;
+sp[0] = masqueraded_cp;
+
+
+ip += 1;
 goto *next;
 }
 
@@ -3214,10 +3214,27 @@ goto *next;
 }
 
 
-l_new_bs_put_integer_imm_0: ATTRIBUTE_HOT
+l_fetch_5: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[125].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+tmp_arg1 = (int8_t)((ip[1] >> 0) & 255);
+tmp_arg2 = ((((ip[1] >> 8) & 255) == 0) ?r0 :rs[((ip[1] >> 8) & 255)]);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_new_bs_put_integer_imm_0: ATTRIBUTE_HOT
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[126].counter++;
 #endif
 
 
@@ -3255,23 +3272,6 @@ else
 
 
 ip += 4;
-goto *next;
-}
-
-
-l_fetch_5: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[126].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-tmp_arg1 = (int8_t)((ip[1] >> 0) & 255);
-tmp_arg2 = ((((ip[1] >> 8) & 255) == 0) ?r0 :rs[((ip[1] >> 8) & 255)]);
-
-
-ip += 2;
 goto *next;
 }
 
@@ -4145,23 +4145,10 @@ goto *next;
 }
 
 
-l_call_last_4: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[162].counter++;
-#endif
-
-
-cp = demasquerade_pointer(sp[0]);
-sp += 1+1;
-ip = (uint32_t *)expand_ptr(ip[1]);
-local_reduce();
-}
-
 l_bs_get_binary_all_reuse_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[163].counter++;
+	ling_opcodes[162].counter++;
 #endif
 
 
@@ -4188,6 +4175,19 @@ ip += 3;
 goto *next;
 }
 
+
+l_call_last_4: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[163].counter++;
+#endif
+
+
+cp = demasquerade_pointer(sp[0]);
+sp += 1+1;
+ip = (uint32_t *)expand_ptr(ip[1]);
+local_reduce();
+}
 
 bif1_body_0: 
  {
@@ -4773,10 +4773,35 @@ goto *next;
 }
 
 
-l_move_call_ext_1: 
+l_select_val2_2: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[180].counter++;
+#endif
+
+
+term_t v = ((((ip[4] >> 0) & 255) == 0) ?r0 :rs[((ip[4] >> 0) & 255)]);
+if (v == (int8_t)((ip[4] >> 8) & 255))
+	do {
+ip = (uint32_t *)expand_ptr(ip[2]);
+next();
+} while (0);
+if (v == (int8_t)((ip[4] >> 16) & 255))
+	do {
+ip = (uint32_t *)expand_ptr(ip[3]);
+next();
+} while (0);
+assert((uint32_t *)expand_ptr(ip[1]) != 0);
+do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+}
+
+l_move_call_ext_1: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[181].counter++;
 #endif
 
 
@@ -4805,31 +4830,6 @@ if (unlikely(reds_left <= 0)) {
 next(); \
 
 ;
-}
-
-l_select_val2_2: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[181].counter++;
-#endif
-
-
-term_t v = ((((ip[4] >> 0) & 255) == 0) ?r0 :rs[((ip[4] >> 0) & 255)]);
-if (v == (int8_t)((ip[4] >> 8) & 255))
-	do {
-ip = (uint32_t *)expand_ptr(ip[2]);
-next();
-} while (0);
-if (v == (int8_t)((ip[4] >> 16) & 255))
-	do {
-ip = (uint32_t *)expand_ptr(ip[3]);
-next();
-} while (0);
-assert((uint32_t *)expand_ptr(ip[1]) != 0);
-do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
 }
 
 l_call_ext_only_4: 
@@ -5556,24 +5556,10 @@ next(); \
 ;
 }
 
-deallocate_return_5: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[211].counter++;
-#endif
-
-
-cp = demasquerade_pointer(sp[0]);
-sp += 5+1;
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
 l_fetch_7: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[212].counter++;
+	ling_opcodes[211].counter++;
 #endif
 
 
@@ -5586,6 +5572,20 @@ ip += 2;
 goto *next;
 }
 
+
+deallocate_return_5: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[212].counter++;
+#endif
+
+
+cp = demasquerade_pointer(sp[0]);
+sp += 5+1;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
 
 l_bs_init_heap_bin_0: ATTRIBUTE_HOT
  {
@@ -7946,10 +7946,63 @@ goto *next;
 }
 
 
-call_bif_18: 
+allocate_heap_zero_0: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[294].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (unlikely(hend - htop < ((ip[1] >> 8) & 255)))
+{
+	swap_out();
+	int nr_regs = proc_count_root_regs(proc);
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 16) & 255));
+		heap_ensure(&proc->hp, ((ip[1] >> 8) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[1] >> 8) & 255));
+	swap_in();
+}
+
+
+int gap = ((ip[1] >> 0) & 255)+1;
+if (unlikely(sp - send < gap))
+{
+	proc_stack_set_top(proc, sp);
+	proc_stack_ensure(proc, gap);
+	sp = proc_stack_top(proc);
+	send = proc_stack_end(proc);
+
+	// In a rare case proc_stack_ensure() may enlarge the space available for
+	// the heap
+	//
+	hend = heap_end(&proc->hp);
+}
+sp -= gap;
+*sp = masquerade_as_boxed(cp);
+cp = 0; // not to confuse stack tracing
+
+
+int n = ((ip[1] >> 0) & 255);
+term_t *slots = sp+1;
+while (n-- > 0)
+	*slots++ = nil;
+
+
+ip += 2;
+goto *next;
+}
+
+
+call_bif_18: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[295].counter++;
 #endif
 
 
@@ -7997,7 +8050,7 @@ goto *next;
 l_allocate_6: ATTRIBUTE_HOT
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[295].counter++;
+	ling_opcodes[296].counter++;
 #endif
 
 
@@ -8023,59 +8076,6 @@ cp = 0; // not to confuse stack tracing
 
 
 ip += 1;
-goto *next;
-}
-
-
-allocate_heap_zero_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[296].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (unlikely(hend - htop < ((ip[1] >> 8) & 255)))
-{
-	swap_out();
-	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
-	{
-		region_t root_regs[nr_regs];
-		proc_fill_root_regs(proc, root_regs, rs, ((ip[1] >> 16) & 255));
-		heap_ensure(&proc->hp, ((ip[1] >> 8) & 255), root_regs, nr_regs);
-	}
-	else
-		heap_alloc(&proc->hp, ((ip[1] >> 8) & 255));
-	swap_in();
-}
-
-
-int gap = ((ip[1] >> 0) & 255)+1;
-if (unlikely(sp - send < gap))
-{
-	proc_stack_set_top(proc, sp);
-	proc_stack_ensure(proc, gap);
-	sp = proc_stack_top(proc);
-	send = proc_stack_end(proc);
-
-	// In a rare case proc_stack_ensure() may enlarge the space available for
-	// the heap
-	//
-	hend = heap_end(&proc->hp);
-}
-sp -= gap;
-*sp = masquerade_as_boxed(cp);
-cp = 0; // not to confuse stack tracing
-
-
-int n = ((ip[1] >> 0) & 255);
-term_t *slots = sp+1;
-while (n-- > 0)
-	*slots++ = nil;
-
-
-ip += 2;
 goto *next;
 }
 
@@ -10013,43 +10013,10 @@ next(); \
 ;
 }
 
-extract_next_element_27: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[360].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-{
-	term_t dst__ = ip[1];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = *(term_t *)expand_ptr(tmp_arg1);
-		else
-			rs[reg__] = *(term_t *)expand_ptr(tmp_arg1);
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = *(term_t *)expand_ptr(tmp_arg1);
-	}
-}
-
-tmp_arg1 += sizeof(term_t);
-
-
-ip += 2;
-goto *next;
-}
-
-
 call_bif_21: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[361].counter++;
+	ling_opcodes[360].counter++;
 #endif
 
 
@@ -10090,6 +10057,39 @@ r0 = r;
 
 
 ip += 1;
+goto *next;
+}
+
+
+extract_next_element_27: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[361].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+{
+	term_t dst__ = ip[1];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = *(term_t *)expand_ptr(tmp_arg1);
+		else
+			rs[reg__] = *(term_t *)expand_ptr(tmp_arg1);
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = *(term_t *)expand_ptr(tmp_arg1);
+	}
+}
+
+tmp_arg1 += sizeof(term_t);
+
+
+ip += 2;
 goto *next;
 }
 
@@ -10203,10 +10203,44 @@ goto *next;
 }
 
 
-l_allocate_zero_6: 
+l_move_call_ext_11: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[365].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = ip + 2;
+export_t *exp = (preloaded_exports+509);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_allocate_zero_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[366].counter++;
 #endif
 
 
@@ -10239,40 +10273,6 @@ ip += 1;
 goto *next;
 }
 
-
-l_move_call_ext_11: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[366].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = ip + 2;
-export_t *exp = (preloaded_exports+509);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
 
 l_bs_init_fail_0: 
  {
@@ -10385,10 +10385,33 @@ goto *next;
 }
 
 
-extract_next_element3_2: 
+test_arity_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[369].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t src = r0;
+assert(is_tuple(src));
+if (*peel_tuple(src) != ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+tmp_arg1 = shrink_ptr(peel_tuple(src)+1);	// prepare for extract_element
+
+
+ip += 3;
+goto *next;
+}
+
+
+extract_next_element3_2: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[370].counter++;
 #endif
 
 
@@ -10406,29 +10429,6 @@ tmp_arg1 += sizeof(term_t);
 
 
 ip += 1;
-goto *next;
-}
-
-
-test_arity_2: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[370].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t src = r0;
-assert(is_tuple(src));
-if (*peel_tuple(src) != ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-tmp_arg1 = shrink_ptr(peel_tuple(src)+1);	// prepare for extract_element
-
-
-ip += 3;
 goto *next;
 }
 
@@ -10603,10 +10603,43 @@ next(); \
 ;
 }
 
-l_put_tuple_6: 
+l_bs_get_integer_8_1: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[376].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t bin = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+if (mc->bs.ends - mc->bs.starts < 8)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+uint32_t v;
+bits_get_octet(&mc->bs, v);
+{
+	int reg__ = ((ip[2] >> 8) & 255);
+	if (reg__ == 0)
+		r0 = tag_int(v);
+	else
+		rs[reg__] = tag_int(v);
+}
+
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_put_tuple_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[377].counter++;
 #endif
 
 
@@ -10648,39 +10681,6 @@ ip += arity+2;
 next();
 }
 
-l_bs_get_integer_8_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[377].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t bin = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
-assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
-t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
-if (mc->bs.ends - mc->bs.starts < 8)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-uint32_t v;
-bits_get_octet(&mc->bs, v);
-{
-	int reg__ = ((ip[2] >> 8) & 255);
-	if (reg__ == 0)
-		r0 = tag_int(v);
-	else
-		rs[reg__] = tag_int(v);
-}
-
-
-
-ip += 3;
-goto *next;
-}
-
-
 is_tuple_2: 
  {
 #ifdef EXP_COUNT_IOPS
@@ -10701,10 +10701,36 @@ goto *next;
 }
 
 
-l_select_val2_6: 
+l_is_ne_exact_0: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[379].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (tmp_arg1 == tmp_arg2)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+if (!are_both_immed(tmp_arg1, tmp_arg2)
+		&& are_terms_equal(tmp_arg1, tmp_arg2, 1))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_select_val2_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[380].counter++;
 #endif
 
 
@@ -10729,7 +10755,7 @@ next();
 move_9: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[380].counter++;
+	ling_opcodes[381].counter++;
 #endif
 
 
@@ -10745,7 +10771,7 @@ goto *next;
 l_move_call_ext_12: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[381].counter++;
+	ling_opcodes[382].counter++;
 #endif
 
 
@@ -10779,7 +10805,7 @@ next(); \
 l_call_last_7: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[382].counter++;
+	ling_opcodes[383].counter++;
 #endif
 
 
@@ -10788,32 +10814,6 @@ sp += 7+1;
 ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
-
-l_is_ne_exact_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[383].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (tmp_arg1 == tmp_arg2)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-if (!are_both_immed(tmp_arg1, tmp_arg2)
-		&& are_terms_equal(tmp_arg1, tmp_arg2, 1))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
 
 l_call_fun_2: 
  {
@@ -11066,35 +11066,10 @@ goto *next;
 }
 
 
-extract_next_element3_3: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[391].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-term_t *dst;
-dst = rs + 5;
-
-
-dst[0] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-dst[1] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-dst[2] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-
-
-ip += 1;
-goto *next;
-}
-
-
 l_bif2_3: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[392].counter++;
+	ling_opcodes[391].counter++;
 #endif
 
 
@@ -11125,6 +11100,31 @@ next();
 
 
 ip += 3;
+goto *next;
+}
+
+
+extract_next_element3_3: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[392].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+term_t *dst;
+dst = rs + 5;
+
+
+dst[0] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[1] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[2] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+
+ip += 1;
 goto *next;
 }
 
@@ -11164,10 +11164,43 @@ next(); \
 ;
 }
 
-l_bif2_4: 
+get_list_5: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[394].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+assert(is_cons(sp[((ip[1] >> 0) & 255)+1]));
+term_t *pair = peel_cons(sp[((ip[1] >> 0) & 255)+1]);
+{
+	int reg__ = ((ip[1] >> 8) & 255);
+	if (reg__ == 0)
+		r0 = pair[0];
+	else
+		rs[reg__] = pair[0];
+}
+
+{
+	int reg__ = ((ip[1] >> 16) & 255);
+	if (reg__ == 0)
+		r0 = pair[1];
+	else
+		rs[reg__] = pair[1];
+}
+
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_bif2_4: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[395].counter++;
 #endif
 
 
@@ -11198,39 +11231,6 @@ next();
 
 
 ip += 3;
-goto *next;
-}
-
-
-get_list_5: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[395].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-assert(is_cons(sp[((ip[1] >> 0) & 255)+1]));
-term_t *pair = peel_cons(sp[((ip[1] >> 0) & 255)+1]);
-{
-	int reg__ = ((ip[1] >> 8) & 255);
-	if (reg__ == 0)
-		r0 = pair[0];
-	else
-		rs[reg__] = pair[0];
-}
-
-{
-	int reg__ = ((ip[1] >> 16) & 255);
-	if (reg__ == 0)
-		r0 = pair[1];
-	else
-		rs[reg__] = pair[1];
-}
-
-
-
-ip += 2;
 goto *next;
 }
 
@@ -11271,32 +11271,10 @@ goto *next;
 }
 
 
-l_new_bs_put_binary_all_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[397].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-// Fail is unused
-term_t bin = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-assert(is_boxed(bin) && is_binary(peel_boxed(bin)));
-
-bits_t bs;
-bits_get_real(peel_boxed(bin), &bs);
-bits_copy(&bs, &bpc);
-
-
-ip += 3;
-goto *next;
-}
-
-
 call_bif_22: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[398].counter++;
+	ling_opcodes[397].counter++;
 #endif
 
 
@@ -11344,7 +11322,7 @@ goto *next;
 l_call_ext_10: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[399].counter++;
+	ling_opcodes[398].counter++;
 #endif
 
 
@@ -11373,6 +11351,28 @@ next(); \
 
 ;
 }
+
+l_new_bs_put_binary_all_1: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[399].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+// Fail is unused
+term_t bin = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+assert(is_boxed(bin) && is_binary(peel_boxed(bin)));
+
+bits_t bs;
+bits_get_real(peel_boxed(bin), &bs);
+bits_copy(&bs, &bpc);
+
+
+ip += 3;
+goto *next;
+}
+
 
 catch_end_3: 
  {
@@ -12004,10 +12004,25 @@ goto *next;
 }
 
 
-is_nonempty_list_39: ATTRIBUTE_COLD
+move_deallocate_return_6: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[424].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = demasquerade_pointer(sp[0]);
+sp += 3+1;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+is_nonempty_list_39: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[425].counter++;
 #endif
 
 
@@ -12023,21 +12038,6 @@ ip += 3;
 goto *next;
 }
 
-
-move_deallocate_return_6: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[425].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = demasquerade_pointer(sp[0]);
-sp += 3+1;
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
 
 l_fetch_10: ATTRIBUTE_HOT
  {
@@ -12056,49 +12056,10 @@ goto *next;
 }
 
 
-l_fast_element_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[427].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-term_t tuple = r0;
-if (!is_tuple(tuple))
-	badarg();
-uint32_t *data = peel_tuple(tuple);
-uint32_t pos = 1;
-if (pos > data[0])
-	badarg();
-{
-	term_t dst__ = ip[1];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = data[pos];
-		else
-			rs[reg__] = data[pos];
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = data[pos];
-	}
-}
-
-
-
-ip += 2;
-goto *next;
-}
-
-
 call_bif_23: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[428].counter++;
+	ling_opcodes[427].counter++;
 #endif
 
 
@@ -12146,7 +12107,7 @@ goto *next;
 l_call_ext_11: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[429].counter++;
+	ling_opcodes[428].counter++;
 #endif
 
 
@@ -12176,6 +12137,45 @@ next(); \
 ;
 }
 
+l_fast_element_1: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[429].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t tuple = r0;
+if (!is_tuple(tuple))
+	badarg();
+uint32_t *data = peel_tuple(tuple);
+uint32_t pos = 1;
+if (pos > data[0])
+	badarg();
+{
+	term_t dst__ = ip[1];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = data[pos];
+		else
+			rs[reg__] = data[pos];
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = data[pos];
+	}
+}
+
+
+
+ip += 2;
+goto *next;
+}
+
+
 l_move_call_11: 
  {
 #ifdef EXP_COUNT_IOPS
@@ -12189,55 +12189,44 @@ ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
 
-l_select_tuple_arity_1: 
+l_band_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[431].counter++;
 #endif
 
 
-term_t tuple = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
-if (!is_tuple(tuple))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-uint32_t v = *peel_tuple(tuple);
-pair_t *alpha = (pair_t *)(ip + 3);
-pair_t *beta = (pair_t *)((uint32_t *)alpha + ((ip[2] >> 8) & 255));
-
-if (v < alpha->f || v > beta[-1].f)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-//TODO: in BEAM the binary search parameters are
-// made into unsigned values for performance
-
-while (beta > alpha+1)	// at least 2 pairs
+void *next = (void *)expand_ptr(ip[3]);
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+	r = tmp_arg1 & tmp_arg2;	//tag intact, never a carry
+else
 {
-	pair_t *mid = alpha + (beta - alpha +1)/2;
-	if ((term_t)mid->f > v)
-		beta = mid;
-	else
-		alpha = mid;
+	light_swap_out();
+	r = mixed_band(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		do {
+	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
+
+;
+		bif_error2(r, A_ERLANG, A_BAND, tmp_arg1, tmp_arg2);
+	}
+}
+r0 = r;
+
+
+ip += 3;
+goto *next;
 }
 
-assert(beta == alpha+1);
-if (alpha->f == v)
-{
-	ip = (uint32_t *)expand_ptr(alpha->s);
-	next();
-}
-
-do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-}
 
 l_allocate_zero_7: 
  {
@@ -12347,41 +12336,69 @@ goto *next;
 }
 
 
-l_band_1: ATTRIBUTE_COLD
+l_select_tuple_arity_1: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[435].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[3]);
-term_t r;
-if (are_both_int(tmp_arg1, tmp_arg2))
-	r = tmp_arg1 & tmp_arg2;	//tag intact, never a carry
-else
+term_t tuple = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
+if (!is_tuple(tuple))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+uint32_t v = *peel_tuple(tuple);
+pair_t *alpha = (pair_t *)(ip + 3);
+pair_t *beta = (pair_t *)((uint32_t *)alpha + ((ip[2] >> 8) & 255));
+
+if (v < alpha->f || v > beta[-1].f)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+//TODO: in BEAM the binary search parameters are
+// made into unsigned values for performance
+
+while (beta > alpha+1)	// at least 2 pairs
 {
-	light_swap_out();
-	r = mixed_band(tmp_arg1, tmp_arg2, &proc->hp);
-	light_swap_in();
-	if (is_atom(r))
-	{
-		do {
-	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
-	if (fail__ != 0)
-	{
-		ip = fail__;
-		next();
-	}
-} while (0)
-
-;
-		bif_error2(r, A_ERLANG, A_BAND, tmp_arg1, tmp_arg2);
-	}
+	pair_t *mid = alpha + (beta - alpha +1)/2;
+	if ((term_t)mid->f > v)
+		beta = mid;
+	else
+		alpha = mid;
 }
-r0 = r;
+
+assert(beta == alpha+1);
+if (alpha->f == v)
+{
+	ip = (uint32_t *)expand_ptr(alpha->s);
+	next();
+}
+
+do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
 
-ip += 3;
+}
+
+l_fetch_11: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[436].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+tmp_arg1 = rs[1];
+tmp_arg2 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+
+
+ip += 2;
 goto *next;
 }
 
@@ -12389,7 +12406,7 @@ goto *next;
 l_call_ext_12: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[436].counter++;
+	ling_opcodes[437].counter++;
 #endif
 
 
@@ -12422,7 +12439,7 @@ next(); \
 is_nonempty_list_14: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[437].counter++;
+	ling_opcodes[438].counter++;
 #endif
 
 
@@ -12432,23 +12449,6 @@ if (!is_cons(sp[3]))
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-l_fetch_11: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[438].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-tmp_arg1 = rs[1];
-tmp_arg2 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 
 
 ip += 2;
@@ -12572,10 +12572,27 @@ ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
 
-l_is_eq_exact_immed_18: 
+l_get_1: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[444].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t r = lookup_process_dictionary((term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]), proc->dictionary);
+r0 = r;
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_is_eq_exact_immed_18: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[445].counter++;
 #endif
 
 
@@ -12588,23 +12605,6 @@ next();
 
 
 ip += 3;
-goto *next;
-}
-
-
-l_get_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[445].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-term_t r = lookup_process_dictionary((term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]), proc->dictionary);
-r0 = r;
-
-
-ip += 2;
 goto *next;
 }
 
@@ -12654,19 +12654,66 @@ next();
 } while (0);
 }
 
-l_get_2: 
+l_bs_get_integer_small_imm_0: ATTRIBUTE_HOT
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[448].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[2]);
-term_t r = lookup_process_dictionary((term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]), proc->dictionary);
-rs[1] = r;
+void *next = (void *)expand_ptr(ip[3]);
+term_t bin = r0;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint32_t bcount = ((ip[2] >> 0) & 255);
+assert(bcount <= 32 -3);	//fits_int()
+if (mc->bs.ends - mc->bs.starts < bcount)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+uint32_t slack = 32-bcount;
+uint8_t flags = ((ip[2] >> 8) & 255);
+uint8_t buf[4] = {0, 0, 0, 0};
+int v;
+if (flags & BSF_LITTLE)
+{
+	bits_t bs = {
+		.data = buf,
+		.starts = 0,
+		.ends = bcount
+	};
+	bits_fill(&mc->bs, &bs);
+	uint32_t v0 = GET_UINT_32_LE(buf);
+	int bo = slack & 7;
+	v = (flags & BSF_SIGNED)
+		?(int)(v0 << slack) >> (slack +bo)
+		:v0 >> bo;
+}
+else
+{
+	bits_t bs = {
+		.data = buf,
+		.starts = slack,
+		.ends = 32
+	};
+	bits_fill(&mc->bs, &bs);
+	uint32_t v0 = GET_UINT_32(buf);
+	v = (flags & BSF_SIGNED)
+		?((int)(v0 << slack)) >> slack
+		:v0;
+}
+{
+	int reg__ = ((ip[2] >> 16) & 255);
+	if (reg__ == 0)
+		r0 = tag_int(v);
+	else
+		rs[reg__] = tag_int(v);
+}
 
 
-ip += 2;
+
+ip += 3;
 goto *next;
 }
 
@@ -12742,66 +12789,19 @@ goto *next;
 }
 
 
-l_bs_get_integer_small_imm_0: ATTRIBUTE_HOT
+l_get_2: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[450].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[3]);
-term_t bin = r0;
-assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
-t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
-uint32_t bcount = ((ip[2] >> 0) & 255);
-assert(bcount <= 32 -3);	//fits_int()
-if (mc->bs.ends - mc->bs.starts < bcount)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-uint32_t slack = 32-bcount;
-uint8_t flags = ((ip[2] >> 8) & 255);
-uint8_t buf[4] = {0, 0, 0, 0};
-int v;
-if (flags & BSF_LITTLE)
-{
-	bits_t bs = {
-		.data = buf,
-		.starts = 0,
-		.ends = bcount
-	};
-	bits_fill(&mc->bs, &bs);
-	uint32_t v0 = GET_UINT_32_LE(buf);
-	int bo = slack & 7;
-	v = (flags & BSF_SIGNED)
-		?(int)(v0 << slack) >> (slack +bo)
-		:v0 >> bo;
-}
-else
-{
-	bits_t bs = {
-		.data = buf,
-		.starts = slack,
-		.ends = 32
-	};
-	bits_fill(&mc->bs, &bs);
-	uint32_t v0 = GET_UINT_32(buf);
-	v = (flags & BSF_SIGNED)
-		?((int)(v0 << slack)) >> slack
-		:v0;
-}
-{
-	int reg__ = ((ip[2] >> 16) & 255);
-	if (reg__ == 0)
-		r0 = tag_int(v);
-	else
-		rs[reg__] = tag_int(v);
-}
+void *next = (void *)expand_ptr(ip[2]);
+term_t r = lookup_process_dictionary((term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]), proc->dictionary);
+rs[1] = r;
 
 
-
-ip += 3;
+ip += 2;
 goto *next;
 }
 
@@ -12886,43 +12886,10 @@ ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
 
-l_allocate_7: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[455].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-int gap = 7+1;
-if (unlikely(sp - send < gap))
-{
-	proc_stack_set_top(proc, sp);
-	proc_stack_ensure(proc, gap);
-	sp = proc_stack_top(proc);
-	send = proc_stack_end(proc);
-
-	// In a rare case proc_stack_ensure() may enlarge the space available for
-	// the heap
-	//
-	hend = heap_end(&proc->hp);
-}
-sp -= gap;
-*sp = masquerade_as_boxed(cp);
-cp = 0; // not to confuse stack tracing
-
-
-
-
-ip += 1;
-goto *next;
-}
-
-
 l_bor_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[456].counter++;
+	ling_opcodes[455].counter++;
 #endif
 
 
@@ -12958,53 +12925,35 @@ goto *next;
 }
 
 
-is_nil_30: 
+l_allocate_7: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[457].counter++;
+	ling_opcodes[456].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[3]);
-if ((term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]) != nil)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
-move2_8: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[458].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
+void *next = (void *)expand_ptr(ip[1]);
+int gap = 7+1;
+if (unlikely(sp - send < gap))
 {
-	int reg__ = ((ip[1] >> 0) & 255);
-	if (reg__ == 0)
-		r0 = r0;
-	else
-		rs[reg__] = r0;
+	proc_stack_set_top(proc, sp);
+	proc_stack_ensure(proc, gap);
+	sp = proc_stack_top(proc);
+	send = proc_stack_end(proc);
+
+	// In a rare case proc_stack_ensure() may enlarge the space available for
+	// the heap
+	//
+	hend = heap_end(&proc->hp);
 }
-
-{
-	int reg__ = ((ip[1] >> 16) & 255);
-	if (reg__ == 0)
-		r0 = ((((ip[1] >> 8) & 255) == 0) ?r0 :rs[((ip[1] >> 8) & 255)]);
-	else
-		rs[reg__] = ((((ip[1] >> 8) & 255) == 0) ?r0 :rs[((ip[1] >> 8) & 255)]);
-}
+sp -= gap;
+*sp = masquerade_as_boxed(cp);
+cp = 0; // not to confuse stack tracing
 
 
 
-ip += 2;
+
+ip += 1;
 goto *next;
 }
 
@@ -13012,7 +12961,7 @@ goto *next;
 l_call_ext_14: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[459].counter++;
+	ling_opcodes[457].counter++;
 #endif
 
 
@@ -13045,7 +12994,7 @@ next(); \
 is_integer_1: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[460].counter++;
+	ling_opcodes[458].counter++;
 #endif
 
 
@@ -13066,10 +13015,30 @@ goto *next;
 }
 
 
+is_nil_30: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[459].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if ((term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]) != nil)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
 is_nil_13: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[461].counter++;
+	ling_opcodes[460].counter++;
 #endif
 
 
@@ -13089,7 +13058,7 @@ goto *next;
 is_nil_12: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[462].counter++;
+	ling_opcodes[461].counter++;
 #endif
 
 
@@ -13109,7 +13078,7 @@ goto *next;
 l_move_call_only_5: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[463].counter++;
+	ling_opcodes[462].counter++;
 #endif
 
 
@@ -13121,7 +13090,7 @@ local_reduce();
 l_move_call_13: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[464].counter++;
+	ling_opcodes[463].counter++;
 #endif
 
 
@@ -13130,6 +13099,37 @@ cp = ip + 2;
 ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
+
+move2_8: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[464].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+{
+	int reg__ = ((ip[1] >> 0) & 255);
+	if (reg__ == 0)
+		r0 = r0;
+	else
+		rs[reg__] = r0;
+}
+
+{
+	int reg__ = ((ip[1] >> 16) & 255);
+	if (reg__ == 0)
+		r0 = ((((ip[1] >> 8) & 255) == 0) ?r0 :rs[((ip[1] >> 8) & 255)]);
+	else
+		rs[reg__] = ((((ip[1] >> 8) & 255) == 0) ?r0 :rs[((ip[1] >> 8) & 255)]);
+}
+
+
+
+ip += 2;
+goto *next;
+}
+
 
 l_gc_bif1_5: 
  {
@@ -13358,44 +13358,10 @@ next(); \
 ;
 }
 
-l_move_call_ext_18: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[472].counter++;
-#endif
-
-
-r0 = nil;
-cp = ip + 2;
-export_t *exp = (export_t *)expand_ptr(ip[1]);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
 l_catch_4: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[473].counter++;
+	ling_opcodes[472].counter++;
 #endif
 
 
@@ -13412,7 +13378,7 @@ goto *next;
 call_bif_27: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[474].counter++;
+	ling_opcodes[473].counter++;
 #endif
 
 
@@ -13460,7 +13426,7 @@ goto *next;
 call_bif_26: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[475].counter++;
+	ling_opcodes[474].counter++;
 #endif
 
 
@@ -13508,7 +13474,7 @@ goto *next;
 extract_next_element2_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[476].counter++;
+	ling_opcodes[475].counter++;
 #endif
 
 
@@ -13531,7 +13497,7 @@ goto *next;
 is_nonempty_list_15: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[477].counter++;
+	ling_opcodes[476].counter++;
 #endif
 
 
@@ -13547,6 +13513,40 @@ ip += 2;
 goto *next;
 }
 
+
+l_move_call_ext_18: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[477].counter++;
+#endif
+
+
+r0 = nil;
+cp = ip + 2;
+export_t *exp = (export_t *)expand_ptr(ip[1]);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
 
 l_select_val2_17: 
  {
@@ -13573,29 +13573,10 @@ next();
 } while (0);
 }
 
-l_fadd_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[479].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-double d = fr[((ip[1] >> 0) & 255)] + fr[((ip[1] >> 8) & 255)];
-if (!isfinite(d))
-	raise_error(A_BADARITH);
-fr[((ip[1] >> 16) & 255)] = d;
-
-
-ip += 2;
-goto *next;
-}
-
-
 l_element_1: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[480].counter++;
+	ling_opcodes[479].counter++;
 #endif
 
 
@@ -13630,6 +13611,25 @@ if (pos < 1 || pos > data[0])
 
 
 ip += 4;
+goto *next;
+}
+
+
+l_fadd_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[480].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+double d = fr[((ip[1] >> 0) & 255)] + fr[((ip[1] >> 8) & 255)];
+if (!isfinite(d))
+	raise_error(A_BADARITH);
+fr[((ip[1] >> 16) & 255)] = d;
+
+
+ip += 2;
 goto *next;
 }
 
@@ -13922,30 +13922,10 @@ next();
 } while (0);
 }
 
-fmove_1_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[490].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-	// s fr
-term_t v = ((((ip[1] >> 0) & 255) == 0) ?r0 :rs[((ip[1] >> 0) & 255)]);
-assert(is_boxed(v) && boxed_tag(peel_boxed(v)) == SUBTAG_FLOAT);
-uint32_t *tdata = peel_boxed(v);
-fr[((ip[1] >> 8) & 255)] = float_value(tdata);
-
-
-ip += 2;
-goto *next;
-}
-
-
 is_nonempty_list_16: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[491].counter++;
+	ling_opcodes[490].counter++;
 #endif
 
 
@@ -13955,6 +13935,26 @@ if (!is_cons(rs[14]))
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+fmove_1_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[491].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+	// s fr
+term_t v = ((((ip[1] >> 0) & 255) == 0) ?r0 :rs[((ip[1] >> 0) & 255)]);
+assert(is_boxed(v) && boxed_tag(peel_boxed(v)) == SUBTAG_FLOAT);
+uint32_t *tdata = peel_boxed(v);
+fr[((ip[1] >> 8) & 255)] = float_value(tdata);
 
 
 ip += 2;
@@ -14150,30 +14150,10 @@ next(); \
 ;
 }
 
-l_is_eq_exact_immed_20: 
+l_move_call_ext_19: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[499].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (sp[4] != (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
-l_move_call_ext_20: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[500].counter++;
 #endif
 
 
@@ -14204,7 +14184,26 @@ next(); \
 ;
 }
 
-l_move_call_ext_19: 
+bif2_body_1: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[500].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t r = ((bif_func2_t)(bif_func_t)expand_ptr(ip[1]))(tmp_arg1, tmp_arg2, proc);
+if (r == noval)
+	raise_error(proc->bif_excep_reason);
+rs[1] = r;
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_move_call_ext_20: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[501].counter++;
@@ -14319,21 +14318,22 @@ next(); \
 ;
 }
 
-bif2_body_1: 
+l_is_eq_exact_immed_20: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[504].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[2]);
-term_t r = ((bif_func2_t)(bif_func_t)expand_ptr(ip[1]))(tmp_arg1, tmp_arg2, proc);
-if (r == noval)
-	raise_error(proc->bif_excep_reason);
-rs[1] = r;
+void *next = (void *)expand_ptr(ip[3]);
+if (sp[4] != (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
 
-ip += 2;
+ip += 3;
 goto *next;
 }
 
@@ -14373,64 +14373,10 @@ goto *next;
 }
 
 
-l_move_call_ext_21: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[506].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = ip + 2;
-export_t *exp = (preloaded_exports+527);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_is_eq_exact_immed_21: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[507].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (rs[14] != (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
 call_bif_31: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[508].counter++;
+	ling_opcodes[506].counter++;
 #endif
 
 
@@ -14475,30 +14421,10 @@ goto *next;
 }
 
 
-fconv_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[509].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-term_t v = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-double converted = term_to_float(v);
-if (!isfinite(converted))
-	raise_error(A_BADARITH);
-fr[0] = converted;
-
-
-ip += 2;
-goto *next;
-}
-
-
 case_end_10: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[510].counter++;
+	ling_opcodes[507].counter++;
 #endif
 
 
@@ -14511,7 +14437,7 @@ raise_error(reason);
 l_select_tuple_arity_0: ATTRIBUTE_HOT
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[511].counter++;
+	ling_opcodes[508].counter++;
 #endif
 
 
@@ -14558,10 +14484,127 @@ next();
 
 }
 
-l_move_call_ext_last_2: 
+l_move_call_ext_21: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[509].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = ip + 2;
+export_t *exp = (preloaded_exports+527);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_is_eq_exact_immed_21: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[510].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if (rs[14] != (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
+fconv_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[511].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t v = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+double converted = term_to_float(v);
+if (!isfinite(converted))
+	raise_error(A_BADARITH);
+fr[0] = converted;
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_catch_5: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[512].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+sp[5+1] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+proc->catch_level++;
+
+
+ip += 2;
+goto *next;
+}
+
+
+put_list_8: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[513].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+htop[0] = sp[((ip[2] >> 0) & 255)+1];
+htop[1] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+{
+	int reg__ = ((ip[2] >> 8) & 255);
+	if (reg__ == 0)
+		r0 = tag_cons(htop);
+	else
+		rs[reg__] = tag_cons(htop);
+}
+
+htop += 2;
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_move_call_ext_last_2: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[514].counter++;
 #endif
 
 
@@ -14592,49 +14635,6 @@ next(); \
 
 ;
 }
-
-put_list_8: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[513].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-htop[0] = sp[((ip[2] >> 0) & 255)+1];
-htop[1] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-{
-	int reg__ = ((ip[2] >> 8) & 255);
-	if (reg__ == 0)
-		r0 = tag_cons(htop);
-	else
-		rs[reg__] = tag_cons(htop);
-}
-
-htop += 2;
-
-
-ip += 3;
-goto *next;
-}
-
-
-l_catch_5: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[514].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-sp[5+1] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-proc->catch_level++;
-
-
-ip += 2;
-goto *next;
-}
-
 
 call_bif_4: ATTRIBUTE_COLD
  {
@@ -14818,27 +14818,10 @@ do {
 raise_error(A_SYSTEM_LIMIT);
 }
 
-l_fetch_23: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[521].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-tmp_arg1 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-tmp_arg2 = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-
-
-ip += 3;
-goto *next;
-}
-
-
 l_call_ext_last_4: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[522].counter++;
+	ling_opcodes[521].counter++;
 #endif
 
 
@@ -14869,6 +14852,23 @@ next(); \
 ;
 }
 
+l_fetch_23: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[522].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+tmp_arg1 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+tmp_arg2 = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+
+
+ip += 3;
+goto *next;
+}
+
+
 extract_next_element_14: 
  {
 #ifdef EXP_COUNT_IOPS
@@ -14886,56 +14886,10 @@ goto *next;
 }
 
 
-l_bor_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[524].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t r;
-if (are_both_int(tmp_arg1, tmp_arg2))
-	r = tmp_arg1 | tmp_arg2;	//tag intact, never a carry
-else
-{
-	light_swap_out();
-	r = mixed_bor(tmp_arg1, tmp_arg2, &proc->hp);
-	light_swap_in();
-	if (is_atom(r))
-	{
-		do {
-	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
-	if (fail__ != 0)
-	{
-		ip = fail__;
-		next();
-	}
-} while (0)
-
-;
-		bif_error2(r, A_ERLANG, A_BOR, tmp_arg1, tmp_arg2);
-	}
-}
-{
-	int reg__ = ((ip[2] >> 8) & 255);
-	if (reg__ == 0)
-		r0 = r;
-	else
-		rs[reg__] = r;
-}
-
-
-
-ip += 3;
-goto *next;
-}
-
-
 is_binary_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[525].counter++;
+	ling_opcodes[524].counter++;
 #endif
 
 
@@ -14983,38 +14937,44 @@ goto *next;
 }
 
 
-is_integer_allocate_0: 
+l_bor_1: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[526].counter++;
+	ling_opcodes[525].counter++;
 #endif
 
 
 void *next = (void *)expand_ptr(ip[3]);
-term_t v = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
-if (!is_int(v) && !(is_boxed(v) && is_bignum(peel_boxed(v))))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-int gap = ((ip[2] >> 8) & 255)+1;
-if (unlikely(sp - send < gap))
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+	r = tmp_arg1 | tmp_arg2;	//tag intact, never a carry
+else
 {
-	proc_stack_set_top(proc, sp);
-	proc_stack_ensure(proc, gap);
-	sp = proc_stack_top(proc);
-	send = proc_stack_end(proc);
+	light_swap_out();
+	r = mixed_bor(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		do {
+	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
 
-	// In a rare case proc_stack_ensure() may enlarge the space available for
-	// the heap
-	//
-	hend = heap_end(&proc->hp);
+;
+		bif_error2(r, A_ERLANG, A_BOR, tmp_arg1, tmp_arg2);
+	}
 }
-sp -= gap;
-*sp = masquerade_as_boxed(cp);
-cp = 0; // not to confuse stack tracing
-
+{
+	int reg__ = ((ip[2] >> 8) & 255);
+	if (reg__ == 0)
+		r0 = r;
+	else
+		rs[reg__] = r;
+}
 
 
 
@@ -15026,7 +14986,7 @@ goto *next;
 call_bif_32: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[527].counter++;
+	ling_opcodes[526].counter++;
 #endif
 
 
@@ -15074,7 +15034,7 @@ goto *next;
 l_call_ext_18: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[528].counter++;
+	ling_opcodes[527].counter++;
 #endif
 
 
@@ -15103,6 +15063,46 @@ next(); \
 
 ;
 }
+
+is_integer_allocate_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[528].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t v = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
+if (!is_int(v) && !(is_boxed(v) && is_bignum(peel_boxed(v))))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+int gap = ((ip[2] >> 8) & 255)+1;
+if (unlikely(sp - send < gap))
+{
+	proc_stack_set_top(proc, sp);
+	proc_stack_ensure(proc, gap);
+	sp = proc_stack_top(proc);
+	send = proc_stack_end(proc);
+
+	// In a rare case proc_stack_ensure() may enlarge the space available for
+	// the heap
+	//
+	hend = heap_end(&proc->hp);
+}
+sp -= gap;
+*sp = masquerade_as_boxed(cp);
+cp = 0; // not to confuse stack tracing
+
+
+
+
+ip += 3;
+goto *next;
+}
+
 
 l_is_eq_exact_immed_23: ATTRIBUTE_COLD
  {
@@ -15157,52 +15157,117 @@ next(); \
 ;
 }
 
-l_make_export_0: 
+badmatch_4: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[531].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[2]);
-
-//
-// TODO:
-//
-// - remove translation of all erlang:make_fun/3 call to l_make_export
-// - add erlang:make_fun3 BIF
-// - remove {e,0} as a possible iop argument from static and dynamic code
-// loading
-// - assert that e != 0 here
-//
-
-export_t *e = (export_t *)expand_ptr(ip[1]);
-if (e == 0)
-{
-	e = code_base_lookup_or_create_N(r0, rs[1], int_value(rs[2]));
-	if (e == 0)
-		raise_error(A_NO_MEMORY);
-}
-
 light_swap_out();
-int needed = WSIZE(t_export_t);
-uint32_t *p = heap_alloc(&proc->hp, needed);
-term_t fun = tag_boxed(p);
-box_export(p, e);
-heap_set_top(&proc->hp, p);
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[3]);
 light_swap_in();
-r0 = fun;
-
-
-ip += 2;
-goto *next;
+raise_error(reason);
 }
+
+l_call_fun_3: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[532].counter++;
+#endif
+
+
+uint32_t *saved_ip = ip +0 +1;
+
+ 
+rs[0] = r0;
+uint32_t arity = 0;
+term_t t = rs[arity];		//what about {x,1023} mapped to {x,255}?
+if (!is_boxed(t))
+	goto l_call_fun_3_bad_fun;
+uint32_t *p = peel_boxed(t);
+if (boxed_tag(p) == SUBTAG_FUN)
+{
+	t_fun_t *fun = (t_fun_t *)p;
+	if (fun->fe == 0)
+		fatal_error("unloaded funs not implemented");
+	int num_free = fun_num_free(p);
+	if (fun_arity(p) != arity+num_free)
+		goto l_call_fun_3_bad_arity;
+	ip = fun->fe->entry;
+	term_t *src = fun->frozen;
+	term_t *dst = rs + arity;
+	int n = num_free;
+	while (n-- > 0)
+		*dst++ = *src++;
+	r0 = rs[0];
+}
+else if (boxed_tag(p) == SUBTAG_EXPORT)
+{
+	t_export_t *exp = (t_export_t *)p;
+	if (exp->e->is_bif)
+	{
+		swap_out();
+		term_t r = invoke_bif(exp->e, proc, rs, arity +1);		// +1 for export
+		swap_in();
+		if (r == noval)
+		{
+			raise_bif_mfa.mod = exp->e->module;
+			raise_bif_mfa.fun = exp->e->function;
+			raise_bif_mfa.arity = exp->e->arity;
+			rs[exp->e->arity] = proc->bif_excep_reason;
+			goto raise_from_bif;
+		}
+		r0 = r;
+		ip = saved_ip;
+
+
+		next();
+	}
+	if (exp->e->entry == 0)
+	{
+		//rs[0] = r0;
+		light_swap_out();
+		term_t args = heap_vector_to_list(&proc->hp, rs, arity);
+		light_swap_in();
+		r0 = exp->e->module;
+		rs[1] = exp->e->function;
+		rs[2] = args;
+		ip = (EH_UNDEF_EXP)->entry;
+	}
+	else if (exp->e->arity != arity)
+	{
+l_call_fun_3_bad_arity:
+		light_swap_out();
+		term_t args = heap_vector_to_list(&proc->hp, rs, arity);
+		term_t fun_args = heap_tuple2(&proc->hp, t, args);
+		term_t reason = heap_tuple2(&proc->hp, A_BADARITY, fun_args);
+		light_swap_in();
+		raise_error(reason);
+	}
+	else
+		ip = exp->e->entry;
+}
+else
+{
+l_call_fun_3_bad_fun:
+	light_swap_out();
+	term_t reason = heap_tuple2(&proc->hp, A_BADFUN, t);
+	light_swap_in();
+	raise_error(reason);
+}
+cp = saved_ip;
+local_reduce();
+
+
+}
+
 
 
 l_bs_init_bits_fail_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[532].counter++;
+	ling_opcodes[533].counter++;
 #endif
 
 
@@ -15296,136 +15361,41 @@ goto *next;
 }
 
 
-badmatch_4: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[533].counter++;
-#endif
-
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[3]);
-light_swap_in();
-raise_error(reason);
-}
-
-l_call_fun_3: 
+l_make_export_0: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[534].counter++;
 #endif
 
 
-uint32_t *saved_ip = ip +0 +1;
-
- 
-rs[0] = r0;
-uint32_t arity = 0;
-term_t t = rs[arity];		//what about {x,1023} mapped to {x,255}?
-if (!is_boxed(t))
-	goto l_call_fun_3_bad_fun;
-uint32_t *p = peel_boxed(t);
-if (boxed_tag(p) == SUBTAG_FUN)
-{
-	t_fun_t *fun = (t_fun_t *)p;
-	if (fun->fe == 0)
-		fatal_error("unloaded funs not implemented");
-	int num_free = fun_num_free(p);
-	if (fun_arity(p) != arity+num_free)
-		goto l_call_fun_3_bad_arity;
-	ip = fun->fe->entry;
-	term_t *src = fun->frozen;
-	term_t *dst = rs + arity;
-	int n = num_free;
-	while (n-- > 0)
-		*dst++ = *src++;
-	r0 = rs[0];
-}
-else if (boxed_tag(p) == SUBTAG_EXPORT)
-{
-	t_export_t *exp = (t_export_t *)p;
-	if (exp->e->is_bif)
-	{
-		swap_out();
-		term_t r = invoke_bif(exp->e, proc, rs, arity +1);		// +1 for export
-		swap_in();
-		if (r == noval)
-		{
-			raise_bif_mfa.mod = exp->e->module;
-			raise_bif_mfa.fun = exp->e->function;
-			raise_bif_mfa.arity = exp->e->arity;
-			rs[exp->e->arity] = proc->bif_excep_reason;
-			goto raise_from_bif;
-		}
-		r0 = r;
-		ip = saved_ip;
-
-
-		next();
-	}
-	if (exp->e->entry == 0)
-	{
-		//rs[0] = r0;
-		light_swap_out();
-		term_t args = heap_vector_to_list(&proc->hp, rs, arity);
-		light_swap_in();
-		r0 = exp->e->module;
-		rs[1] = exp->e->function;
-		rs[2] = args;
-		ip = (EH_UNDEF_EXP)->entry;
-	}
-	else if (exp->e->arity != arity)
-	{
-l_call_fun_3_bad_arity:
-		light_swap_out();
-		term_t args = heap_vector_to_list(&proc->hp, rs, arity);
-		term_t fun_args = heap_tuple2(&proc->hp, t, args);
-		term_t reason = heap_tuple2(&proc->hp, A_BADARITY, fun_args);
-		light_swap_in();
-		raise_error(reason);
-	}
-	else
-		ip = exp->e->entry;
-}
-else
-{
-l_call_fun_3_bad_fun:
-	light_swap_out();
-	term_t reason = heap_tuple2(&proc->hp, A_BADFUN, t);
-	light_swap_in();
-	raise_error(reason);
-}
-cp = saved_ip;
-local_reduce();
-
-
-}
-
-
-
-fmove_2_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[535].counter++;
-#endif
-
-
 void *next = (void *)expand_ptr(ip[2]);
-	// fr s
-double dbl = fr[((ip[1] >> 0) & 255)];
-term_t v = tag_boxed(htop);
-assert(hend - htop >= WSIZE(t_float_t));	// compiler should care
-((t_float_t *)htop)->hdr = HDR_IS_NOT_CP | SUBTAG_FLOAT;
-((t_float_t *)htop)->val = dbl;
-htop += WSIZE(t_float_t);
+
+//
+// TODO:
+//
+// - remove translation of all erlang:make_fun/3 call to l_make_export
+// - add erlang:make_fun3 BIF
+// - remove {e,0} as a possible iop argument from static and dynamic code
+// loading
+// - assert that e != 0 here
+//
+
+export_t *e = (export_t *)expand_ptr(ip[1]);
+if (e == 0)
 {
-	int reg__ = ((ip[1] >> 8) & 255);
-	if (reg__ == 0)
-		r0 = v;
-	else
-		rs[reg__] = v;
+	e = code_base_lookup_or_create_N(r0, rs[1], int_value(rs[2]));
+	if (e == 0)
+		raise_error(A_NO_MEMORY);
 }
 
+light_swap_out();
+int needed = WSIZE(t_export_t);
+uint32_t *p = heap_alloc(&proc->hp, needed);
+term_t fun = tag_boxed(p);
+box_export(p, e);
+heap_set_top(&proc->hp, p);
+light_swap_in();
+r0 = fun;
 
 
 ip += 2;
@@ -15436,7 +15406,7 @@ goto *next;
 is_integer_6: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[536].counter++;
+	ling_opcodes[535].counter++;
 #endif
 
 
@@ -15457,10 +15427,106 @@ goto *next;
 }
 
 
-apply_last_0: 
+call_bif_34: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[536].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+bif_func_t entry = cbif_make_ref0;
+
+//
+//TODO: The following two assignments are needed for erlang:process_info/2 and
+// erlang:process_display/2 only. Check the performance impact.
+//
+proc->cap.ip = ip;
+proc->cap.cp = cp;
+
+#ifdef TRACE_HARNESS
+if (trace_mask & TRACE_MASK_BIF)
+{
+export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+assert(bif_exp != 0);
+printk("TRACEBIF: %pt:%pt/%d\n", T(bif_exp->module), T(bif_exp->function), bif_exp->arity);
+}
+#endif
+
+swap_out();
+term_t r = ((cbif_func_t)entry)(proc, rs);
+swap_in();
+if (r == noval)
+{
+	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+	assert(bif_exp != 0);
+
+	raise_bif_mfa.mod = bif_exp->module;
+	raise_bif_mfa.fun = bif_exp->function;
+	raise_bif_mfa.arity = bif_exp->arity;
+	rs[bif_exp->arity] = proc->bif_excep_reason;
+	goto raise_from_bif;
+}
+r0 = r;
+
+
+ip += 1;
+goto *next;
+}
+
+
+call_bif_33: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[537].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+bif_func_t entry = cbif_reverse2;
+
+//
+//TODO: The following two assignments are needed for erlang:process_info/2 and
+// erlang:process_display/2 only. Check the performance impact.
+//
+proc->cap.ip = ip;
+proc->cap.cp = cp;
+
+#ifdef TRACE_HARNESS
+if (trace_mask & TRACE_MASK_BIF)
+{
+export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+assert(bif_exp != 0);
+printk("TRACEBIF: %pt:%pt/%d\n", T(bif_exp->module), T(bif_exp->function), bif_exp->arity);
+}
+#endif
+
+swap_out();
+term_t r = ((cbif_func_t)entry)(proc, rs);
+swap_in();
+if (r == noval)
+{
+	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+	assert(bif_exp != 0);
+
+	raise_bif_mfa.mod = bif_exp->module;
+	raise_bif_mfa.fun = bif_exp->function;
+	raise_bif_mfa.arity = bif_exp->arity;
+	rs[bif_exp->arity] = proc->bif_excep_reason;
+	goto raise_from_bif;
+}
+r0 = r;
+
+
+ip += 1;
+goto *next;
+}
+
+
+apply_last_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[538].counter++;
 #endif
 
 
@@ -15539,10 +15605,10 @@ else
 }
 }
 
-fmove_2_1: 
+fmove_2_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[538].counter++;
+	ling_opcodes[539].counter++;
 #endif
 
 
@@ -15562,98 +15628,32 @@ goto *next;
 }
 
 
-call_bif_34: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[539].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-bif_func_t entry = cbif_make_ref0;
-
-//
-//TODO: The following two assignments are needed for erlang:process_info/2 and
-// erlang:process_display/2 only. Check the performance impact.
-//
-proc->cap.ip = ip;
-proc->cap.cp = cp;
-
-#ifdef TRACE_HARNESS
-if (trace_mask & TRACE_MASK_BIF)
-{
-export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
-assert(bif_exp != 0);
-printk("TRACEBIF: %pt:%pt/%d\n", T(bif_exp->module), T(bif_exp->function), bif_exp->arity);
-}
-#endif
-
-swap_out();
-term_t r = ((cbif_func_t)entry)(proc, rs);
-swap_in();
-if (r == noval)
-{
-	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
-	assert(bif_exp != 0);
-
-	raise_bif_mfa.mod = bif_exp->module;
-	raise_bif_mfa.fun = bif_exp->function;
-	raise_bif_mfa.arity = bif_exp->arity;
-	rs[bif_exp->arity] = proc->bif_excep_reason;
-	goto raise_from_bif;
-}
-r0 = r;
-
-
-ip += 1;
-goto *next;
-}
-
-
-call_bif_33: 
+fmove_2_1: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[540].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[1]);
-bif_func_t entry = cbif_reverse2;
-
-//
-//TODO: The following two assignments are needed for erlang:process_info/2 and
-// erlang:process_display/2 only. Check the performance impact.
-//
-proc->cap.ip = ip;
-proc->cap.cp = cp;
-
-#ifdef TRACE_HARNESS
-if (trace_mask & TRACE_MASK_BIF)
+void *next = (void *)expand_ptr(ip[2]);
+	// fr s
+double dbl = fr[((ip[1] >> 0) & 255)];
+term_t v = tag_boxed(htop);
+assert(hend - htop >= WSIZE(t_float_t));	// compiler should care
+((t_float_t *)htop)->hdr = HDR_IS_NOT_CP | SUBTAG_FLOAT;
+((t_float_t *)htop)->val = dbl;
+htop += WSIZE(t_float_t);
 {
-export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
-assert(bif_exp != 0);
-printk("TRACEBIF: %pt:%pt/%d\n", T(bif_exp->module), T(bif_exp->function), bif_exp->arity);
+	int reg__ = ((ip[1] >> 8) & 255);
+	if (reg__ == 0)
+		r0 = v;
+	else
+		rs[reg__] = v;
 }
-#endif
-
-swap_out();
-term_t r = ((cbif_func_t)entry)(proc, rs);
-swap_in();
-if (r == noval)
-{
-	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
-	assert(bif_exp != 0);
-
-	raise_bif_mfa.mod = bif_exp->module;
-	raise_bif_mfa.fun = bif_exp->function;
-	raise_bif_mfa.arity = bif_exp->arity;
-	rs[bif_exp->arity] = proc->bif_excep_reason;
-	goto raise_from_bif;
-}
-r0 = r;
 
 
-ip += 1;
+
+ip += 2;
 goto *next;
 }
 
@@ -15678,100 +15678,10 @@ goto *next;
 }
 
 
-l_move_call_ext_22: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[542].counter++;
-#endif
-
-
-r0 = sp[8];
-cp = ip + 2;
-export_t *exp = (export_t *)expand_ptr(ip[1]);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_fast_element_3: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[543].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t tuple = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-if (!is_tuple(tuple))
-	badarg();
-uint32_t *data = peel_tuple(tuple);
-uint32_t pos = 2;
-if (pos > data[0])
-	badarg();
-{
-	term_t dst__ = ip[2];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = data[pos];
-		else
-			rs[reg__] = data[pos];
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = data[pos];
-	}
-}
-
-
-
-ip += 3;
-goto *next;
-}
-
-
-l_fetch_13: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[544].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-tmp_arg1 = rs[3];
-tmp_arg2 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-
-
-ip += 2;
-goto *next;
-}
-
-
 call_bif_35: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[545].counter++;
+	ling_opcodes[542].counter++;
 #endif
 
 
@@ -15819,7 +15729,7 @@ goto *next;
 l_call_ext_19: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[546].counter++;
+	ling_opcodes[543].counter++;
 #endif
 
 
@@ -15852,7 +15762,7 @@ next(); \
 extract_next_element_15: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[547].counter++;
+	ling_opcodes[544].counter++;
 #endif
 
 
@@ -15869,7 +15779,7 @@ goto *next;
 try_end_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[548].counter++;
+	ling_opcodes[545].counter++;
 #endif
 
 
@@ -15894,7 +15804,7 @@ goto *next;
 deallocate_return_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[549].counter++;
+	ling_opcodes[546].counter++;
 #endif
 
 
@@ -15905,10 +15815,198 @@ cp = 0; // not to confuse stack tracing
 next();
 }
 
-l_new_bs_put_integer_0: 
+l_fetch_13: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[547].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+tmp_arg1 = rs[3];
+tmp_arg2 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_fast_element_3: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[548].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t tuple = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+if (!is_tuple(tuple))
+	badarg();
+uint32_t *data = peel_tuple(tuple);
+uint32_t pos = 2;
+if (pos > data[0])
+	badarg();
+{
+	term_t dst__ = ip[2];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = data[pos];
+		else
+			rs[reg__] = data[pos];
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = data[pos];
+	}
+}
+
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_move_call_ext_22: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[549].counter++;
+#endif
+
+
+r0 = sp[8];
+cp = ip + 2;
+export_t *exp = (export_t *)expand_ptr(ip[1]);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+is_tuple_3: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[550].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_tuple(rs[3]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_bs_restore2_1: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[551].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+term_t bin = r0;
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+int i = 0;
+assert(i >= 0 && i < match_ctx_num_slots(peel_boxed(bin)));
+mc->bs.starts = mc->saved_offsets[i];
+
+
+ip += 1;
+goto *next;
+}
+
+
+l_move_call_ext_23: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[552].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = ip + 2;
+export_t *exp = (preloaded_exports+530);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_bs_test_zero_tail2_4: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[553].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t bin = rs[4];
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+if (mc->bs.ends > mc->bs.starts)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_new_bs_put_integer_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[554].counter++;
 #endif
 
 
@@ -15966,104 +16064,6 @@ goto *next;
 }
 
 
-is_tuple_3: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[551].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_tuple(rs[3]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-l_bs_restore2_1: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[552].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-term_t bin = r0;
-assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
-t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
-int i = 0;
-assert(i >= 0 && i < match_ctx_num_slots(peel_boxed(bin)));
-mc->bs.starts = mc->saved_offsets[i];
-
-
-ip += 1;
-goto *next;
-}
-
-
-l_move_call_ext_23: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[553].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = ip + 2;
-export_t *exp = (preloaded_exports+530);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_bs_test_zero_tail2_4: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[554].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-term_t bin = rs[4];
-assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
-t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
-if (mc->bs.ends > mc->bs.starts)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
 extract_next_element_16: 
  {
 #ifdef EXP_COUNT_IOPS
@@ -16099,30 +16099,10 @@ goto *next;
 }
 
 
-is_nonempty_list_17: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[557].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(rs[15]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
 is_list_6: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[558].counter++;
+	ling_opcodes[557].counter++;
 #endif
 
 
@@ -16140,16 +16120,19 @@ goto *next;
 }
 
 
-l_fetch_14: 
+is_nonempty_list_17: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[559].counter++;
+	ling_opcodes[558].counter++;
 #endif
 
 
 void *next = (void *)expand_ptr(ip[2]);
-tmp_arg1 = rs[2];
-tmp_arg2 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+if (!is_cons(rs[15]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
 
 ip += 2;
@@ -16157,10 +16140,10 @@ goto *next;
 }
 
 
-l_fetch_15: 
+l_fetch_14: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[560].counter++;
+	ling_opcodes[559].counter++;
 #endif
 
 
@@ -16177,7 +16160,7 @@ goto *next;
 extract_next_element2_9: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[561].counter++;
+	ling_opcodes[560].counter++;
 #endif
 
 
@@ -16200,7 +16183,7 @@ goto *next;
 is_atom_3: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[562].counter++;
+	ling_opcodes[561].counter++;
 #endif
 
 
@@ -16210,6 +16193,23 @@ if (!is_atom(rs[3]))
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_fetch_15: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[562].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+tmp_arg1 = rs[2];
+tmp_arg2 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 
 
 ip += 2;
@@ -16484,25 +16484,10 @@ goto *next;
 }
 
 
-move_deallocate_return_7: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[574].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = demasquerade_pointer(sp[0]);
-sp += 4+1;
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
 init_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[575].counter++;
+	ling_opcodes[574].counter++;
 #endif
 
 
@@ -16518,86 +16503,32 @@ goto *next;
 if_end_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[576].counter++;
+	ling_opcodes[575].counter++;
 #endif
 
 
 raise_error(A_IF_CLAUSE);
 }
 
-l_move_call_ext_last_3: 
+move_deallocate_return_7: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[577].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-cp = demasquerade_pointer(sp[0]);
-sp += 2+1;
-export_t *exp = (export_t *)expand_ptr(ip[1]);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_move_call_ext_24: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[578].counter++;
+	ling_opcodes[576].counter++;
 #endif
 
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = ip + 2;
-export_t *exp = (preloaded_exports+533);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
+cp = demasquerade_pointer(sp[0]);
+sp += 4+1;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
 }
 
 call_bif_39: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[579].counter++;
+	ling_opcodes[577].counter++;
 #endif
 
 
@@ -16645,7 +16576,7 @@ goto *next;
 call_bif_38: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[580].counter++;
+	ling_opcodes[578].counter++;
 #endif
 
 
@@ -16693,7 +16624,7 @@ goto *next;
 call_bif_37: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[581].counter++;
+	ling_opcodes[579].counter++;
 #endif
 
 
@@ -16741,7 +16672,7 @@ goto *next;
 call_bif_36: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[582].counter++;
+	ling_opcodes[580].counter++;
 #endif
 
 
@@ -16789,7 +16720,7 @@ goto *next;
 try_end_5: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[583].counter++;
+	ling_opcodes[581].counter++;
 #endif
 
 
@@ -16814,7 +16745,7 @@ goto *next;
 is_nonempty_list_test_heap_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[584].counter++;
+	ling_opcodes[582].counter++;
 #endif
 
 
@@ -16848,46 +16779,79 @@ goto *next;
 }
 
 
-put_list_9: 
+l_move_call_ext_24: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[585].counter++;
+	ling_opcodes[583].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[3]);
-htop[0] = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
-htop[1] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-sp[((ip[2] >> 8) & 255)+1] = tag_cons(htop);
-htop += 2;
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = ip + 2;
+export_t *exp = (preloaded_exports+533);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
 
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
 
-ip += 3;
-goto *next;
+;
 }
 
-
-l_get_3: 
+l_move_call_ext_last_3: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[586].counter++;
+	ling_opcodes[584].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[2]);
-term_t r = lookup_process_dictionary((term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]), proc->dictionary);
-rs[2] = r;
-
-
-ip += 2;
-goto *next;
+r0 = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+cp = demasquerade_pointer(sp[0]);
+sp += 2+1;
+export_t *exp = (export_t *)expand_ptr(ip[1]);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
 }
+ip = exp->entry;
 
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
 
 l_call_ext_25: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[587].counter++;
+	ling_opcodes[585].counter++;
 #endif
 
 
@@ -16920,7 +16884,7 @@ next(); \
 l_call_ext_24: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[588].counter++;
+	ling_opcodes[586].counter++;
 #endif
 
 
@@ -16953,7 +16917,7 @@ next(); \
 l_call_ext_23: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[589].counter++;
+	ling_opcodes[587].counter++;
 #endif
 
 
@@ -16986,7 +16950,7 @@ next(); \
 l_call_ext_22: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[590].counter++;
+	ling_opcodes[588].counter++;
 #endif
 
 
@@ -17016,19 +16980,35 @@ next(); \
 ;
 }
 
-l_is_ne_exact_immed_4: 
+l_get_3: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[591].counter++;
+	ling_opcodes[589].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t r = lookup_process_dictionary((term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]), proc->dictionary);
+rs[2] = r;
+
+
+ip += 2;
+goto *next;
+}
+
+
+put_list_9: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[590].counter++;
 #endif
 
 
 void *next = (void *)expand_ptr(ip[3]);
-if (rs[3] == (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
+htop[0] = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
+htop[1] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+sp[((ip[2] >> 8) & 255)+1] = tag_cons(htop);
+htop += 2;
 
 
 ip += 3;
@@ -17036,24 +17016,10 @@ goto *next;
 }
 
 
-l_move_call_last_5: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[592].counter++;
-#endif
-
-
-r0 = ((((ip[2] >> 8) & 255) == 0) ?r0 :rs[((ip[2] >> 8) & 255)]);
-cp = demasquerade_pointer(sp[0]);
-sp += ((ip[2] >> 0) & 255)+1;
-ip = (uint32_t *)expand_ptr(ip[1]);
-local_reduce();
-}
-
 self_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[593].counter++;
+	ling_opcodes[591].counter++;
 #endif
 
 
@@ -17069,7 +17035,7 @@ goto *next;
 l_call_ext_28: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[594].counter++;
+	ling_opcodes[592].counter++;
 #endif
 
 
@@ -17102,7 +17068,7 @@ next(); \
 l_call_ext_27: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[595].counter++;
+	ling_opcodes[593].counter++;
 #endif
 
 
@@ -17135,7 +17101,7 @@ next(); \
 l_call_ext_26: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[596].counter++;
+	ling_opcodes[594].counter++;
 #endif
 
 
@@ -17168,7 +17134,7 @@ next(); \
 extract_next_element_17: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[597].counter++;
+	ling_opcodes[595].counter++;
 #endif
 
 
@@ -17185,7 +17151,7 @@ goto *next;
 is_list_3: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[598].counter++;
+	ling_opcodes[596].counter++;
 #endif
 
 
@@ -17206,7 +17172,7 @@ goto *next;
 catch_end_4: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[599].counter++;
+	ling_opcodes[597].counter++;
 #endif
 
 
@@ -17246,39 +17212,101 @@ goto *next;
 }
 
 
-l_bif1_0: 
+l_move_call_last_5: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[598].counter++;
+#endif
+
+
+r0 = ((((ip[2] >> 8) & 255) == 0) ?r0 :rs[((ip[2] >> 8) & 255)]);
+cp = demasquerade_pointer(sp[0]);
+sp += ((ip[2] >> 0) & 255)+1;
+ip = (uint32_t *)expand_ptr(ip[1]);
+local_reduce();
+}
+
+l_is_ne_exact_immed_4: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[599].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if (rs[3] == (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
+is_tuple_4: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[600].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[4]);
-term_t r = ((bif_func1_t)(bif_func_t)expand_ptr(ip[2]))(((((ip[3] >> 0) & 255) == 0) ?r0 :rs[((ip[3] >> 0) & 255)]), proc);
-if (r == noval)
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_tuple(rs[4]))
 	do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
-{
-	int reg__ = ((ip[3] >> 8) & 255);
-	if (reg__ == 0)
-		r0 = r;
-	else
-		rs[reg__] = r;
-}
 
 
-
-ip += 4;
+ip += 2;
 goto *next;
 }
 
 
-l_bs_skip_bits_imm2_0: 
+extract_next_element2_10: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[601].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+term_t *dst;
+dst = rs + 10;
+
+
+dst[0] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[1] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+
+ip += 1;
+goto *next;
+}
+
+
+move_jump_2: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[602].counter++;
+#endif
+
+
+r0 = nil;
+do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+}
+
+l_bs_skip_bits_imm2_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[603].counter++;
 #endif
 
 
@@ -17309,28 +17337,10 @@ goto *next;
 }
 
 
-get_tuple_element_8: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[602].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-//assert(is_tuple(r0));
-term_t elem = peel_tuple(r0)[ip[1]+1];	// Pos is 0-based
-r0 = elem;
-
-
-ip += 2;
-goto *next;
-}
-
-
 l_fdiv_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[603].counter++;
+	ling_opcodes[604].counter++;
 #endif
 
 
@@ -17349,75 +17359,17 @@ goto *next;
 }
 
 
-is_tuple_4: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[604].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_tuple(rs[4]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-extract_next_element2_10: 
+get_tuple_element_8: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[605].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[1]);
-term_t *dst;
-dst = rs + 10;
-
-
-dst[0] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-dst[1] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-
-
-ip += 1;
-goto *next;
-}
-
-
-move_jump_2: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[606].counter++;
-#endif
-
-
-r0 = nil;
-do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-}
-
-get_list_8: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[607].counter++;
-#endif
-
-
 void *next = (void *)expand_ptr(ip[2]);
-assert(is_cons(((((ip[1] >> 0) & 255) == 0) ?r0 :rs[((ip[1] >> 0) & 255)])));
-term_t *pair = peel_cons(((((ip[1] >> 0) & 255) == 0) ?r0 :rs[((ip[1] >> 0) & 255)]));
-sp[((ip[1] >> 8) & 255)+1] = pair[0];
-sp[((ip[1] >> 16) & 255)+1] = pair[1];
+//assert(is_tuple(r0));
+term_t elem = peel_tuple(r0)[ip[1]+1];	// Pos is 0-based
+r0 = elem;
 
 
 ip += 2;
@@ -17425,35 +17377,39 @@ goto *next;
 }
 
 
-l_select_val2_11: 
+l_bif1_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[608].counter++;
+	ling_opcodes[606].counter++;
 #endif
 
 
-term_t v = rs[6];
-if (v == (term_t)ip[2])
+void *next = (void *)expand_ptr(ip[4]);
+term_t r = ((bif_func1_t)(bif_func_t)expand_ptr(ip[2]))(((((ip[3] >> 0) & 255) == 0) ?r0 :rs[((ip[3] >> 0) & 255)]), proc);
+if (r == noval)
 	do {
-ip = (uint32_t *)expand_ptr(ip[3]);
-next();
-} while (0);
-if (v == (term_t)ip[4])
-	do {
-ip = (uint32_t *)expand_ptr(ip[5]);
-next();
-} while (0);
-assert((uint32_t *)expand_ptr(ip[1]) != 0);
-do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
+{
+	int reg__ = ((ip[3] >> 8) & 255);
+	if (reg__ == 0)
+		r0 = r;
+	else
+		rs[reg__] = r;
 }
+
+
+
+ip += 4;
+goto *next;
+}
+
 
 l_bs_get_utf16_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[609].counter++;
+	ling_opcodes[607].counter++;
 #endif
 
 
@@ -17495,30 +17451,10 @@ goto *next;
 }
 
 
-is_tuple_10: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[610].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (!is_tuple((term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2])))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
 extract_next_element_18: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[611].counter++;
+	ling_opcodes[608].counter++;
 #endif
 
 
@@ -17535,7 +17471,7 @@ goto *next;
 is_integer_3: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[612].counter++;
+	ling_opcodes[609].counter++;
 #endif
 
 
@@ -17559,7 +17495,7 @@ goto *next;
 l_bs_test_unit_8_3: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[613].counter++;
+	ling_opcodes[610].counter++;
 #endif
 
 
@@ -17582,7 +17518,7 @@ goto *next;
 is_nonempty_list_19: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[614].counter++;
+	ling_opcodes[611].counter++;
 #endif
 
 
@@ -17602,7 +17538,7 @@ goto *next;
 l_bif1_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[615].counter++;
+	ling_opcodes[612].counter++;
 #endif
 
 
@@ -17637,10 +17573,30 @@ goto *next;
 }
 
 
+is_tuple_10: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[613].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if (!is_tuple((term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2])))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
 bif1_body_3: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[616].counter++;
+	ling_opcodes[614].counter++;
 #endif
 
 
@@ -17656,10 +17612,80 @@ goto *next;
 }
 
 
-l_is_eq_exact_immed_24: 
+get_list_8: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[615].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+assert(is_cons(((((ip[1] >> 0) & 255) == 0) ?r0 :rs[((ip[1] >> 0) & 255)])));
+term_t *pair = peel_cons(((((ip[1] >> 0) & 255) == 0) ?r0 :rs[((ip[1] >> 0) & 255)]));
+sp[((ip[1] >> 8) & 255)+1] = pair[0];
+sp[((ip[1] >> 16) & 255)+1] = pair[1];
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_select_val2_11: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[616].counter++;
+#endif
+
+
+term_t v = rs[6];
+if (v == (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[3]);
+next();
+} while (0);
+if (v == (term_t)ip[4])
+	do {
+ip = (uint32_t *)expand_ptr(ip[5]);
+next();
+} while (0);
+assert((uint32_t *)expand_ptr(ip[1]) != 0);
+do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+}
+
+badmatch_5: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[617].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[4]);
+light_swap_in();
+raise_error(reason);
+}
+
+l_move_call_16: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[618].counter++;
+#endif
+
+
+r0 = tag_int(2);
+cp = ip + 2;
+ip = (uint32_t *)expand_ptr(ip[1]);
+local_reduce();
+}
+
+l_is_eq_exact_immed_24: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[619].counter++;
 #endif
 
 
@@ -17676,90 +17702,10 @@ goto *next;
 }
 
 
-badmatch_5: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[618].counter++;
-#endif
-
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[4]);
-light_swap_in();
-raise_error(reason);
-}
-
-l_move_call_16: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[619].counter++;
-#endif
-
-
-r0 = tag_int(2);
-cp = ip + 2;
-ip = (uint32_t *)expand_ptr(ip[1]);
-local_reduce();
-}
-
-l_is_eq_exact_immed_25: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[620].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (rs[16] != (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
-l_move_call_ext_25: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[621].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = ip + 2;
-export_t *exp = (preloaded_exports+393);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
 l_call_ext_30: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[622].counter++;
+	ling_opcodes[620].counter++;
 #endif
 
 
@@ -17792,7 +17738,7 @@ next(); \
 l_call_ext_29: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[623].counter++;
+	ling_opcodes[621].counter++;
 #endif
 
 
@@ -17822,53 +17768,58 @@ next(); \
 ;
 }
 
-extract_next_element2_11: 
+l_is_eq_exact_immed_25: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[624].counter++;
+	ling_opcodes[622].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[1]);
-term_t *dst;
-dst = rs + 11;
+void *next = (void *)expand_ptr(ip[3]);
+if (rs[16] != (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
 
-dst[0] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-dst[1] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-
-
-ip += 1;
+ip += 3;
 goto *next;
 }
 
 
-move_return_8: 
+l_move_call_ext_25: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[625].counter++;
+	ling_opcodes[623].counter++;
 #endif
 
 
-r0 = tag_int(1);
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = ip + 2;
+export_t *exp = (preloaded_exports+393);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
 }
+ip = exp->entry;
 
-case_end_4: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[626].counter++;
-#endif
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
 
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_CASE_CLAUSE, rs[3]);
-light_swap_in();
-raise_error(reason);
+;
 }
 
 l_select_val_atoms_2: 
@@ -17889,7 +17840,7 @@ l_select_val_atoms_2:
 
 l_select_val_atoms_2_sorted: {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[627].counter++;
+	ling_opcodes[624].counter++;
 #endif
 
 
@@ -17931,40 +17882,86 @@ next();
 
 }
 
-l_move_call_ext_last_5: 
+extract_next_element2_11: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[625].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+term_t *dst;
+dst = rs + 11;
+
+
+dst[0] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[1] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+
+ip += 1;
+goto *next;
+}
+
+
+move_return_8: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[626].counter++;
+#endif
+
+
+r0 = tag_int(1);
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+case_end_4: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[627].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_CASE_CLAUSE, rs[3]);
+light_swap_in();
+raise_error(reason);
+}
+
+self_5: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[628].counter++;
 #endif
 
 
-r0 = (term_t)(is_reg(ip[3]) ?(ip[3] == reg0) ?r0 :rs[reg_index(ip[3])] :is_slot(ip[3]) ?sp[slot_index(ip[3])+1] :ip[3]);
-cp = demasquerade_pointer(sp[0]);
-sp += ip[2]+1;
-export_t *exp = (export_t *)expand_ptr(ip[1]);
-if (unlikely(exp == 0 || exp->entry == 0))
+void *next = (void *)expand_ptr(ip[2]);
 {
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
+	term_t dst__ = ip[1];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = proc->pid;
+		else
+			rs[reg__] = proc->pid;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = proc->pid;
+	}
 }
-ip = exp->entry;
 
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
 
-;
+
+ip += 2;
+goto *next;
 }
+
 
 l_call_ext_31: 
  {
@@ -18151,10 +18148,45 @@ goto *next;
 }
 
 
-bif1_body_5: 
+l_move_call_ext_last_5: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[636].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[3]) ?(ip[3] == reg0) ?r0 :rs[reg_index(ip[3])] :is_slot(ip[3]) ?sp[slot_index(ip[3])+1] :ip[3]);
+cp = demasquerade_pointer(sp[0]);
+sp += ip[2]+1;
+export_t *exp = (export_t *)expand_ptr(ip[1]);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+bif1_body_5: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[637].counter++;
 #endif
 
 
@@ -18170,141 +18202,10 @@ goto *next;
 }
 
 
-self_5: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[637].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-{
-	term_t dst__ = ip[1];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = proc->pid;
-		else
-			rs[reg__] = proc->pid;
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = proc->pid;
-	}
-}
-
-
-
-ip += 2;
-goto *next;
-}
-
-
-l_plus_2: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[638].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (are_both_int(tmp_arg1, tmp_arg2))
-{
-	int v = int_value(tmp_arg1) + int_value(tmp_arg2);
-	if (likely(fits_int(v)))
-	{
-		sp[((ip[2] >> 8) & 255)+1] = tag_int(v);
-	}
-	else
-	{
-		light_swap_out();
-		bignum_t *bn = bignum_from_int(&proc->hp, v);
-		light_swap_in();
-		sp[((ip[2] >> 8) & 255)+1] = tag_boxed(bn);
-	}
-}
-else
-{
-	light_swap_out();
-	term_t r = mixed_add(tmp_arg1, tmp_arg2, &proc->hp);
-	light_swap_in();
-	if (is_atom(r))
-	{
-		do {
-	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
-	if (fail__ != 0)
-	{
-		ip = fail__;
-		next();
-	}
-} while (0)
-
-;
-		bif_error2(r, A_ERLANG, APLUS__, tmp_arg1, tmp_arg2);
-	}
-	sp[((ip[2] >> 8) & 255)+1] = r;
-}
-
-
-ip += 3;
-goto *next;
-}
-
-
-move_deallocate_return_8: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[639].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = demasquerade_pointer(sp[0]);
-sp += 5+1;
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-l_get_6: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[640].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t r = lookup_process_dictionary((term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]), proc->dictionary);
-{
-	term_t dst__ = ip[2];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = r;
-		else
-			rs[reg__] = r;
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = r;
-	}
-}
-
-
-
-ip += 3;
-goto *next;
-}
-
-
 call_bif_41: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[641].counter++;
+	ling_opcodes[638].counter++;
 #endif
 
 
@@ -18352,7 +18253,7 @@ goto *next;
 call_bif_40: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[642].counter++;
+	ling_opcodes[639].counter++;
 #endif
 
 
@@ -18400,7 +18301,7 @@ goto *next;
 is_nil_14: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[643].counter++;
+	ling_opcodes[640].counter++;
 #endif
 
 
@@ -18420,7 +18321,7 @@ goto *next;
 l_move_call_only_6: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[644].counter++;
+	ling_opcodes[641].counter++;
 #endif
 
 
@@ -18428,6 +18329,88 @@ r0 = nil;
 ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
+
+move_deallocate_return_8: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[642].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = demasquerade_pointer(sp[0]);
+sp += 5+1;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+init_9: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[643].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+sp[10] = nil;
+
+
+ip += 1;
+goto *next;
+}
+
+
+l_plus_2: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[644].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if (are_both_int(tmp_arg1, tmp_arg2))
+{
+	int v = int_value(tmp_arg1) + int_value(tmp_arg2);
+	if (likely(fits_int(v)))
+	{
+		sp[((ip[2] >> 8) & 255)+1] = tag_int(v);
+	}
+	else
+	{
+		light_swap_out();
+		bignum_t *bn = bignum_from_int(&proc->hp, v);
+		light_swap_in();
+		sp[((ip[2] >> 8) & 255)+1] = tag_boxed(bn);
+	}
+}
+else
+{
+	light_swap_out();
+	term_t r = mixed_add(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		do {
+	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
+
+;
+		bif_error2(r, A_ERLANG, APLUS__, tmp_arg1, tmp_arg2);
+	}
+	sp[((ip[2] >> 8) & 255)+1] = r;
+}
+
+
+ip += 3;
+goto *next;
+}
+
 
 test_arity_3: 
  {
@@ -18452,18 +18435,35 @@ goto *next;
 }
 
 
-init_9: 
+l_get_6: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[646].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[1]);
-sp[10] = nil;
+void *next = (void *)expand_ptr(ip[3]);
+term_t r = lookup_process_dictionary((term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]), proc->dictionary);
+{
+	term_t dst__ = ip[2];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = r;
+		else
+			rs[reg__] = r;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = r;
+	}
+}
 
 
-ip += 1;
+
+ip += 3;
 goto *next;
 }
 
@@ -18525,44 +18525,10 @@ goto *next;
 }
 
 
-l_move_call_ext_27: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[648].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = ip + 2;
-export_t *exp = (preloaded_exports+332);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
 l_call_ext_32: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[649].counter++;
+	ling_opcodes[648].counter++;
 #endif
 
 
@@ -18595,7 +18561,7 @@ next(); \
 is_nil_15: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[650].counter++;
+	ling_opcodes[649].counter++;
 #endif
 
 
@@ -18615,7 +18581,7 @@ goto *next;
 case_end_5: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[651].counter++;
+	ling_opcodes[650].counter++;
 #endif
 
 
@@ -18625,10 +18591,10 @@ light_swap_in();
 raise_error(reason);
 }
 
-l_move_call_ext_28: 
+l_move_call_ext_27: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[652].counter++;
+	ling_opcodes[651].counter++;
 #endif
 
 
@@ -18659,68 +18625,44 @@ next(); \
 ;
 }
 
-l_move_call_last_6: 
+l_move_call_ext_28: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[653].counter++;
+	ling_opcodes[652].counter++;
 #endif
 
 
-r0 = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-cp = demasquerade_pointer(sp[0]);
-sp += 5+1;
-ip = (uint32_t *)expand_ptr(ip[1]);
-local_reduce();
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = ip + 2;
+export_t *exp = (preloaded_exports+332);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
 }
+ip = exp->entry;
 
-l_fsub_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[654].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-double d = fr[((ip[1] >> 0) & 255)] - fr[((ip[1] >> 8) & 255)];
-if (!isfinite(d))
-	raise_error(A_BADARITH);
-fr[((ip[1] >> 16) & 255)] = d;
-
-
-ip += 2;
-goto *next;
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
 }
+next(); \
 
-
-l_jump_on_val_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[655].counter++;
-#endif
-
-
-term_t v = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
-if (!is_int(v))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-int base = (int)((ip[2] >> 8) & 255);
-int i = int_value(v);
-if (i < base || i >= base + (int)((ip[2] >> 16) & 255))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-uint32_t *jump_tab = ip + 3;
-ip = expand_ptr(jump_tab[i - base]);
-next();
+;
 }
 
 call_bif_42: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[656].counter++;
+	ling_opcodes[653].counter++;
 #endif
 
 
@@ -18768,7 +18710,7 @@ goto *next;
 l_call_ext_33: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[657].counter++;
+	ling_opcodes[654].counter++;
 #endif
 
 
@@ -18798,28 +18740,10 @@ next(); \
 ;
 }
 
-get_tuple_element_9: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[658].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-//assert(is_tuple(sp[((ip[1] >> 0) & 255)+1]));
-term_t elem = peel_tuple(sp[((ip[1] >> 0) & 255)+1])[((ip[1] >> 8) & 255)+1];	// Pos is 0-based
-r0 = elem;
-
-
-ip += 2;
-goto *next;
-}
-
-
 is_nil_16: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[659].counter++;
+	ling_opcodes[655].counter++;
 #endif
 
 
@@ -18836,10 +18760,29 @@ goto *next;
 }
 
 
+l_fsub_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[656].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+double d = fr[((ip[1] >> 0) & 255)] - fr[((ip[1] >> 8) & 255)];
+if (!isfinite(d))
+	raise_error(A_BADARITH);
+fr[((ip[1] >> 16) & 255)] = d;
+
+
+ip += 2;
+goto *next;
+}
+
+
 l_is_eq_exact_literal_5: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[660].counter++;
+	ling_opcodes[657].counter++;
 #endif
 
 
@@ -18858,10 +18801,35 @@ goto *next;
 }
 
 
+l_jump_on_val_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[658].counter++;
+#endif
+
+
+term_t v = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
+if (!is_int(v))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+int base = (int)((ip[2] >> 8) & 255);
+int i = int_value(v);
+if (i < base || i >= base + (int)((ip[2] >> 16) & 255))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+uint32_t *jump_tab = ip + 3;
+ip = expand_ptr(jump_tab[i - base]);
+next();
+}
+
 l_move_call_ext_29: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[661].counter++;
+	ling_opcodes[659].counter++;
 #endif
 
 
@@ -18892,48 +18860,42 @@ next(); \
 ;
 }
 
-l_bif2_5: ATTRIBUTE_COLD
+get_tuple_element_9: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[662].counter++;
+	ling_opcodes[660].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[3]);
-term_t r = ((bif_func2_t)bif_eq2)(tmp_arg1, tmp_arg2, proc);
-if (r == noval)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-{
-	term_t dst__ = ip[2];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = r;
-		else
-			rs[reg__] = r;
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = r;
-	}
-}
+void *next = (void *)expand_ptr(ip[2]);
+//assert(is_tuple(sp[((ip[1] >> 0) & 255)+1]));
+term_t elem = peel_tuple(sp[((ip[1] >> 0) & 255)+1])[((ip[1] >> 8) & 255)+1];	// Pos is 0-based
+r0 = elem;
 
 
-
-ip += 3;
+ip += 2;
 goto *next;
 }
 
 
+l_move_call_last_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[661].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+cp = demasquerade_pointer(sp[0]);
+sp += 5+1;
+ip = (uint32_t *)expand_ptr(ip[1]);
+local_reduce();
+}
+
 call_bif_43: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[663].counter++;
+	ling_opcodes[662].counter++;
 #endif
 
 
@@ -18981,7 +18943,7 @@ goto *next;
 is_integer_4: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[664].counter++;
+	ling_opcodes[663].counter++;
 #endif
 
 
@@ -19005,7 +18967,7 @@ goto *next;
 l_bs_put_string_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[665].counter++;
+	ling_opcodes[664].counter++;
 #endif
 
 
@@ -19020,10 +18982,102 @@ goto *next;
 }
 
 
-put_list_7: 
+is_nonempty_list_20: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[665].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(rs[17]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_bif2_5: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[666].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t r = ((bif_func2_t)bif_eq2)(tmp_arg1, tmp_arg2, proc);
+if (r == noval)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+{
+	term_t dst__ = ip[2];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = r;
+		else
+			rs[reg__] = r;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = r;
+	}
+}
+
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_move_call_ext_30: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[667].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = ip + 2;
+export_t *exp = (preloaded_exports+523);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+put_list_7: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[668].counter++;
 #endif
 
 
@@ -19051,45 +19105,6 @@ htop += 2;
 
 
 ip += 2;
-goto *next;
-}
-
-
-is_nonempty_list_20: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[667].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(rs[17]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-bif1_body_6: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[668].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t r = ((bif_func1_t)(bif_func_t)expand_ptr(ip[1]))((term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]), proc);
-if (r == noval)
-	raise_error(proc->bif_excep_reason);
-r0 = r;
-
-
-ip += 3;
 goto *next;
 }
 
@@ -19128,83 +19143,21 @@ next(); \
 ;
 }
 
-l_move_call_ext_30: ATTRIBUTE_COLD
+bif1_body_6: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[670].counter++;
 #endif
 
 
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = ip + 2;
-export_t *exp = (preloaded_exports+523);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_increment_4: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[671].counter++;
-#endif
+void *next = (void *)expand_ptr(ip[3]);
+term_t r = ((bif_func1_t)(bif_func_t)expand_ptr(ip[1]))((term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]), proc);
+if (r == noval)
+	raise_error(proc->bif_excep_reason);
+r0 = r;
 
 
-void *next = (void *)expand_ptr(ip[2]);
-int i = (int)((ip[1] >> 0) & 255);
-term_t src = r0;
-term_t r;
-if (is_int(src))
-{
-	int v = int_value(src) + i;
-	if (likely(fits_int(v)))
-		r = tag_int(v);
-	else
-	{
-		light_swap_out();
-		bignum_t *bn = bignum_from_int(&proc->hp, v);
-		light_swap_in();
-		r = tag_boxed(bn);
-	}
-}
-else
-{
-	light_swap_out();
-	r = mixed_add_immed(src, i, &proc->hp);
-	light_swap_in();
-	if (is_atom(r))
-		bif_error2(r, A_ERLANG, APLUS__, src, tag_int(i));
-}
-{
-	int reg__ = ((ip[1] >> 16) & 255);
-	if (reg__ == 0)
-		r0 = r;
-	else
-		rs[reg__] = r;
-}
-
-
-
-ip += 2;
+ip += 3;
 goto *next;
 }
 
@@ -19212,7 +19165,7 @@ goto *next;
 l_int_div_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[672].counter++;
+	ling_opcodes[671].counter++;
 #endif
 
 
@@ -19267,55 +19220,10 @@ goto *next;
 }
 
 
-l_put_tuple_7: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[673].counter++;
-#endif
-
-
-uint32_t arity = 7;
-term_t tuple;
-if (unlikely(arity == 0))
-	tuple = ZERO_TUPLE;
-else
-{
-	tuple = tag_tuple(htop);
-	*htop++ = arity;
-
-	term_t *pe = (term_t *)ip + 1;
-	int n = arity;
-	while (n-- > 0)
-	{
-		if (is_reg(*pe))
-		{
-			int ri = reg_index(*pe);
-			if (ri == 0)
-				*htop++ = r0;
-			else
-				*htop++ = rs[ri];
-		}
-		else if (is_slot(*pe))
-		{
-			int si = slot_index(*pe);
-			*htop++ = sp[si+1];
-		}
-		else
-			*htop++ = *pe;
-
-		pe++;
-	}
-}
-r0 = tuple;
-
-ip += arity+1;
-next();
-}
-
 node_4: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[674].counter++;
+	ling_opcodes[672].counter++;
 #endif
 
 
@@ -19344,43 +19252,10 @@ goto *next;
 }
 
 
-l_call_ext_34: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[675].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+545);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
 l_bsr_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[676].counter++;
+	ling_opcodes[673].counter++;
 #endif
 
 
@@ -19440,6 +19315,131 @@ ip += 3;
 goto *next;
 }
 
+
+l_increment_4: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[674].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+int i = (int)((ip[1] >> 0) & 255);
+term_t src = r0;
+term_t r;
+if (is_int(src))
+{
+	int v = int_value(src) + i;
+	if (likely(fits_int(v)))
+		r = tag_int(v);
+	else
+	{
+		light_swap_out();
+		bignum_t *bn = bignum_from_int(&proc->hp, v);
+		light_swap_in();
+		r = tag_boxed(bn);
+	}
+}
+else
+{
+	light_swap_out();
+	r = mixed_add_immed(src, i, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+		bif_error2(r, A_ERLANG, APLUS__, src, tag_int(i));
+}
+{
+	int reg__ = ((ip[1] >> 16) & 255);
+	if (reg__ == 0)
+		r0 = r;
+	else
+		rs[reg__] = r;
+}
+
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_put_tuple_7: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[675].counter++;
+#endif
+
+
+uint32_t arity = 7;
+term_t tuple;
+if (unlikely(arity == 0))
+	tuple = ZERO_TUPLE;
+else
+{
+	tuple = tag_tuple(htop);
+	*htop++ = arity;
+
+	term_t *pe = (term_t *)ip + 1;
+	int n = arity;
+	while (n-- > 0)
+	{
+		if (is_reg(*pe))
+		{
+			int ri = reg_index(*pe);
+			if (ri == 0)
+				*htop++ = r0;
+			else
+				*htop++ = rs[ri];
+		}
+		else if (is_slot(*pe))
+		{
+			int si = slot_index(*pe);
+			*htop++ = sp[si+1];
+		}
+		else
+			*htop++ = *pe;
+
+		pe++;
+	}
+}
+r0 = tuple;
+
+ip += arity+1;
+next();
+}
+
+l_call_ext_34: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[676].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+545);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
 
 badmatch_6: ATTRIBUTE_COLD
  {
@@ -19521,10 +19521,26 @@ next(); \
 ;
 }
 
-l_increment_5: 
+move_10: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[681].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+rs[7] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_increment_5: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[682].counter++;
 #endif
 
 
@@ -19564,22 +19580,6 @@ else
 
 
 ip += 3;
-goto *next;
-}
-
-
-move_10: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[682].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-rs[7] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-
-
-ip += 2;
 goto *next;
 }
 
@@ -19687,30 +19687,10 @@ goto *next;
 }
 
 
-l_is_eq_exact_immed_26: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[686].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (sp[5] != (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
 call_bif_44: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[687].counter++;
+	ling_opcodes[686].counter++;
 #endif
 
 
@@ -19758,7 +19738,7 @@ goto *next;
 l_call_ext_36: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[688].counter++;
+	ling_opcodes[687].counter++;
 #endif
 
 
@@ -19791,7 +19771,7 @@ next(); \
 l_call_last_9: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[689].counter++;
+	ling_opcodes[688].counter++;
 #endif
 
 
@@ -19804,7 +19784,7 @@ local_reduce();
 move_return_9: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[690].counter++;
+	ling_opcodes[689].counter++;
 #endif
 
 
@@ -19817,7 +19797,7 @@ next();
 is_list_5: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[691].counter++;
+	ling_opcodes[690].counter++;
 #endif
 
 
@@ -19838,7 +19818,7 @@ goto *next;
 l_move_call_17: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[692].counter++;
+	ling_opcodes[691].counter++;
 #endif
 
 
@@ -19851,7 +19831,7 @@ local_reduce();
 catch_end_5: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[693].counter++;
+	ling_opcodes[692].counter++;
 #endif
 
 
@@ -19891,34 +19871,19 @@ goto *next;
 }
 
 
-put_list_10: 
+l_is_eq_exact_immed_26: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[694].counter++;
+	ling_opcodes[693].counter++;
 #endif
 
 
 void *next = (void *)expand_ptr(ip[3]);
-htop[0] = r0;
-htop[1] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-{
-	term_t dst__ = ip[2];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = tag_cons(htop);
-		else
-			rs[reg__] = tag_cons(htop);
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = tag_cons(htop);
-	}
-}
-
-htop += 2;
+if (sp[5] != (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
 
 ip += 3;
@@ -19929,7 +19894,7 @@ goto *next;
 l_fetch_16: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[695].counter++;
+	ling_opcodes[694].counter++;
 #endif
 
 
@@ -19946,7 +19911,7 @@ goto *next;
 l_put_tuple_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[696].counter++;
+	ling_opcodes[695].counter++;
 #endif
 
 
@@ -19991,7 +19956,7 @@ next();
 l_call_ext_38: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[697].counter++;
+	ling_opcodes[696].counter++;
 #endif
 
 
@@ -20024,7 +19989,7 @@ next(); \
 l_call_ext_37: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[698].counter++;
+	ling_opcodes[697].counter++;
 #endif
 
 
@@ -20054,10 +20019,94 @@ next(); \
 ;
 }
 
-get_list_9: ATTRIBUTE_COLD
+put_list_10: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[698].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+htop[0] = r0;
+htop[1] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+{
+	term_t dst__ = ip[2];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = tag_cons(htop);
+		else
+			rs[reg__] = tag_cons(htop);
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = tag_cons(htop);
+	}
+}
+
+htop += 2;
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_move_call_18: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[699].counter++;
+#endif
+
+
+r0 = sp[13];
+cp = ip + 2;
+ip = (uint32_t *)expand_ptr(ip[1]);
+local_reduce();
+}
+
+test_heap_1_put_list_2: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[700].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
+{
+	swap_out();
+	int nr_regs = proc_count_root_regs(proc);
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, 1);
+		heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[1] >> 0) & 255));
+	swap_in();
+}
+
+
+term_t hd = (int8_t)((ip[1] >> 8) & 255);
+term_t tl = r0;
+r0 = tag_cons(htop);
+*htop++ = hd;
+*htop++ = tl;
+
+
+ip += 2;
+goto *next;
+}
+
+
+get_list_9: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[701].counter++;
 #endif
 
 
@@ -20076,7 +20125,7 @@ goto *next;
 l_bs_skip_bits2_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[700].counter++;
+	ling_opcodes[702].counter++;
 #endif
 
 
@@ -20122,93 +20171,10 @@ goto *next;
 }
 
 
-l_move_call_18: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[701].counter++;
-#endif
-
-
-r0 = sp[13];
-cp = ip + 2;
-ip = (uint32_t *)expand_ptr(ip[1]);
-local_reduce();
-}
-
-test_heap_1_put_list_2: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[702].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
-{
-	swap_out();
-	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
-	{
-		region_t root_regs[nr_regs];
-		proc_fill_root_regs(proc, root_regs, rs, 1);
-		heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
-	}
-	else
-		heap_alloc(&proc->hp, ((ip[1] >> 0) & 255));
-	swap_in();
-}
-
-
-term_t hd = (int8_t)((ip[1] >> 8) & 255);
-term_t tl = r0;
-r0 = tag_cons(htop);
-*htop++ = hd;
-*htop++ = tl;
-
-
-ip += 2;
-goto *next;
-}
-
-
-l_move_call_ext_33: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[703].counter++;
-#endif
-
-
-r0 = rs[4];
-cp = ip + 2;
-export_t *exp = (export_t *)expand_ptr(ip[1]);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
 l_fetch_17: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[704].counter++;
+	ling_opcodes[703].counter++;
 #endif
 
 
@@ -20225,7 +20191,7 @@ goto *next;
 call_bif_45: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[705].counter++;
+	ling_opcodes[704].counter++;
 #endif
 
 
@@ -20273,7 +20239,7 @@ goto *next;
 node_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[706].counter++;
+	ling_opcodes[705].counter++;
 #endif
 
 
@@ -20289,7 +20255,7 @@ goto *next;
 extract_next_element2_12: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[707].counter++;
+	ling_opcodes[706].counter++;
 #endif
 
 
@@ -20312,7 +20278,7 @@ goto *next;
 is_nil_17: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[708].counter++;
+	ling_opcodes[707].counter++;
 #endif
 
 
@@ -20332,7 +20298,7 @@ goto *next;
 try_case_end_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[709].counter++;
+	ling_opcodes[708].counter++;
 #endif
 
 
@@ -20345,7 +20311,7 @@ raise_error(reason);
 l_yield_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[710].counter++;
+	ling_opcodes[709].counter++;
 #endif
 
 
@@ -20359,7 +20325,7 @@ goto yield;
 l_bs_get_binary_all2_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[711].counter++;
+	ling_opcodes[710].counter++;
 #endif
 
 
@@ -20411,7 +20377,7 @@ goto *next;
 is_atom_4: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[712].counter++;
+	ling_opcodes[711].counter++;
 #endif
 
 
@@ -20431,7 +20397,7 @@ goto *next;
 l_move_call_19: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[713].counter++;
+	ling_opcodes[712].counter++;
 #endif
 
 
@@ -20444,11 +20410,45 @@ local_reduce();
 l_call_ext_only_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[714].counter++;
+	ling_opcodes[713].counter++;
 #endif
 
 
 export_t *exp = (preloaded_exports+550);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_move_call_ext_33: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[714].counter++;
+#endif
+
+
+r0 = rs[4];
+cp = ip + 2;
+export_t *exp = (export_t *)expand_ptr(ip[1]);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20493,10 +20493,57 @@ goto *next;
 }
 
 
-l_bs_get_integer_0: 
+move_return_10: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[716].counter++;
+#endif
+
+
+r0 = tag_int(0);
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+l_move_call_ext_34: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[717].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = ip + 2;
+export_t *exp = (preloaded_exports+521);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_bs_get_integer_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[718].counter++;
 #endif
 
 
@@ -20568,23 +20615,10 @@ goto *next;
 }
 
 
-move_return_10: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[717].counter++;
-#endif
-
-
-r0 = tag_int(0);
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
 l_bs_append_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[718].counter++;
+	ling_opcodes[719].counter++;
 #endif
 
 
@@ -20628,47 +20662,13 @@ goto *next;
 l_move_call_ext_35: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[719].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = ip + 2;
-export_t *exp = (preloaded_exports+551);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_move_call_ext_34: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
 	ling_opcodes[720].counter++;
 #endif
 
 
 r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
 cp = ip + 2;
-export_t *exp = (preloaded_exports+521);
+export_t *exp = (preloaded_exports+551);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -20930,54 +20930,10 @@ goto *next;
 }
 
 
-l_gc_bif1_6: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[730].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t t = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
-swap_out();
-term_t r = ((gc_bif_func1_t)gc_bif_length1)
-					(t, proc, rs, ((ip[2] >> 8) & 255));
-swap_in();
-if (r == noval)
-{
-	do {
-	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
-	if (fail__ != 0)
-	{
-		ip = fail__;
-		next();
-	}
-} while (0)
-
-;
-	bif_func_t entry = gc_bif_length1;
-	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
-	assert(bif_exp != 0);
-	assert(bif_exp->arity == 1);
-	raise_bif_mfa.mod = bif_exp->module;
-	raise_bif_mfa.fun = bif_exp->function;
-	raise_bif_mfa.arity = 1;
-	rs[0] = t;
-	rs[1] = proc->bif_excep_reason;
-	goto raise_from_bif;
-}
-sp[((ip[2] >> 16) & 255)+1] = r;
-
-
-ip += 3;
-goto *next;
-}
-
-
 l_fetch_18: ATTRIBUTE_HOT
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[731].counter++;
+	ling_opcodes[730].counter++;
 #endif
 
 
@@ -20994,7 +20950,7 @@ goto *next;
 l_catch_6: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[732].counter++;
+	ling_opcodes[731].counter++;
 #endif
 
 
@@ -21011,7 +20967,7 @@ goto *next;
 call_bif_47: ATTRIBUTE_HOT
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[733].counter++;
+	ling_opcodes[732].counter++;
 #endif
 
 
@@ -21056,10 +21012,266 @@ goto *next;
 }
 
 
-l_int_div_1: 
+l_allocate_8: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[733].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+int gap = 8+1;
+if (unlikely(sp - send < gap))
+{
+	proc_stack_set_top(proc, sp);
+	proc_stack_ensure(proc, gap);
+	sp = proc_stack_top(proc);
+	send = proc_stack_end(proc);
+
+	// In a rare case proc_stack_ensure() may enlarge the space available for
+	// the heap
+	//
+	hend = heap_end(&proc->hp);
+}
+sp -= gap;
+*sp = masquerade_as_boxed(cp);
+cp = 0; // not to confuse stack tracing
+
+
+
+
+ip += 1;
+goto *next;
+}
+
+
+l_call_ext_40: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[734].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+552);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_39: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[735].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+553);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_is_ne_exact_immed_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[736].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if (sp[1] == (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
+badmatch_7: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[737].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[5]);
+light_swap_in();
+raise_error(reason);
+}
+
+case_end_7: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[738].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_CASE_CLAUSE, rs[4]);
+light_swap_in();
+raise_error(reason);
+}
+
+is_binary_3: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[739].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed(v))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+uint32_t *p = peel_boxed(v);
+switch (boxed_tag(p))
+{
+case SUBTAG_PROC_BIN:
+	break;
+case SUBTAG_HEAP_BIN:
+	break;
+case SUBTAG_MATCH_CTX:
+{
+	t_match_ctx_t *ctx = (t_match_ctx_t *)p;
+	if ((ctx->bs.ends-ctx->bs.starts) % 8 != 0)
+		do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+	break;
+}
+case SUBTAG_SUB_BIN:
+{
+	t_sub_bin_t *sb = (t_sub_bin_t *)p;
+	if ((sb->ends - sb->starts) % 8 == 0)
+		break;
+	/* fall through */
+}
+default:
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+}
+
+
+ip += 3;
+goto *next;
+}
+
+
+init_10: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[740].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+sp[11] = nil;
+
+
+ip += 1;
+goto *next;
+}
+
+
+l_gc_bif1_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[741].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t t = ((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]);
+swap_out();
+term_t r = ((gc_bif_func1_t)gc_bif_length1)
+					(t, proc, rs, ((ip[2] >> 8) & 255));
+swap_in();
+if (r == noval)
+{
+	do {
+	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
+
+;
+	bif_func_t entry = gc_bif_length1;
+	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+	assert(bif_exp != 0);
+	assert(bif_exp->arity == 1);
+	raise_bif_mfa.mod = bif_exp->module;
+	raise_bif_mfa.fun = bif_exp->function;
+	raise_bif_mfa.arity = 1;
+	rs[0] = t;
+	rs[1] = proc->bif_excep_reason;
+	goto raise_from_bif;
+}
+sp[((ip[2] >> 16) & 255)+1] = r;
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_int_div_1: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[742].counter++;
 #endif
 
 
@@ -21121,109 +21333,30 @@ goto *next;
 }
 
 
-l_allocate_8: 
+l_is_eq_exact_immed_29: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[735].counter++;
+	ling_opcodes[743].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[1]);
-int gap = 8+1;
-if (unlikely(sp - send < gap))
-{
-	proc_stack_set_top(proc, sp);
-	proc_stack_ensure(proc, gap);
-	sp = proc_stack_top(proc);
-	send = proc_stack_end(proc);
-
-	// In a rare case proc_stack_ensure() may enlarge the space available for
-	// the heap
-	//
-	hend = heap_end(&proc->hp);
-}
-sp -= gap;
-*sp = masquerade_as_boxed(cp);
-cp = 0; // not to confuse stack tracing
+void *next = (void *)expand_ptr(ip[3]);
+if (sp[6] != (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
 
-
-
-ip += 1;
+ip += 3;
 goto *next;
 }
 
 
-l_call_ext_40: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[736].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+552);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_39: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[737].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+553);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
 l_is_eq_exact_immed_28: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[738].counter++;
+	ling_opcodes[744].counter++;
 #endif
 
 
@@ -21240,142 +21373,7 @@ goto *next;
 }
 
 
-l_is_ne_exact_immed_6: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[739].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (sp[1] == (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
-badmatch_7: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[740].counter++;
-#endif
-
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[5]);
-light_swap_in();
-raise_error(reason);
-}
-
-case_end_7: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[741].counter++;
-#endif
-
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_CASE_CLAUSE, rs[4]);
-light_swap_in();
-raise_error(reason);
-}
-
 is_function_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[742].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-if (!is_boxed(v) || (boxed_tag(peel_boxed(v)) != SUBTAG_FUN &&
-					 boxed_tag(peel_boxed(v)) != SUBTAG_EXPORT))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
-is_binary_3: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[743].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-if (!is_boxed(v))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-uint32_t *p = peel_boxed(v);
-switch (boxed_tag(p))
-{
-case SUBTAG_PROC_BIN:
-	break;
-case SUBTAG_HEAP_BIN:
-	break;
-case SUBTAG_MATCH_CTX:
-{
-	t_match_ctx_t *ctx = (t_match_ctx_t *)p;
-	if ((ctx->bs.ends-ctx->bs.starts) % 8 != 0)
-		do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-	break;
-}
-case SUBTAG_SUB_BIN:
-{
-	t_sub_bin_t *sb = (t_sub_bin_t *)p;
-	if ((sb->ends - sb->starts) % 8 == 0)
-		break;
-	/* fall through */
-}
-default:
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-}
-
-
-ip += 3;
-goto *next;
-}
-
-
-init_10: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[744].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-sp[11] = nil;
-
-
-ip += 1;
-goto *next;
-}
-
-
-l_is_eq_exact_immed_29: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[745].counter++;
@@ -21383,7 +21381,9 @@ l_is_eq_exact_immed_29:
 
 
 void *next = (void *)expand_ptr(ip[3]);
-if (sp[6] != (term_t)ip[2])
+term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed(v) || (boxed_tag(peel_boxed(v)) != SUBTAG_FUN &&
+					 boxed_tag(peel_boxed(v)) != SUBTAG_EXPORT))
 	do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
@@ -21415,10 +21415,30 @@ goto *next;
 }
 
 
-l_call_ext_42: 
+fmove_1_3: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[747].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+	// s fr
+term_t v = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+assert(is_boxed(v) && boxed_tag(peel_boxed(v)) == SUBTAG_FLOAT);
+uint32_t *tdata = peel_boxed(v);
+fr[((ip[2] >> 0) & 255)] = float_value(tdata);
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_call_ext_42: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[748].counter++;
 #endif
 
 
@@ -21451,7 +21471,7 @@ next(); \
 l_call_ext_41: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[748].counter++;
+	ling_opcodes[749].counter++;
 #endif
 
 
@@ -21484,7 +21504,7 @@ next(); \
 move_jump_3: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[749].counter++;
+	ling_opcodes[750].counter++;
 #endif
 
 
@@ -21498,7 +21518,7 @@ next();
 is_nil_18: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[750].counter++;
+	ling_opcodes[751].counter++;
 #endif
 
 
@@ -21518,7 +21538,7 @@ goto *next;
 case_end_8: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[751].counter++;
+	ling_opcodes[752].counter++;
 #endif
 
 
@@ -21528,10 +21548,35 @@ light_swap_in();
 raise_error(reason);
 }
 
+l_select_val2_12: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[753].counter++;
+#endif
+
+
+term_t v = rs[7];
+if (v == (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[3]);
+next();
+} while (0);
+if (v == (term_t)ip[4])
+	do {
+ip = (uint32_t *)expand_ptr(ip[5]);
+next();
+} while (0);
+assert((uint32_t *)expand_ptr(ip[1]) != 0);
+do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+}
+
 l_bs_save2_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[752].counter++;
+	ling_opcodes[754].counter++;
 #endif
 
 
@@ -21552,7 +21597,7 @@ goto *next;
 l_move_call_23: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[753].counter++;
+	ling_opcodes[755].counter++;
 #endif
 
 
@@ -21565,7 +21610,7 @@ local_reduce();
 l_move_call_22: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[754].counter++;
+	ling_opcodes[756].counter++;
 #endif
 
 
@@ -21578,7 +21623,7 @@ local_reduce();
 l_move_call_21: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[755].counter++;
+	ling_opcodes[757].counter++;
 #endif
 
 
@@ -21591,7 +21636,7 @@ local_reduce();
 l_move_call_ext_36: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[756].counter++;
+	ling_opcodes[758].counter++;
 #endif
 
 
@@ -21620,51 +21665,6 @@ if (unlikely(reds_left <= 0)) {
 next(); \
 
 ;
-}
-
-fmove_1_3: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[757].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-	// s fr
-term_t v = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-assert(is_boxed(v) && boxed_tag(peel_boxed(v)) == SUBTAG_FLOAT);
-uint32_t *tdata = peel_boxed(v);
-fr[((ip[2] >> 0) & 255)] = float_value(tdata);
-
-
-ip += 3;
-goto *next;
-}
-
-
-l_select_val2_12: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[758].counter++;
-#endif
-
-
-term_t v = rs[7];
-if (v == (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[3]);
-next();
-} while (0);
-if (v == (term_t)ip[4])
-	do {
-ip = (uint32_t *)expand_ptr(ip[5]);
-next();
-} while (0);
-assert((uint32_t *)expand_ptr(ip[1]) != 0);
-do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
 }
 
 deallocate_return_12: ATTRIBUTE_COLD
@@ -21734,10 +21734,45 @@ next(); \
 ;
 }
 
-call_bif_1: ATTRIBUTE_COLD
+l_move_call_ext_last_4: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[762].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+cp = demasquerade_pointer(sp[0]);
+sp += 3+1;
+export_t *exp = (export_t *)expand_ptr(ip[1]);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+call_bif_1: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[763].counter++;
 #endif
 
 
@@ -21776,7 +21811,7 @@ goto exception;
 l_call_ext_49: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[763].counter++;
+	ling_opcodes[764].counter++;
 #endif
 
 
@@ -21809,7 +21844,7 @@ next(); \
 l_call_ext_48: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[764].counter++;
+	ling_opcodes[765].counter++;
 #endif
 
 
@@ -21842,7 +21877,7 @@ next(); \
 l_call_ext_47: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[765].counter++;
+	ling_opcodes[766].counter++;
 #endif
 
 
@@ -21875,7 +21910,7 @@ next(); \
 l_call_ext_46: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[766].counter++;
+	ling_opcodes[767].counter++;
 #endif
 
 
@@ -21908,7 +21943,7 @@ next(); \
 l_call_ext_45: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[767].counter++;
+	ling_opcodes[768].counter++;
 #endif
 
 
@@ -21941,7 +21976,7 @@ next(); \
 l_call_ext_44: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[768].counter++;
+	ling_opcodes[769].counter++;
 #endif
 
 
@@ -21974,47 +22009,12 @@ next(); \
 l_call_ext_43: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[769].counter++;
+	ling_opcodes[770].counter++;
 #endif
 
 
 cp = ip + 1;
 export_t *exp = (preloaded_exports+562);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_move_call_ext_last_4: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[770].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-cp = demasquerade_pointer(sp[0]);
-sp += 3+1;
-export_t *exp = (export_t *)expand_ptr(ip[1]);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -22072,10 +22072,30 @@ next(); \
 ;
 }
 
-l_move_call_ext_38: 
+l_is_ne_exact_immed_7: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[772].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if (((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]) == (int8_t)((ip[2] >> 8) & 255))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_move_call_ext_38: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[773].counter++;
 #endif
 
 
@@ -22106,10 +22126,54 @@ next(); \
 ;
 }
 
+l_gc_bif1_7: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[774].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[4]);
+term_t t = r0;
+swap_out();
+term_t r = ((gc_bif_func1_t)(bif_func_t)expand_ptr(ip[2]))
+					(t, proc, rs, ((ip[3] >> 0) & 255));
+swap_in();
+if (r == noval)
+{
+	do {
+	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
+
+;
+	bif_func_t entry = (bif_func_t)expand_ptr(ip[2]);
+	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
+	assert(bif_exp != 0);
+	assert(bif_exp->arity == 1);
+	raise_bif_mfa.mod = bif_exp->module;
+	raise_bif_mfa.fun = bif_exp->function;
+	raise_bif_mfa.arity = 1;
+	rs[0] = t;
+	rs[1] = proc->bif_excep_reason;
+	goto raise_from_bif;
+}
+sp[((ip[3] >> 8) & 255)+1] = r;
+
+
+ip += 4;
+goto *next;
+}
+
+
 l_call_ext_52: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[773].counter++;
+	ling_opcodes[775].counter++;
 #endif
 
 
@@ -22142,7 +22206,7 @@ next(); \
 l_call_ext_51: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[774].counter++;
+	ling_opcodes[776].counter++;
 #endif
 
 
@@ -22175,7 +22239,7 @@ next(); \
 l_call_ext_50: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[775].counter++;
+	ling_opcodes[777].counter++;
 #endif
 
 
@@ -22205,30 +22269,10 @@ next(); \
 ;
 }
 
-l_is_ne_exact_immed_7: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[776].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (((((ip[2] >> 0) & 255) == 0) ?r0 :rs[((ip[2] >> 0) & 255)]) == (int8_t)((ip[2] >> 8) & 255))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
 is_nil_19: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[777].counter++;
+	ling_opcodes[778].counter++;
 #endif
 
 
@@ -22248,7 +22292,7 @@ goto *next;
 is_nonempty_list_23: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[778].counter++;
+	ling_opcodes[779].counter++;
 #endif
 
 
@@ -22268,7 +22312,7 @@ goto *next;
 l_call_fun_4: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[779].counter++;
+	ling_opcodes[780].counter++;
 #endif
 
 
@@ -22362,7 +22406,7 @@ local_reduce();
 l_move_call_ext_only_5: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[780].counter++;
+	ling_opcodes[781].counter++;
 #endif
 
 
@@ -22395,7 +22439,7 @@ next(); \
 l_move_call_ext_39: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[781].counter++;
+	ling_opcodes[782].counter++;
 #endif
 
 
@@ -22426,46 +22470,52 @@ next(); \
 ;
 }
 
-l_gc_bif1_7: 
+is_pid_1: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[782].counter++;
+	ling_opcodes[783].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[4]);
-term_t t = r0;
-swap_out();
-term_t r = ((gc_bif_func1_t)(bif_func_t)expand_ptr(ip[2]))
-					(t, proc, rs, ((ip[3] >> 0) & 255));
-swap_in();
-if (r == noval)
+void *next = (void *)expand_ptr(ip[3]);
+term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_short_pid(v))
 {
-	do {
-	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
-	if (fail__ != 0)
-	{
-		ip = fail__;
-		next();
-	}
-} while (0)
-
-;
-	bif_func_t entry = (bif_func_t)expand_ptr(ip[2]);
-	export_t *bif_exp = code_base_lookup_bif_by_entry(entry);
-	assert(bif_exp != 0);
-	assert(bif_exp->arity == 1);
-	raise_bif_mfa.mod = bif_exp->module;
-	raise_bif_mfa.fun = bif_exp->function;
-	raise_bif_mfa.arity = 1;
-	rs[0] = t;
-	rs[1] = proc->bif_excep_reason;
-	goto raise_from_bif;
+	if (!is_boxed(v) || boxed_tag(peel_boxed(v)) != SUBTAG_PID)
+		do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 }
-sp[((ip[3] >> 8) & 255)+1] = r;
 
 
-ip += 4;
+ip += 3;
+goto *next;
+}
+
+
+bif1_body_4: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[784].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t r = ((bif_func1_t)bif_hd1)(sp[((ip[1] >> 0) & 255)+1], proc);
+if (r == noval)
+	raise_error(proc->bif_excep_reason);
+{
+	int reg__ = ((ip[1] >> 8) & 255);
+	if (reg__ == 0)
+		r0 = r;
+	else
+		rs[reg__] = r;
+}
+
+
+
+ip += 2;
 goto *next;
 }
 
@@ -22473,7 +22523,7 @@ goto *next;
 l_call_ext_55: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[783].counter++;
+	ling_opcodes[785].counter++;
 #endif
 
 
@@ -22506,7 +22556,7 @@ next(); \
 l_call_ext_54: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[784].counter++;
+	ling_opcodes[786].counter++;
 #endif
 
 
@@ -22539,7 +22589,7 @@ next(); \
 l_call_ext_53: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[785].counter++;
+	ling_opcodes[787].counter++;
 #endif
 
 
@@ -22572,7 +22622,7 @@ next(); \
 l_trim_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[786].counter++;
+	ling_opcodes[788].counter++;
 #endif
 
 
@@ -22590,7 +22640,7 @@ goto *next;
 l_bs_test_unit_8_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[787].counter++;
+	ling_opcodes[789].counter++;
 #endif
 
 
@@ -22610,34 +22660,10 @@ goto *next;
 }
 
 
-is_pid_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[788].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-if (!is_short_pid(v))
-{
-	if (!is_boxed(v) || boxed_tag(peel_boxed(v)) != SUBTAG_PID)
-		do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-}
-
-
-ip += 3;
-goto *next;
-}
-
-
 l_move_call_24: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[789].counter++;
+	ling_opcodes[790].counter++;
 #endif
 
 
@@ -22646,32 +22672,6 @@ cp = ip + 2;
 ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
-
-bif1_body_4: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[790].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-term_t r = ((bif_func1_t)bif_hd1)(sp[((ip[1] >> 0) & 255)+1], proc);
-if (r == noval)
-	raise_error(proc->bif_excep_reason);
-{
-	int reg__ = ((ip[1] >> 8) & 255);
-	if (reg__ == 0)
-		r0 = r;
-	else
-		rs[reg__] = r;
-}
-
-
-
-ip += 2;
-goto *next;
-}
-
 
 l_move_call_ext_42: ATTRIBUTE_COLD
  {
@@ -22848,19 +22848,23 @@ goto *next;
 }
 
 
-l_fetch_19: 
+is_boolean_0: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[796].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[2]);
-tmp_arg1 = sp[1];
-tmp_arg2 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+void *next = (void *)expand_ptr(ip[3]);
+term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (v != A_FALSE && v != A_TRUE)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
 
-ip += 2;
+ip += 3;
 goto *next;
 }
 
@@ -22929,31 +22933,10 @@ goto *next;
 }
 
 
-is_boolean_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[798].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-if (v != A_FALSE && v != A_TRUE)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
 l_call_ext_57: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[799].counter++;
+	ling_opcodes[798].counter++;
 #endif
 
 
@@ -22986,7 +22969,7 @@ next(); \
 l_call_ext_56: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[800].counter++;
+	ling_opcodes[799].counter++;
 #endif
 
 
@@ -23019,7 +23002,7 @@ next(); \
 extract_next_element_20: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[801].counter++;
+	ling_opcodes[800].counter++;
 #endif
 
 
@@ -23036,7 +23019,7 @@ goto *next;
 extract_next_element2_13: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[802].counter++;
+	ling_opcodes[801].counter++;
 #endif
 
 
@@ -23059,7 +23042,7 @@ goto *next;
 move_jump_4: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[803].counter++;
+	ling_opcodes[802].counter++;
 #endif
 
 
@@ -23073,7 +23056,7 @@ next();
 bs_context_to_binary_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[804].counter++;
+	ling_opcodes[803].counter++;
 #endif
 
 
@@ -23106,7 +23089,7 @@ goto *next;
 l_bs_put_string_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[805].counter++;
+	ling_opcodes[804].counter++;
 #endif
 
 
@@ -23124,7 +23107,7 @@ goto *next;
 l_call_ext_last_5: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[806].counter++;
+	ling_opcodes[805].counter++;
 #endif
 
 
@@ -23158,7 +23141,7 @@ next(); \
 bif1_body_7: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[807].counter++;
+	ling_opcodes[806].counter++;
 #endif
 
 
@@ -23193,7 +23176,7 @@ goto *next;
 init_11: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[808].counter++;
+	ling_opcodes[807].counter++;
 #endif
 
 
@@ -23206,10 +23189,40 @@ goto *next;
 }
 
 
-bs_init_writable_0: 
+l_fetch_19: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[808].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+tmp_arg1 = sp[1];
+tmp_arg2 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+
+
+ip += 2;
+goto *next;
+}
+
+
+badmatch_16: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[809].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]));
+light_swap_in();
+raise_error(reason);
+}
+
+bs_init_writable_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[810].counter++;
 #endif
 
 
@@ -23230,7 +23243,7 @@ goto *next;
 l_call_ext_58: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[810].counter++;
+	ling_opcodes[811].counter++;
 #endif
 
 
@@ -23263,7 +23276,7 @@ next(); \
 l_move_call_only_7: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[811].counter++;
+	ling_opcodes[812].counter++;
 #endif
 
 
@@ -23272,23 +23285,45 @@ ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
 
-badmatch_16: ATTRIBUTE_COLD
+put_list_12: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[812].counter++;
+	ling_opcodes[813].counter++;
 #endif
 
 
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]));
-light_swap_in();
-raise_error(reason);
+void *next = (void *)expand_ptr(ip[4]);
+htop[0] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+htop[1] = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+{
+	term_t dst__ = ip[3];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = tag_cons(htop);
+		else
+			rs[reg__] = tag_cons(htop);
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = tag_cons(htop);
+	}
 }
+
+htop += 2;
+
+
+ip += 4;
+goto *next;
+}
+
 
 case_end_9: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[813].counter++;
+	ling_opcodes[814].counter++;
 #endif
 
 
@@ -23301,7 +23336,7 @@ raise_error(reason);
 l_bs_private_append_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[814].counter++;
+	ling_opcodes[815].counter++;
 #endif
 
 
@@ -23356,7 +23391,7 @@ goto *next;
 l_move_call_25: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[815].counter++;
+	ling_opcodes[816].counter++;
 #endif
 
 
@@ -23365,41 +23400,6 @@ cp = ip + 2;
 ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
 }
-
-put_list_12: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[816].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[4]);
-htop[0] = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-htop[1] = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-{
-	term_t dst__ = ip[3];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = tag_cons(htop);
-		else
-			rs[reg__] = tag_cons(htop);
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = tag_cons(htop);
-	}
-}
-
-htop += 2;
-
-
-ip += 4;
-goto *next;
-}
-
 
 l_is_ne_exact_literal_0: 
  {
@@ -23882,86 +23882,10 @@ goto *next;
 }
 
 
-move_jump_6: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[836].counter++;
-#endif
-
-
-r0 = sp[3];
-do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-}
-
-move_return_12: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[837].counter++;
-#endif
-
-
-r0 = tag_int(4);
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-deallocate_return_9: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[838].counter++;
-#endif
-
-
-cp = demasquerade_pointer(sp[0]);
-sp += 9+1;
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-l_bs_skip_bits_all2_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[839].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-term_t bin = rs[3];
-assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
-t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
-uint8_t u = 8;
-uint32_t skipped = mc->bs.ends - mc->bs.starts;
-if (skipped % u != 0)
-{
-	do {
-	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
-	if (fail__ != 0)
-	{
-		ip = fail__;
-		next();
-	}
-} while (0)
-
-;
-	badarg();
-}
-mc->bs.starts = mc->bs.ends;
-
-
-ip += 2;
-goto *next;
-}
-
-
 l_bs_start_match2_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[840].counter++;
+	ling_opcodes[836].counter++;
 #endif
 
 
@@ -23996,10 +23920,37 @@ goto *next;
 }
 
 
+move_jump_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[837].counter++;
+#endif
+
+
+r0 = sp[3];
+do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+}
+
+move_return_12: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[838].counter++;
+#endif
+
+
+r0 = tag_int(4);
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
 put_list_11: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[841].counter++;
+	ling_opcodes[839].counter++;
 #endif
 
 
@@ -24015,10 +23966,24 @@ goto *next;
 }
 
 
+deallocate_return_9: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[840].counter++;
+#endif
+
+
+cp = demasquerade_pointer(sp[0]);
+sp += 9+1;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
 l_wait_timeout_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[842].counter++;
+	ling_opcodes[841].counter++;
 #endif
 
 
@@ -24044,7 +24009,7 @@ goto schedule;
 l_get_5: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[843].counter++;
+	ling_opcodes[842].counter++;
 #endif
 
 
@@ -24077,7 +24042,7 @@ goto *next;
 l_element_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[844].counter++;
+	ling_opcodes[843].counter++;
 #endif
 
 
@@ -24093,6 +24058,41 @@ int pos = int_value(t);
 if (pos < 1 || pos > data[0])
 	badarg();
 rs[1] = data[pos];
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_bs_skip_bits_all2_1: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[844].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t bin = rs[3];
+assert(is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+uint8_t u = 8;
+uint32_t skipped = mc->bs.ends - mc->bs.starts;
+if (skipped % u != 0)
+{
+	do {
+	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
+
+;
+	badarg();
+}
+mc->bs.starts = mc->bs.ends;
 
 
 ip += 2;
@@ -24131,10 +24131,68 @@ next();
 } while (0);
 }
 
-l_call_ext_73: ATTRIBUTE_COLD
+l_is_eq_exact_immed_30: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[846].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if (rs[19] != (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
+l_bif2_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[847].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[4]);
+term_t r = ((bif_func2_t)(bif_func_t)expand_ptr(ip[2]))(tmp_arg1, tmp_arg2, proc);
+if (r == noval)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+{
+	term_t dst__ = ip[3];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = r;
+		else
+			rs[reg__] = r;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = r;
+	}
+}
+
+
+
+ip += 4;
+goto *next;
+}
+
+
+l_call_ext_73: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[848].counter++;
 #endif
 
 
@@ -24167,7 +24225,7 @@ next(); \
 l_call_ext_72: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[847].counter++;
+	ling_opcodes[849].counter++;
 #endif
 
 
@@ -24200,7 +24258,7 @@ next(); \
 l_call_ext_71: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[848].counter++;
+	ling_opcodes[850].counter++;
 #endif
 
 
@@ -24233,7 +24291,7 @@ next(); \
 l_call_ext_70: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[849].counter++;
+	ling_opcodes[851].counter++;
 #endif
 
 
@@ -24266,7 +24324,7 @@ next(); \
 l_call_ext_69: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[850].counter++;
+	ling_opcodes[852].counter++;
 #endif
 
 
@@ -24296,30 +24354,10 @@ next(); \
 ;
 }
 
-l_is_eq_exact_immed_30: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[851].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (rs[19] != (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
 extract_next_element2_15: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[852].counter++;
+	ling_opcodes[853].counter++;
 #endif
 
 
@@ -24342,7 +24380,7 @@ goto *next;
 move_jump_7: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[853].counter++;
+	ling_opcodes[854].counter++;
 #endif
 
 
@@ -24356,7 +24394,7 @@ next();
 move_return_14: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[854].counter++;
+	ling_opcodes[855].counter++;
 #endif
 
 
@@ -24369,7 +24407,7 @@ next();
 move_return_13: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[855].counter++;
+	ling_opcodes[856].counter++;
 #endif
 
 
@@ -24382,7 +24420,7 @@ next();
 l_move_call_only_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[856].counter++;
+	ling_opcodes[857].counter++;
 #endif
 
 
@@ -24394,7 +24432,7 @@ local_reduce();
 is_nonempty_list_24: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[857].counter++;
+	ling_opcodes[858].counter++;
 #endif
 
 
@@ -24407,44 +24445,6 @@ next();
 
 
 ip += 2;
-goto *next;
-}
-
-
-l_bif2_6: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[858].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[4]);
-term_t r = ((bif_func2_t)(bif_func_t)expand_ptr(ip[2]))(tmp_arg1, tmp_arg2, proc);
-if (r == noval)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-{
-	term_t dst__ = ip[3];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = r;
-		else
-			rs[reg__] = r;
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = r;
-	}
-}
-
-
-
-ip += 4;
 goto *next;
 }
 
@@ -24562,154 +24562,10 @@ goto *next;
 }
 
 
-self_3: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[864].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-rs[3] = proc->pid;
-
-
-ip += 1;
-goto *next;
-}
-
-
-node_3: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[865].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-rs[3] = cluster_node;
-
-
-ip += 1;
-goto *next;
-}
-
-
-l_call_ext_76: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[866].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+587);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_75: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[867].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+588);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_74: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[868].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+589);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-move_return_15: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[869].counter++;
-#endif
-
-
-r0 = A_UNDEFINED;
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
 l_new_bs_put_integer_imm_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[870].counter++;
+	ling_opcodes[864].counter++;
 #endif
 
 
@@ -24750,6 +24606,150 @@ ip += 5;
 goto *next;
 }
 
+
+self_3: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[865].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+rs[3] = proc->pid;
+
+
+ip += 1;
+goto *next;
+}
+
+
+node_3: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[866].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+rs[3] = cluster_node;
+
+
+ip += 1;
+goto *next;
+}
+
+
+l_call_ext_76: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[867].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+587);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_75: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[868].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+588);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_74: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[869].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+589);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+move_return_15: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[870].counter++;
+#endif
+
+
+r0 = A_UNDEFINED;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
 
 is_nonempty_list_25: ATTRIBUTE_COLD
  {
@@ -24890,10 +24890,46 @@ next(); \
 ;
 }
 
-catch_end_6: 
+test_heap_1_put_list_3: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[877].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
+{
+	swap_out();
+	int nr_regs = proc_count_root_regs(proc);
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, 1);
+		heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ((ip[1] >> 0) & 255));
+	swap_in();
+}
+
+
+term_t hd = sp[((ip[1] >> 8) & 255)+1];
+term_t tl = r0;
+r0 = tag_cons(htop);
+*htop++ = hd;
+*htop++ = tl;
+
+
+ip += 2;
+goto *next;
+}
+
+
+catch_end_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[878].counter++;
 #endif
 
 
@@ -24933,46 +24969,63 @@ goto *next;
 }
 
 
-test_heap_1_put_list_3: 
+l_is_ne_exact_immed_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[878].counter++;
+	ling_opcodes[879].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[2]);
-if (unlikely(hend - htop < ((ip[1] >> 0) & 255)))
-{
-	swap_out();
-	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
-	{
-		region_t root_regs[nr_regs];
-		proc_fill_root_regs(proc, root_regs, rs, 1);
-		heap_ensure(&proc->hp, ((ip[1] >> 0) & 255), root_regs, nr_regs);
-	}
-	else
-		heap_alloc(&proc->hp, ((ip[1] >> 0) & 255));
-	swap_in();
-}
+void *next = (void *)expand_ptr(ip[3]);
+if (sp[3] == (term_t)ip[2])
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
 
-term_t hd = sp[((ip[1] >> 8) & 255)+1];
-term_t tl = r0;
-r0 = tag_cons(htop);
-*htop++ = hd;
-*htop++ = tl;
-
-
-ip += 2;
+ip += 3;
 goto *next;
 }
 
 
+l_move_call_ext_only_6: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[880].counter++;
+#endif
+
+
+r0 = rs[3];
+export_t *exp = (export_t *)expand_ptr(ip[1]);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
 l_catch_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[879].counter++;
+	ling_opcodes[881].counter++;
 #endif
 
 
@@ -24991,7 +25044,7 @@ goto *next;
 l_call_ext_77: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[880].counter++;
+	ling_opcodes[882].counter++;
 #endif
 
 
@@ -25021,30 +25074,10 @@ next(); \
 ;
 }
 
-l_is_ne_exact_immed_8: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[881].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (sp[3] == (term_t)ip[2])
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
-goto *next;
-}
-
-
 extract_next_element3_9: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[882].counter++;
+	ling_opcodes[883].counter++;
 #endif
 
 
@@ -25069,7 +25102,7 @@ goto *next;
 bs_context_to_binary_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[883].counter++;
+	ling_opcodes[884].counter++;
 #endif
 
 
@@ -25102,7 +25135,7 @@ goto *next;
 l_new_bs_put_float_imm_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[884].counter++;
+	ling_opcodes[885].counter++;
 #endif
 
 
@@ -25137,7 +25170,7 @@ goto *next;
 l_move_call_31: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[885].counter++;
+	ling_opcodes[886].counter++;
 #endif
 
 
@@ -25145,39 +25178,6 @@ r0 = tag_int(42);
 cp = ip + 2;
 ip = (uint32_t *)expand_ptr(ip[1]);
 local_reduce();
-}
-
-l_move_call_ext_only_6: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[886].counter++;
-#endif
-
-
-r0 = rs[3];
-export_t *exp = (export_t *)expand_ptr(ip[1]);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
 }
 
 l_move_call_last_7: 
@@ -25833,158 +25833,10 @@ goto *next;
 }
 
 
-self_4: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[913].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-sp[1] = proc->pid;
-
-
-ip += 1;
-goto *next;
-}
-
-
-l_call_ext_84: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[914].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+595);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_83: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[915].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+596);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_82: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[916].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+597);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_81: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[917].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+598);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
 l_new_bs_put_integer_1: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[918].counter++;
+	ling_opcodes[913].counter++;
 #endif
 
 
@@ -26042,10 +25894,194 @@ goto *next;
 }
 
 
-move_jump_8: ATTRIBUTE_COLD
+test_heap_1_put_list_4: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[914].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+if (unlikely(hend - htop < ip[1]))
+{
+	swap_out();
+	int nr_regs = proc_count_root_regs(proc);
+	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
+	{
+		region_t root_regs[nr_regs];
+		proc_fill_root_regs(proc, root_regs, rs, 1);
+		heap_ensure(&proc->hp, ip[1], root_regs, nr_regs);
+	}
+	else
+		heap_alloc(&proc->hp, ip[1]);
+	swap_in();
+}
+
+
+term_t hd = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+term_t tl = r0;
+r0 = tag_cons(htop);
+*htop++ = hd;
+*htop++ = tl;
+
+
+ip += 3;
+goto *next;
+}
+
+
+self_4: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[915].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+sp[1] = proc->pid;
+
+
+ip += 1;
+goto *next;
+}
+
+
+l_call_ext_84: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[916].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+595);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_83: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[917].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+596);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_82: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[918].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+597);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_81: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[919].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+598);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+move_jump_8: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[920].counter++;
 #endif
 
 
@@ -26059,7 +26095,7 @@ next();
 l_move_call_33: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[920].counter++;
+	ling_opcodes[921].counter++;
 #endif
 
 
@@ -26072,7 +26108,7 @@ local_reduce();
 l_apply_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[921].counter++;
+	ling_opcodes[922].counter++;
 #endif
 
 
@@ -26118,42 +26154,6 @@ cp = ip + 0+1;
 ip = (uint32_t *)exp->entry;
 local_reduce();
 }
-
-test_heap_1_put_list_4: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[922].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-if (unlikely(hend - htop < ip[1]))
-{
-	swap_out();
-	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
-	{
-		region_t root_regs[nr_regs];
-		proc_fill_root_regs(proc, root_regs, rs, 1);
-		heap_ensure(&proc->hp, ip[1], root_regs, nr_regs);
-	}
-	else
-		heap_alloc(&proc->hp, ip[1]);
-	swap_in();
-}
-
-
-term_t hd = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-term_t tl = r0;
-r0 = tag_cons(htop);
-*htop++ = hd;
-*htop++ = tl;
-
-
-ip += 3;
-goto *next;
-}
-
 
 get_list_10: 
  {
@@ -26206,403 +26206,10 @@ next();
 } while (0);
 }
 
-l_call_ext_92: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[925].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+599);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_91: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[926].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+600);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_90: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[927].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+551);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_89: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[928].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+601);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_88: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[929].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+602);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_87: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[930].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+603);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_86: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[931].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+604);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_ext_85: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[932].counter++;
-#endif
-
-
-cp = ip + 1;
-export_t *exp = (preloaded_exports+605);
-if (unlikely(exp == 0 || exp->entry == 0))
-{
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
-
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
-}
-next(); \
-
-;
-}
-
-l_call_last_11: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[933].counter++;
-#endif
-
-
-cp = demasquerade_pointer(sp[0]);
-sp += ip[2]+1;
-ip = (uint32_t *)expand_ptr(ip[1]);
-local_reduce();
-}
-
-extract_next_element3_10: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[934].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-term_t *dst;
-dst = rs + 9;
-
-
-dst[0] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-dst[1] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-dst[2] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-
-
-ip += 1;
-goto *next;
-}
-
-
-move_jump_9: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[935].counter++;
-#endif
-
-
-r0 = A_FUNNY831;
-do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-}
-
-move_return_18: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[936].counter++;
-#endif
-
-
-r0 = rs[5];
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-is_nil_21: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[937].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (sp[1] != nil)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-badmatch_11: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[938].counter++;
-#endif
-
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[10]);
-light_swap_in();
-raise_error(reason);
-}
-
-badmatch_10: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[939].counter++;
-#endif
-
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[7]);
-light_swap_in();
-raise_error(reason);
-}
-
-l_bs_put_string_1: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[940].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-bits_t src;
-bits_init_buf((uint8_t *)expand_ptr(ip[1]), 4, &src);
-bits_copy(&src, &bpc);
-
-
-ip += 2;
-goto *next;
-}
-
-
 l_increment_7: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[941].counter++;
+	ling_opcodes[925].counter++;
 #endif
 
 
@@ -26639,36 +26246,15 @@ goto *next;
 }
 
 
-is_nonempty_list_27: 
+l_call_ext_92: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[942].counter++;
+	ling_opcodes[926].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(sp[7]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-l_move_call_ext_32: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[943].counter++;
-#endif
-
-
-r0 = A_AUTO_REPAIR;
 cp = ip + 1;
-export_t *exp = (preloaded_exports+606);
+export_t *exp = (preloaded_exports+599);
 if (unlikely(exp == 0 || exp->entry == 0))
 {
 	rs[0] = r0;
@@ -26693,23 +26279,271 @@ next(); \
 ;
 }
 
-is_float_0: 
+l_call_ext_91: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[944].counter++;
+	ling_opcodes[927].counter++;
 #endif
 
 
-void *next = (void *)expand_ptr(ip[2]);
-term_t v = r0;
-if (!is_boxed(v) || boxed_tag(peel_boxed(v)) != SUBTAG_FLOAT)
-	do {
+cp = ip + 1;
+export_t *exp = (preloaded_exports+600);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_90: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[928].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+551);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_89: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[929].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+601);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_88: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[930].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+602);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_87: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[931].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+603);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_86: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[932].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+604);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_ext_85: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[933].counter++;
+#endif
+
+
+cp = ip + 1;
+export_t *exp = (preloaded_exports+605);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+l_call_last_11: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[934].counter++;
+#endif
+
+
+cp = demasquerade_pointer(sp[0]);
+sp += ip[2]+1;
 ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
+local_reduce();
+}
+
+extract_next_element3_10: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[935].counter++;
+#endif
 
 
-ip += 2;
+void *next = (void *)expand_ptr(ip[1]);
+term_t *dst;
+dst = rs + 9;
+
+
+dst[0] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[1] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+dst[2] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+
+ip += 1;
 goto *next;
 }
 
@@ -26717,7 +26551,7 @@ goto *next;
 l_bs_get_float2_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[945].counter++;
+	ling_opcodes[936].counter++;
 #endif
 
 
@@ -26797,10 +26631,121 @@ goto *next;
 }
 
 
+move_jump_9: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[937].counter++;
+#endif
+
+
+r0 = A_FUNNY831;
+do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+}
+
+move_return_18: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[938].counter++;
+#endif
+
+
+r0 = rs[5];
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+is_nil_21: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[939].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (sp[1] != nil)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+badmatch_11: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[940].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[10]);
+light_swap_in();
+raise_error(reason);
+}
+
+badmatch_10: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[941].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[7]);
+light_swap_in();
+raise_error(reason);
+}
+
+l_bs_put_string_1: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[942].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+bits_t src;
+bits_init_buf((uint8_t *)expand_ptr(ip[1]), 4, &src);
+bits_copy(&src, &bpc);
+
+
+ip += 2;
+goto *next;
+}
+
+
+is_nonempty_list_27: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[943].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(sp[7]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
 l_select_val2_14: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[946].counter++;
+	ling_opcodes[944].counter++;
 #endif
 
 
@@ -26821,6 +26766,61 @@ ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
 }
+
+l_move_call_ext_32: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[945].counter++;
+#endif
+
+
+r0 = A_AUTO_REPAIR;
+cp = ip + 1;
+export_t *exp = (preloaded_exports+606);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
+
+is_float_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[946].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+term_t v = r0;
+if (!is_boxed(v) || boxed_tag(peel_boxed(v)) != SUBTAG_FLOAT)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
 
 l_increment_6: 
  {
@@ -28149,43 +28149,10 @@ light_swap_out();
 goto schedule;
 }
 
-l_call_last_10: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[987].counter++;
-#endif
-
-
-cp = demasquerade_pointer(sp[0]);
-sp += 10+1;
-ip = (uint32_t *)expand_ptr(ip[1]);
-local_reduce();
-}
-
-is_nonempty_list_29: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[988].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(rs[21]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
 l_select_val2_16: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[989].counter++;
+	ling_opcodes[987].counter++;
 #endif
 
 
@@ -28206,6 +28173,39 @@ ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
 }
+
+l_call_last_10: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[988].counter++;
+#endif
+
+
+cp = demasquerade_pointer(sp[0]);
+sp += 10+1;
+ip = (uint32_t *)expand_ptr(ip[1]);
+local_reduce();
+}
+
+is_nonempty_list_29: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[989].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(rs[21]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
 
 is_atom_5: 
  {
@@ -28256,10 +28256,64 @@ goto *next;
 }
 
 
-extract_next_element_23: ATTRIBUTE_COLD
+l_trim_11: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[992].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+uint32_t masqueraded_cp = sp[0];
+sp += ip[1];
+sp[0] = masqueraded_cp;
+
+
+ip += 2;
+goto *next;
+}
+
+
+move_deallocate_return_9: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[993].counter++;
+#endif
+
+
+r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+cp = demasquerade_pointer(sp[0]);
+sp += 7+1;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+is_map_0: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[994].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed_map(v))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
+extract_next_element_23: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[995].counter++;
 #endif
 
 
@@ -28276,7 +28330,7 @@ goto *next;
 extract_next_element2_17: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[993].counter++;
+	ling_opcodes[996].counter++;
 #endif
 
 
@@ -28299,7 +28353,7 @@ goto *next;
 move_jump_10: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[994].counter++;
+	ling_opcodes[997].counter++;
 #endif
 
 
@@ -28313,7 +28367,7 @@ next();
 move_return_21: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[995].counter++;
+	ling_opcodes[998].counter++;
 #endif
 
 
@@ -28323,28 +28377,10 @@ cp = 0; // not to confuse stack tracing
 next();
 }
 
-l_trim_11: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[996].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-uint32_t masqueraded_cp = sp[0];
-sp += ip[1];
-sp[0] = masqueraded_cp;
-
-
-ip += 2;
-goto *next;
-}
-
-
 l_trim_9: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[997].counter++;
+	ling_opcodes[999].counter++;
 #endif
 
 
@@ -28362,7 +28398,7 @@ goto *next;
 is_nil_22: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[998].counter++;
+	ling_opcodes[1000].counter++;
 #endif
 
 
@@ -28382,7 +28418,7 @@ goto *next;
 bs_context_to_binary_4: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[999].counter++;
+	ling_opcodes[1001].counter++;
 #endif
 
 
@@ -28415,7 +28451,7 @@ goto *next;
 badmatch_13: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1000].counter++;
+	ling_opcodes[1002].counter++;
 #endif
 
 
@@ -28428,7 +28464,7 @@ raise_error(reason);
 is_nonempty_list_30: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1001].counter++;
+	ling_opcodes[1003].counter++;
 #endif
 
 
@@ -28441,42 +28477,6 @@ next();
 
 
 ip += 2;
-goto *next;
-}
-
-
-move_deallocate_return_9: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1002].counter++;
-#endif
-
-
-r0 = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-cp = demasquerade_pointer(sp[0]);
-sp += 7+1;
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-is_map_0: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1003].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-if (!is_boxed_map(v))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 3;
 goto *next;
 }
 
@@ -28623,50 +28623,10 @@ goto *next;
 }
 
 
-is_integer_allocate_1: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1007].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[4]);
-term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
-if (!is_int(v) && !(is_boxed(v) && is_bignum(peel_boxed(v))))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-int gap = ip[3]+1;
-if (unlikely(sp - send < gap))
-{
-	proc_stack_set_top(proc, sp);
-	proc_stack_ensure(proc, gap);
-	sp = proc_stack_top(proc);
-	send = proc_stack_end(proc);
-
-	// In a rare case proc_stack_ensure() may enlarge the space available for
-	// the heap
-	//
-	hend = heap_end(&proc->hp);
-}
-sp -= gap;
-*sp = masquerade_as_boxed(cp);
-cp = 0; // not to confuse stack tracing
-
-
-
-
-ip += 4;
-goto *next;
-}
-
-
 l_bs_restore2_3: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1008].counter++;
+	ling_opcodes[1007].counter++;
 #endif
 
 
@@ -28687,7 +28647,7 @@ goto *next;
 l_fast_element_5: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1009].counter++;
+	ling_opcodes[1008].counter++;
 #endif
 
 
@@ -28726,7 +28686,7 @@ goto *next;
 is_bitstr_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1010].counter++;
+	ling_opcodes[1009].counter++;
 #endif
 
 
@@ -28744,118 +28704,50 @@ goto *next;
 }
 
 
-move_jump_11: 
+is_integer_allocate_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1011].counter++;
+	ling_opcodes[1010].counter++;
 #endif
 
 
-r0 = tag_int(0);
-do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-}
-
-is_nil_23: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1012].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (sp[5] != nil)
+void *next = (void *)expand_ptr(ip[4]);
+term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_int(v) && !(is_boxed(v) && is_bignum(peel_boxed(v))))
 	do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
 } while (0);
 
-
-ip += 2;
-goto *next;
-}
-
-
-is_nonempty_list_32: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1013].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(sp[8]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-is_nonempty_list_31: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1014].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(rs[25]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-l_move_call_ext_43: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1015].counter++;
-#endif
-
-
-r0 = tag_int(1000);
-cp = ip + 1;
-export_t *exp = (preloaded_exports+615);
-if (unlikely(exp == 0 || exp->entry == 0))
+int gap = ip[3]+1;
+if (unlikely(sp - send < gap))
 {
-	rs[0] = r0;
-	light_swap_out();
-	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
-	light_swap_in();
-	r0 = exp->module;
-	rs[1] = exp->function;
-	rs[2] = args;
-	exp = EH_UNDEF_EXP;
-}
-ip = exp->entry;
+	proc_stack_set_top(proc, sp);
+	proc_stack_ensure(proc, gap);
+	sp = proc_stack_top(proc);
+	send = proc_stack_end(proc);
 
-reds_left--; \
-if (unlikely(reds_left <= 0)) {
-	proc->cap.live = exp->arity;
-	light_swap_out();
-	goto yield;
+	// In a rare case proc_stack_ensure() may enlarge the space available for
+	// the heap
+	//
+	hend = heap_end(&proc->hp);
 }
-next(); \
+sp -= gap;
+*sp = masquerade_as_boxed(cp);
+cp = 0; // not to confuse stack tracing
 
-;
+
+
+
+ip += 4;
+goto *next;
 }
+
 
 catch_end_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1016].counter++;
+	ling_opcodes[1011].counter++;
 #endif
 
 
@@ -28897,15 +28789,29 @@ goto *next;
 }
 
 
-is_tuple_8: 
+move_jump_11: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1017].counter++;
+	ling_opcodes[1012].counter++;
+#endif
+
+
+r0 = tag_int(0);
+do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+}
+
+is_nil_23: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1013].counter++;
 #endif
 
 
 void *next = (void *)expand_ptr(ip[2]);
-if (!is_tuple(rs[6]))
+if (sp[5] != nil)
 	do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
@@ -28917,15 +28823,15 @@ goto *next;
 }
 
 
-is_tuple_7: 
+is_nonempty_list_32: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1018].counter++;
+	ling_opcodes[1014].counter++;
 #endif
 
 
 void *next = (void *)expand_ptr(ip[2]);
-if (!is_tuple(sp[5]))
+if (!is_cons(sp[8]))
 	do {
 ip = (uint32_t *)expand_ptr(ip[1]);
 next();
@@ -28936,11 +28842,65 @@ ip += 2;
 goto *next;
 }
 
+
+is_nonempty_list_31: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1015].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(rs[25]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_move_call_ext_43: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1016].counter++;
+#endif
+
+
+r0 = tag_int(1000);
+cp = ip + 1;
+export_t *exp = (preloaded_exports+615);
+if (unlikely(exp == 0 || exp->entry == 0))
+{
+	rs[0] = r0;
+	light_swap_out();
+	term_t args = heap_vector_to_list(&proc->hp, rs, exp->arity);
+	light_swap_in();
+	r0 = exp->module;
+	rs[1] = exp->function;
+	rs[2] = args;
+	exp = EH_UNDEF_EXP;
+}
+ip = exp->entry;
+
+reds_left--; \
+if (unlikely(reds_left <= 0)) {
+	proc->cap.live = exp->arity;
+	light_swap_out();
+	goto yield;
+}
+next(); \
+
+;
+}
 
 l_is_eq_exact_immed_34: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1019].counter++;
+	ling_opcodes[1017].counter++;
 #endif
 
 
@@ -28960,7 +28920,7 @@ goto *next;
 l_is_eq_exact_immed_33: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1020].counter++;
+	ling_opcodes[1018].counter++;
 #endif
 
 
@@ -28980,7 +28940,7 @@ goto *next;
 l_move_call_last_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1021].counter++;
+	ling_opcodes[1019].counter++;
 #endif
 
 
@@ -28994,7 +28954,7 @@ local_reduce();
 l_bs_test_tail_imm2_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1022].counter++;
+	ling_opcodes[1020].counter++;
 #endif
 
 
@@ -29015,62 +28975,10 @@ goto *next;
 }
 
 
-move_return_24: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1023].counter++;
-#endif
-
-
-r0 = rs[6];
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-move_return_23: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1024].counter++;
-#endif
-
-
-r0 = A_NOMATCH;
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-move_return_22: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1025].counter++;
-#endif
-
-
-r0 = tag_int(5);
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-badmatch_14: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1026].counter++;
-#endif
-
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[2]);
-light_swap_in();
-raise_error(reason);
-}
-
 fconv_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1027].counter++;
+	ling_opcodes[1021].counter++;
 #endif
 
 
@@ -29087,70 +28995,10 @@ goto *next;
 }
 
 
-is_nonempty_list_35: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1028].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(sp[9]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-is_nonempty_list_34: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1029].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(rs[26]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-is_nonempty_list_33: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1030].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(sp[6]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
 l_bs_save2_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1031].counter++;
+	ling_opcodes[1022].counter++;
 #endif
 
 
@@ -29171,7 +29019,7 @@ goto *next;
 l_jump_on_val_1: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1032].counter++;
+	ling_opcodes[1023].counter++;
 #endif
 
 
@@ -29196,7 +29044,7 @@ next();
 l_bs_add_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1033].counter++;
+	ling_opcodes[1024].counter++;
 #endif
 
 
@@ -29277,36 +29125,89 @@ goto *next;
 }
 
 
-l_wait_timeout_0: ATTRIBUTE_COLD
+is_tuple_8: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1034].counter++;
+	ling_opcodes[1025].counter++;
 #endif
 
 
 void *next = (void *)expand_ptr(ip[2]);
-uint32_t millis = 1000;
-if (millis == 0)
-{
-	ip += 2;
-	goto *next;
-}
-proc->result.what = SLICE_RESULT_WAIT;
-uint64_t now = monotonic_clock();
-proc->result.until_when = now + (uint64_t)millis * 1000000;
-proc->result.jump_to = ip + 2;
-
+if (!is_tuple(rs[6]))
+	do {
 ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
 
-proc->cap.live = 0;
-light_swap_out();
-goto schedule;
+
+ip += 2;
+goto *next;
+}
+
+
+is_tuple_7: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1026].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_tuple(sp[5]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+move_return_24: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1027].counter++;
+#endif
+
+
+r0 = rs[6];
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+move_return_23: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1028].counter++;
+#endif
+
+
+r0 = A_NOMATCH;
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+move_return_22: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1029].counter++;
+#endif
+
+
+r0 = tag_int(5);
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
 }
 
 bs_context_to_binary_6: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1035].counter++;
+	ling_opcodes[1030].counter++;
 #endif
 
 
@@ -29351,6 +29252,105 @@ ip += 2;
 goto *next;
 }
 
+
+badmatch_14: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1031].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, sp[2]);
+light_swap_in();
+raise_error(reason);
+}
+
+is_nonempty_list_35: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1032].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(sp[9]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+is_nonempty_list_34: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1033].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(rs[26]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+is_nonempty_list_33: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1034].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(sp[6]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+l_wait_timeout_0: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1035].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+uint32_t millis = 1000;
+if (millis == 0)
+{
+	ip += 2;
+	goto *next;
+}
+proc->result.what = SLICE_RESULT_WAIT;
+uint64_t now = monotonic_clock();
+proc->result.until_when = now + (uint64_t)millis * 1000000;
+proc->result.jump_to = ip + 2;
+
+ip = (uint32_t *)expand_ptr(ip[1]);
+
+proc->cap.live = 0;
+light_swap_out();
+goto schedule;
+}
 
 l_gc_bif2_0: ATTRIBUTE_COLD
  {
@@ -29463,173 +29463,10 @@ goto *next;
 }
 
 
-is_tuple_9: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1039].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_tuple(rs[8]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-extract_next_element_26: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1040].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-rs[22] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-
-
-ip += 1;
-goto *next;
-}
-
-
-extract_next_element_25: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1041].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-sp[8] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-
-
-ip += 1;
-goto *next;
-}
-
-
-extract_next_element_24: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1042].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-rs[15] = *(term_t *)expand_ptr(tmp_arg1);
-tmp_arg1 += sizeof(term_t);
-
-
-ip += 1;
-goto *next;
-}
-
-
-move_return_27: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1043].counter++;
-#endif
-
-
-r0 = tag_int(6);
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-move_return_26: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1044].counter++;
-#endif
-
-
-r0 = tag_int(128);
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-move_return_25: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1045].counter++;
-#endif
-
-
-r0 = tag_int(7);
-ip = cp;
-cp = 0; // not to confuse stack tracing
-next();
-}
-
-is_nil_24: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1046].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (rs[22] != nil)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-bs_context_to_binary_5: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1047].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-term_t bin = rs[4];
-if (is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX)
-{
-	t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
-
-	light_swap_out();
-	uint32_t *p = heap_alloc(&proc->hp, WSIZE(t_sub_bin_t));
-	t_sub_bin_t *sb = (t_sub_bin_t *)p;
-
-	// Use the offset from the slot zero as a better start
-	int64_t starts = mc->saved_offsets[0];
-
-	box_sub_bin(p, mc->parent, starts, mc->bs.ends, 0);
-	heap_set_top(&proc->hp, p);
-	light_swap_in();
-
-	rs[4] = tag_boxed(sb);
-}
-
-
-ip += 1;
-goto *next;
-}
-
-
 l_new_bs_put_binary_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1048].counter++;
+	ling_opcodes[1039].counter++;
 #endif
 
 
@@ -29695,7 +29532,7 @@ goto *next;
 l_bs_validate_unicode_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1049].counter++;
+	ling_opcodes[1040].counter++;
 #endif
 
 
@@ -29726,69 +29563,10 @@ goto *next;
 }
 
 
-move_11: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1050].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-rs[10] = nil;
-
-
-ip += 1;
-goto *next;
-}
-
-
-l_bs_utf16_size_0: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1051].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[3]);
-term_t point = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
-int sz = 4;
-if (is_int(point))
-{
-int n = int_value(point);
-if (n >= 0)
-{
-	if (n <= 0xffff)
-		sz = 2;
-}
-}
-{
-	term_t dst__ = ip[2];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = tag_int(sz);
-		else
-			rs[reg__] = tag_int(sz);
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = tag_int(sz);
-	}
-}
-
-
-
-ip += 3;
-goto *next;
-}
-
-
 l_bs_get_binary2_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1052].counter++;
+	ling_opcodes[1041].counter++;
 #endif
 
 
@@ -29844,6 +29622,228 @@ mc->bs.starts += bcount;
 
 
 ip += 6;
+goto *next;
+}
+
+
+is_tuple_9: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1042].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_tuple(rs[8]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+extract_next_element_26: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1043].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+rs[22] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+
+ip += 1;
+goto *next;
+}
+
+
+extract_next_element_25: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1044].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+sp[8] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+
+ip += 1;
+goto *next;
+}
+
+
+extract_next_element_24: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1045].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+rs[15] = *(term_t *)expand_ptr(tmp_arg1);
+tmp_arg1 += sizeof(term_t);
+
+
+ip += 1;
+goto *next;
+}
+
+
+move_return_27: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1046].counter++;
+#endif
+
+
+r0 = tag_int(6);
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+move_return_26: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1047].counter++;
+#endif
+
+
+r0 = tag_int(128);
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+move_return_25: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1048].counter++;
+#endif
+
+
+r0 = tag_int(7);
+ip = cp;
+cp = 0; // not to confuse stack tracing
+next();
+}
+
+is_nil_24: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1049].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (rs[22] != nil)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+bs_context_to_binary_5: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1050].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+term_t bin = rs[4];
+if (is_boxed(bin) && boxed_tag(peel_boxed(bin)) == SUBTAG_MATCH_CTX)
+{
+	t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(bin);
+
+	light_swap_out();
+	uint32_t *p = heap_alloc(&proc->hp, WSIZE(t_sub_bin_t));
+	t_sub_bin_t *sb = (t_sub_bin_t *)p;
+
+	// Use the offset from the slot zero as a better start
+	int64_t starts = mc->saved_offsets[0];
+
+	box_sub_bin(p, mc->parent, starts, mc->bs.ends, 0);
+	heap_set_top(&proc->hp, p);
+	light_swap_in();
+
+	rs[4] = tag_boxed(sb);
+}
+
+
+ip += 1;
+goto *next;
+}
+
+
+move_11: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1051].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+rs[10] = nil;
+
+
+ip += 1;
+goto *next;
+}
+
+
+l_bs_utf16_size_0: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1052].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t point = (term_t)(is_reg(ip[1]) ?(ip[1] == reg0) ?r0 :rs[reg_index(ip[1])] :is_slot(ip[1]) ?sp[slot_index(ip[1])+1] :ip[1]);
+int sz = 4;
+if (is_int(point))
+{
+int n = int_value(point);
+if (n >= 0)
+{
+	if (n <= 0xffff)
+		sz = 2;
+}
+}
+{
+	term_t dst__ = ip[2];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = tag_int(sz);
+		else
+			rs[reg__] = tag_int(sz);
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = tag_int(sz);
+	}
+}
+
+
+
+ip += 3;
 goto *next;
 }
 
@@ -30097,83 +30097,10 @@ goto *next;
 }
 
 
-is_nil_28: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1063].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (rs[20] != nil)
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-badmatch_15: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1064].counter++;
-#endif
-
-
-light_swap_out();
-term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, rs[6]);
-light_swap_in();
-raise_error(reason);
-}
-
-is_nonempty_list_37: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1065].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(rs[30]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
-is_nonempty_list_36: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1066].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-if (!is_cons(rs[23]))
-	do {
-ip = (uint32_t *)expand_ptr(ip[1]);
-next();
-} while (0);
-
-
-ip += 2;
-goto *next;
-}
-
-
 l_is_function2_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1067].counter++;
+	ling_opcodes[1063].counter++;
 #endif
 
 
@@ -30215,42 +30142,10 @@ goto *next;
 }
 
 
-init_14: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1068].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-sp[15] = nil;
-
-
-ip += 1;
-goto *next;
-}
-
-
-init_13: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1069].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-sp[14] = nil;
-
-
-ip += 1;
-goto *next;
-}
-
-
 fmove_2_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1070].counter++;
+	ling_opcodes[1064].counter++;
 #endif
 
 
@@ -30282,6 +30177,111 @@ htop += WSIZE(t_float_t);
 
 
 ip += 3;
+goto *next;
+}
+
+
+is_nil_28: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1065].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (rs[20] != nil)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+badmatch_15: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1066].counter++;
+#endif
+
+
+light_swap_out();
+term_t reason = heap_tuple2(&proc->hp, A_BADMATCH, rs[6]);
+light_swap_in();
+raise_error(reason);
+}
+
+is_nonempty_list_37: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1067].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(rs[30]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+is_nonempty_list_36: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1068].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+if (!is_cons(rs[23]))
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 2;
+goto *next;
+}
+
+
+init_14: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1069].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+sp[15] = nil;
+
+
+ip += 1;
+goto *next;
+}
+
+
+init_13: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1070].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+sp[14] = nil;
+
+
+ip += 1;
 goto *next;
 }
 
@@ -30826,62 +30826,10 @@ goto *next;
 }
 
 
-l_bs_validate_unicode_retract_0: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1088].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[2]);
-assert(is_boxed(tmp_arg2) && boxed_tag(peel_boxed(tmp_arg2)) == SUBTAG_MATCH_CTX);
-t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(tmp_arg2);
-if (!is_int(tmp_arg1))	// all bignums are invalid code points
-	goto rectract;
-int n = int_value(tmp_arg1);
-if (n < 0 || n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff))
-{
-rectract:
-	mc->bs.starts -= 32;	// rectract 32 bits
-	do {
-	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
-	if (fail__ != 0)
-	{
-		ip = fail__;
-		next();
-	}
-} while (0)
-
-;
-	badarg();
-}
-
-
-ip += 2;
-goto *next;
-}
-
-
-init_15: 
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1089].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[1]);
-sp[17] = nil;
-
-
-ip += 1;
-goto *next;
-}
-
-
 l_new_bs_put_float_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1090].counter++;
+	ling_opcodes[1088].counter++;
 #endif
 
 
@@ -30930,10 +30878,117 @@ goto *next;
 }
 
 
-l_gc_bif3_0: ATTRIBUTE_COLD
+l_bs_validate_unicode_retract_0: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1089].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[2]);
+assert(is_boxed(tmp_arg2) && boxed_tag(peel_boxed(tmp_arg2)) == SUBTAG_MATCH_CTX);
+t_match_ctx_t *mc = (t_match_ctx_t *)peel_boxed(tmp_arg2);
+if (!is_int(tmp_arg1))	// all bignums are invalid code points
+	goto rectract;
+int n = int_value(tmp_arg1);
+if (n < 0 || n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff))
+{
+rectract:
+	mc->bs.starts -= 32;	// rectract 32 bits
+	do {
+	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
+
+;
+	badarg();
+}
+
+
+ip += 2;
+goto *next;
+}
+
+
+init_15: 
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1090].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[1]);
+sp[17] = nil;
+
+
+ip += 1;
+goto *next;
+}
+
+
+l_bxor_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[1091].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[4]);
+term_t r;
+if (are_both_int(tmp_arg1, tmp_arg2))
+	r = tag_int(int_value(tmp_arg1) ^ int_value(tmp_arg2));
+else
+{
+	light_swap_out();
+	r = mixed_bxor(tmp_arg1, tmp_arg2, &proc->hp);
+	light_swap_in();
+	if (is_atom(r))
+	{
+		do {
+	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
+	if (fail__ != 0)
+	{
+		ip = fail__;
+		next();
+	}
+} while (0)
+
+;
+		bif_error2(r, A_ERLANG, A_BXOR, tmp_arg1, tmp_arg2);
+	}
+}
+{
+	term_t dst__ = ip[2];
+	if (is_reg(dst__))
+	{
+		int reg__ = reg_index(dst__);
+		if (reg__ == 0)
+			r0 = r;
+		else
+			rs[reg__] = r;
+	}
+	else
+	{
+		assert(is_slot(dst__));
+		sp[slot_index(dst__)+1] = r;
+	}
+}
+
+
+
+ip += 4;
+goto *next;
+}
+
+
+l_gc_bif3_0: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1092].counter++;
 #endif
 
 
@@ -30991,61 +31046,6 @@ if (r == noval)
 
 
 ip += 6;
-goto *next;
-}
-
-
-l_bxor_0: ATTRIBUTE_COLD
- {
-#ifdef EXP_COUNT_IOPS
-	ling_opcodes[1092].counter++;
-#endif
-
-
-void *next = (void *)expand_ptr(ip[4]);
-term_t r;
-if (are_both_int(tmp_arg1, tmp_arg2))
-	r = tag_int(int_value(tmp_arg1) ^ int_value(tmp_arg2));
-else
-{
-	light_swap_out();
-	r = mixed_bxor(tmp_arg1, tmp_arg2, &proc->hp);
-	light_swap_in();
-	if (is_atom(r))
-	{
-		do {
-	uint32_t *fail__ = (uint32_t *)expand_ptr(ip[1]);
-	if (fail__ != 0)
-	{
-		ip = fail__;
-		next();
-	}
-} while (0)
-
-;
-		bif_error2(r, A_ERLANG, A_BXOR, tmp_arg1, tmp_arg2);
-	}
-}
-{
-	term_t dst__ = ip[2];
-	if (is_reg(dst__))
-	{
-		int reg__ = reg_index(dst__);
-		if (reg__ == 0)
-			r0 = r;
-		else
-			rs[reg__] = r;
-	}
-	else
-	{
-		assert(is_slot(dst__));
-		sp[slot_index(dst__)+1] = r;
-	}
-}
-
-
-
-ip += 4;
 goto *next;
 }
 
@@ -32506,10 +32506,31 @@ goto *next;
 }
 
 
-test_heap_1: ATTRIBUTE_COLD
+is_bigint_0: 
  {
 #ifdef EXP_COUNT_IOPS
 	ling_opcodes[1121].counter++;
+#endif
+
+
+void *next = (void *)expand_ptr(ip[3]);
+term_t v = (term_t)(is_reg(ip[2]) ?(ip[2] == reg0) ?r0 :rs[reg_index(ip[2])] :is_slot(ip[2]) ?sp[slot_index(ip[2])+1] :ip[2]);
+if (!is_boxed(v) || (*peel_boxed(v) & SUBTAG_BIGNUM_MASK) != SUBTAG_BIGNUM)
+	do {
+ip = (uint32_t *)expand_ptr(ip[1]);
+next();
+} while (0);
+
+
+ip += 3;
+goto *next;
+}
+
+
+test_heap_1: ATTRIBUTE_COLD
+ {
+#ifdef EXP_COUNT_IOPS
+	ling_opcodes[1122].counter++;
 #endif
 
 
@@ -32540,7 +32561,7 @@ goto *next;
 func_info_0: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1122].counter++;
+	ling_opcodes[1123].counter++;
 #endif
 
 
@@ -32558,7 +32579,7 @@ goto exception;
 call_bif_0: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1123].counter++;
+	ling_opcodes[1124].counter++;
 #endif
 
 
@@ -32594,7 +32615,7 @@ goto schedule;
 l_bs_get_utf16_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1124].counter++;
+	ling_opcodes[1125].counter++;
 #endif
 
 
@@ -32648,7 +32669,7 @@ goto *next;
 l_put_tuple_9: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1125].counter++;
+	ling_opcodes[1126].counter++;
 #endif
 
 
@@ -32709,7 +32730,7 @@ next();
 get_tuple_element_11: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1126].counter++;
+	ling_opcodes[1127].counter++;
 #endif
 
 
@@ -32743,7 +32764,7 @@ goto *next;
 allocate_init_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1127].counter++;
+	ling_opcodes[1128].counter++;
 #endif
 
 
@@ -32779,7 +32800,7 @@ goto *next;
 l_call_fun_last_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1128].counter++;
+	ling_opcodes[1129].counter++;
 #endif
 
 
@@ -32876,7 +32897,7 @@ local_reduce();
 set_tuple_element_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1129].counter++;
+	ling_opcodes[1130].counter++;
 #endif
 
 
@@ -32894,7 +32915,7 @@ goto *next;
 l_bsr_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1130].counter++;
+	ling_opcodes[1131].counter++;
 #endif
 
 
@@ -32974,7 +32995,7 @@ goto *next;
 l_bs_get_integer_32_3: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1131].counter++;
+	ling_opcodes[1132].counter++;
 #endif
 
 
@@ -33019,7 +33040,7 @@ goto *next;
 allocate_heap_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1132].counter++;
+	ling_opcodes[1133].counter++;
 #endif
 
 
@@ -33068,7 +33089,7 @@ goto *next;
 is_tuple_of_arity_4: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1133].counter++;
+	ling_opcodes[1134].counter++;
 #endif
 
 
@@ -33090,7 +33111,7 @@ goto *next;
 test_arity_4: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1134].counter++;
+	ling_opcodes[1135].counter++;
 #endif
 
 
@@ -33113,7 +33134,7 @@ goto *next;
 is_nonempty_list_allocate_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1135].counter++;
+	ling_opcodes[1136].counter++;
 #endif
 
 
@@ -33152,7 +33173,7 @@ goto *next;
 l_bs_append_2: 
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1136].counter++;
+	ling_opcodes[1137].counter++;
 #endif
 
 
@@ -33212,7 +33233,7 @@ goto *next;
 try_case_end_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1137].counter++;
+	ling_opcodes[1138].counter++;
 #endif
 
 
@@ -33225,7 +33246,7 @@ raise_error(reason);
 init3_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1138].counter++;
+	ling_opcodes[1139].counter++;
 #endif
 
 
@@ -33249,7 +33270,7 @@ goto *next;
 l_select_tuple_arity2_3: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1139].counter++;
+	ling_opcodes[1140].counter++;
 #endif
 
 
@@ -33280,7 +33301,7 @@ next();
 init2_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1140].counter++;
+	ling_opcodes[1141].counter++;
 #endif
 
 
@@ -33301,7 +33322,7 @@ goto *next;
 l_bs_get_binary_all2_2: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1141].counter++;
+	ling_opcodes[1142].counter++;
 #endif
 
 
@@ -33362,7 +33383,7 @@ goto *next;
 is_nonempty_list_test_heap_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1142].counter++;
+	ling_opcodes[1143].counter++;
 #endif
 
 
@@ -33399,7 +33420,7 @@ goto *next;
 allocate_heap_zero_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1143].counter++;
+	ling_opcodes[1144].counter++;
 #endif
 
 
@@ -33452,7 +33473,7 @@ goto *next;
 l_bs_init_heap_bin_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1144].counter++;
+	ling_opcodes[1145].counter++;
 #endif
 
 
@@ -33494,7 +33515,7 @@ goto *next;
 l_plus_3: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1145].counter++;
+	ling_opcodes[1146].counter++;
 #endif
 
 
@@ -33593,7 +33614,7 @@ goto *next;
 l_bs_get_integer_1: ATTRIBUTE_COLD
  {
 #ifdef EXP_COUNT_IOPS
-	ling_opcodes[1146].counter++;
+	ling_opcodes[1147].counter++;
 #endif
 
 
@@ -34443,17 +34464,17 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_trim_2,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_trim_2",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&get_list_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "get_list_3",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_trim_2,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_trim_2",
+#endif
+	  .arg_size = 0 },
 
 	{ .label = &&l_call_last_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -34563,17 +34584,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_new_bs_put_integer_imm_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_new_bs_put_integer_imm_0",
-#endif
-	  .arg_size = 3 },
-
 	{ .label = &&l_fetch_5,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_fetch_5",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_new_bs_put_integer_imm_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_new_bs_put_integer_imm_0",
+#endif
+	  .arg_size = 3 },
 
 	{ .label = &&l_catch_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -34785,17 +34806,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_call_last_4,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_call_last_4",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&l_bs_get_binary_all_reuse_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_get_binary_all_reuse_0",
 #endif
 	  .arg_size = 2 },
+
+	{ .label = &&l_call_last_4,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_call_last_4",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&bif1_body_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -34893,17 +34914,17 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_move_call_ext_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_1",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&l_select_val2_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_select_val2_2",
 #endif
 	  .arg_size = 4 },
+
+	{ .label = &&l_move_call_ext_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_1",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&l_call_ext_only_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -35079,17 +35100,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&deallocate_return_5,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "deallocate_return_5",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&l_fetch_7,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_fetch_7",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&deallocate_return_5,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "deallocate_return_5",
+#endif
+	  .arg_size = 0 },
 
 	{ .label = &&l_bs_init_heap_bin_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -35577,6 +35598,12 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&allocate_heap_zero_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "allocate_heap_zero_0",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&call_bif_18,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "call_bif_18",
@@ -35588,12 +35615,6 @@ initialize:
 	  .var_name = "l_allocate_6",
 #endif
 	  .arg_size = 0 },
-
-	{ .label = &&allocate_heap_zero_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "allocate_heap_zero_0",
-#endif
-	  .arg_size = 1 },
 
 	{ .label = &&case_end_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -35973,17 +35994,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&extract_next_element_27,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "extract_next_element_27",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&call_bif_21,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "call_bif_21",
 #endif
 	  .arg_size = 0 },
+
+	{ .label = &&extract_next_element_27,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "extract_next_element_27",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&extract_next_element_10,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36003,17 +36024,17 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_allocate_zero_6,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_allocate_zero_6",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&l_move_call_ext_11,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_ext_11",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_allocate_zero_6,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_allocate_zero_6",
+#endif
+	  .arg_size = 0 },
 
 	{ .label = &&l_bs_init_fail_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36027,17 +36048,17 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&extract_next_element3_2,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "extract_next_element3_2",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&test_arity_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "test_arity_2",
 #endif
 	  .arg_size = 2 },
+
+	{ .label = &&extract_next_element3_2,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "extract_next_element3_2",
+#endif
+	  .arg_size = 0 },
 
 	{ .label = &&is_nonempty_list_12,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36069,21 +36090,27 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_put_tuple_6,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_put_tuple_6",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&l_bs_get_integer_8_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_get_integer_8_1",
 #endif
 	  .arg_size = 2 },
 
+	{ .label = &&l_put_tuple_6,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_put_tuple_6",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&is_tuple_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_tuple_2",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_is_ne_exact_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_is_ne_exact_0",
 #endif
 	  .arg_size = 1 },
 
@@ -36108,12 +36135,6 @@ initialize:
 	{ .label = &&l_call_last_7,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_call_last_7",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_is_ne_exact_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_ne_exact_0",
 #endif
 	  .arg_size = 1 },
 
@@ -36159,27 +36180,21 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&extract_next_element3_3,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "extract_next_element3_3",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&l_bif2_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bif2_3",
 #endif
 	  .arg_size = 2 },
 
+	{ .label = &&extract_next_element3_3,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "extract_next_element3_3",
+#endif
+	  .arg_size = 0 },
+
 	{ .label = &&l_move_call_ext_last_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_ext_last_1",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&l_bif2_4,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bif2_4",
 #endif
 	  .arg_size = 2 },
 
@@ -36189,15 +36204,15 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_bs_get_integer_32_0,
+	{ .label = &&l_bif2_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_get_integer_32_0",
+	  .var_name = "l_bif2_4",
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_new_bs_put_binary_all_1,
+	{ .label = &&l_bs_get_integer_32_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_new_bs_put_binary_all_1",
+	  .var_name = "l_bs_get_integer_32_0",
 #endif
 	  .arg_size = 2 },
 
@@ -36212,6 +36227,12 @@ initialize:
 	  .var_name = "l_call_ext_10",
 #endif
 	  .arg_size = 0 },
+
+	{ .label = &&l_new_bs_put_binary_all_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_new_bs_put_binary_all_1",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&catch_end_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36357,27 +36378,21 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&is_nonempty_list_39,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_nonempty_list_39",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&move_deallocate_return_6,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "move_deallocate_return_6",
 #endif
 	  .arg_size = 1 },
 
+	{ .label = &&is_nonempty_list_39,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_nonempty_list_39",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&l_fetch_10,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_fetch_10",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_fast_element_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fast_element_1",
 #endif
 	  .arg_size = 1 },
 
@@ -36393,15 +36408,21 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_fast_element_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fast_element_1",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&l_move_call_11,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_11",
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_select_tuple_arity_1,
+	{ .label = &&l_band_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_select_tuple_arity_1",
+	  .var_name = "l_band_1",
 #endif
 	  .arg_size = 2 },
 
@@ -36423,11 +36444,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_band_1,
+	{ .label = &&l_select_tuple_arity_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_band_1",
+	  .var_name = "l_select_tuple_arity_1",
 #endif
 	  .arg_size = 2 },
+
+	{ .label = &&l_fetch_11,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fetch_11",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&l_call_ext_12,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36438,12 +36465,6 @@ initialize:
 	{ .label = &&is_nonempty_list_14,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_nonempty_list_14",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_fetch_11,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fetch_11",
 #endif
 	  .arg_size = 1 },
 
@@ -36477,17 +36498,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_is_eq_exact_immed_18,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_eq_exact_immed_18",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&l_get_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_get_1",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_is_eq_exact_immed_18,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_is_eq_exact_immed_18",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&is_nil_11,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36501,11 +36522,11 @@ initialize:
 #endif
 	  .arg_size = 5 },
 
-	{ .label = &&l_get_2,
+	{ .label = &&l_bs_get_integer_small_imm_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_get_2",
+	  .var_name = "l_bs_get_integer_small_imm_0",
 #endif
-	  .arg_size = 1 },
+	  .arg_size = 2 },
 
 	{ .label = &&l_bsl_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36513,11 +36534,11 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_bs_get_integer_small_imm_0,
+	{ .label = &&l_get_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_get_integer_small_imm_0",
+	  .var_name = "l_get_2",
 #endif
-	  .arg_size = 2 },
+	  .arg_size = 1 },
 
 	{ .label = &&l_call_ext_13,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36543,29 +36564,17 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_allocate_7,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_allocate_7",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&l_bor_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bor_0",
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&is_nil_30,
+	{ .label = &&l_allocate_7,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_nil_30",
+	  .var_name = "l_allocate_7",
 #endif
-	  .arg_size = 2 },
-
-	{ .label = &&move2_8,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "move2_8",
-#endif
-	  .arg_size = 1 },
+	  .arg_size = 0 },
 
 	{ .label = &&l_call_ext_14,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36578,6 +36587,12 @@ initialize:
 	  .var_name = "is_integer_1",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&is_nil_30,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_nil_30",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&is_nil_13,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36600,6 +36615,12 @@ initialize:
 	{ .label = &&l_move_call_13,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_13",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&move2_8,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "move2_8",
 #endif
 	  .arg_size = 1 },
 
@@ -36645,12 +36666,6 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_move_call_ext_18,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_18",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&l_catch_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_catch_4",
@@ -36681,23 +36696,29 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
+	{ .label = &&l_move_call_ext_18,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_18",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&l_select_val2_17,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_select_val2_17",
 #endif
 	  .arg_size = 6 },
 
-	{ .label = &&l_fadd_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fadd_0",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&l_element_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_element_1",
 #endif
 	  .arg_size = 3 },
+
+	{ .label = &&l_fadd_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fadd_0",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&extract_next_element3_11,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36753,15 +36774,15 @@ initialize:
 #endif
 	  .arg_size = 4 },
 
-	{ .label = &&fmove_1_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "fmove_1_0",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&is_nonempty_list_16,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_nonempty_list_16",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&fmove_1_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "fmove_1_0",
 #endif
 	  .arg_size = 1 },
 
@@ -36807,21 +36828,21 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_is_eq_exact_immed_20,
+	{ .label = &&l_move_call_ext_19,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_eq_exact_immed_20",
+	  .var_name = "l_move_call_ext_19",
 #endif
-	  .arg_size = 2 },
+	  .arg_size = 1 },
+
+	{ .label = &&bif2_body_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "bif2_body_1",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&l_move_call_ext_20,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_ext_20",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_move_call_ext_19,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_19",
 #endif
 	  .arg_size = 1 },
 
@@ -36837,15 +36858,33 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&bif2_body_1,
+	{ .label = &&l_is_eq_exact_immed_20,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "bif2_body_1",
+	  .var_name = "l_is_eq_exact_immed_20",
 #endif
-	  .arg_size = 1 },
+	  .arg_size = 2 },
 
 	{ .label = &&l_bs_skip_bits_all2_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_skip_bits_all2_0",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&call_bif_31,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "call_bif_31",
+#endif
+	  .arg_size = 0 },
+
+	{ .label = &&case_end_10,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "case_end_10",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_select_tuple_arity_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_select_tuple_arity_0",
 #endif
 	  .arg_size = 1 },
 
@@ -36861,35 +36900,17 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&call_bif_31,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "call_bif_31",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&fconv_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "fconv_0",
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&case_end_10,
+	{ .label = &&l_catch_5,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "case_end_10",
+	  .var_name = "l_catch_5",
 #endif
 	  .arg_size = 1 },
-
-	{ .label = &&l_select_tuple_arity_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_select_tuple_arity_0",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_move_call_ext_last_2,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_last_2",
-#endif
-	  .arg_size = 2 },
 
 	{ .label = &&put_list_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36897,11 +36918,11 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_catch_5,
+	{ .label = &&l_move_call_ext_last_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_catch_5",
+	  .var_name = "l_move_call_ext_last_2",
 #endif
-	  .arg_size = 1 },
+	  .arg_size = 2 },
 
 	{ .label = &&call_bif_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36939,17 +36960,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_fetch_23,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fetch_23",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&l_call_ext_last_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_call_ext_last_4",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_fetch_23,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fetch_23",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&extract_next_element_14,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -36957,21 +36978,15 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_bor_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bor_1",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&is_binary_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_binary_2",
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&is_integer_allocate_0,
+	{ .label = &&l_bor_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_integer_allocate_0",
+	  .var_name = "l_bor_1",
 #endif
 	  .arg_size = 2 },
 
@@ -36987,6 +37002,12 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&is_integer_allocate_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_integer_allocate_0",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&l_is_eq_exact_immed_23,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_is_eq_exact_immed_23",
@@ -36998,18 +37019,6 @@ initialize:
 	  .var_name = "l_move_call_ext_only_3",
 #endif
 	  .arg_size = 1 },
-
-	{ .label = &&l_make_export_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_make_export_0",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_bs_init_bits_fail_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_init_bits_fail_0",
-#endif
-	  .arg_size = 4 },
 
 	{ .label = &&badmatch_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37023,9 +37032,15 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&fmove_2_0,
+	{ .label = &&l_bs_init_bits_fail_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "fmove_2_0",
+	  .var_name = "l_bs_init_bits_fail_0",
+#endif
+	  .arg_size = 4 },
+
+	{ .label = &&l_make_export_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_make_export_0",
 #endif
 	  .arg_size = 1 },
 
@@ -37034,18 +37049,6 @@ initialize:
 	  .var_name = "is_integer_6",
 #endif
 	  .arg_size = 2 },
-
-	{ .label = &&apply_last_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "apply_last_0",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&fmove_2_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "fmove_2_1",
-#endif
-	  .arg_size = 1 },
 
 	{ .label = &&call_bif_34,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37059,27 +37062,27 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&fmove_1_1,
+	{ .label = &&apply_last_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "fmove_1_1",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_move_call_ext_22,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_22",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_fast_element_3,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fast_element_3",
+	  .var_name = "apply_last_0",
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_fetch_13,
+	{ .label = &&fmove_2_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fetch_13",
+	  .var_name = "fmove_2_0",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&fmove_2_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "fmove_2_1",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&fmove_1_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "fmove_1_1",
 #endif
 	  .arg_size = 1 },
 
@@ -37113,11 +37116,23 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_new_bs_put_integer_0,
+	{ .label = &&l_fetch_13,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_new_bs_put_integer_0",
+	  .var_name = "l_fetch_13",
 #endif
-	  .arg_size = 3 },
+	  .arg_size = 1 },
+
+	{ .label = &&l_fast_element_3,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fast_element_3",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_move_call_ext_22,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_22",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&is_tuple_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37143,6 +37158,12 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
+	{ .label = &&l_new_bs_put_integer_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_new_bs_put_integer_0",
+#endif
+	  .arg_size = 3 },
+
 	{ .label = &&extract_next_element_16,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "extract_next_element_16",
@@ -37155,27 +37176,21 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&is_nonempty_list_17,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_nonempty_list_17",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&is_list_6,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_list_6",
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_fetch_14,
+	{ .label = &&is_nonempty_list_17,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fetch_14",
+	  .var_name = "is_nonempty_list_17",
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_fetch_15,
+	{ .label = &&l_fetch_14,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fetch_15",
+	  .var_name = "l_fetch_14",
 #endif
 	  .arg_size = 1 },
 
@@ -37188,6 +37203,12 @@ initialize:
 	{ .label = &&is_atom_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_atom_3",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_fetch_15,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fetch_15",
 #endif
 	  .arg_size = 1 },
 
@@ -37257,12 +37278,6 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&move_deallocate_return_7,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "move_deallocate_return_7",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&init_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "init_8",
@@ -37275,15 +37290,9 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_move_call_ext_last_3,
+	{ .label = &&move_deallocate_return_7,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_last_3",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&l_move_call_ext_24,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_24",
+	  .var_name = "move_deallocate_return_7",
 #endif
 	  .arg_size = 1 },
 
@@ -37323,17 +37332,17 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&put_list_9,
+	{ .label = &&l_move_call_ext_24,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "put_list_9",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&l_get_3,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_get_3",
+	  .var_name = "l_move_call_ext_24",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_move_call_ext_last_3,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_last_3",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&l_call_ext_25,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37359,15 +37368,15 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_is_ne_exact_immed_4,
+	{ .label = &&l_get_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_ne_exact_immed_4",
+	  .var_name = "l_get_3",
 #endif
-	  .arg_size = 2 },
+	  .arg_size = 1 },
 
-	{ .label = &&l_move_call_last_5,
+	{ .label = &&put_list_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_last_5",
+	  .var_name = "put_list_9",
 #endif
 	  .arg_size = 2 },
 
@@ -37413,29 +37422,17 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_bif1_0,
+	{ .label = &&l_move_call_last_5,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bif1_0",
+	  .var_name = "l_move_call_last_5",
 #endif
-	  .arg_size = 3 },
+	  .arg_size = 2 },
 
-	{ .label = &&l_bs_skip_bits_imm2_0,
+	{ .label = &&l_is_ne_exact_immed_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_skip_bits_imm2_0",
+	  .var_name = "l_is_ne_exact_immed_4",
 #endif
-	  .arg_size = 3 },
-
-	{ .label = &&get_tuple_element_8,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "get_tuple_element_8",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_fdiv_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fdiv_0",
-#endif
-	  .arg_size = 1 },
+	  .arg_size = 2 },
 
 	{ .label = &&is_tuple_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37455,27 +37452,33 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&get_list_8,
+	{ .label = &&l_bs_skip_bits_imm2_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "get_list_8",
+	  .var_name = "l_bs_skip_bits_imm2_0",
+#endif
+	  .arg_size = 3 },
+
+	{ .label = &&l_fdiv_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fdiv_0",
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_select_val2_11,
+	{ .label = &&get_tuple_element_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_select_val2_11",
+	  .var_name = "get_tuple_element_8",
 #endif
-	  .arg_size = 5 },
+	  .arg_size = 1 },
+
+	{ .label = &&l_bif1_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bif1_0",
+#endif
+	  .arg_size = 3 },
 
 	{ .label = &&l_bs_get_utf16_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_get_utf16_1",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&is_tuple_10,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_tuple_10",
 #endif
 	  .arg_size = 2 },
 
@@ -37509,17 +37512,29 @@ initialize:
 #endif
 	  .arg_size = 3 },
 
+	{ .label = &&is_tuple_10,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_tuple_10",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&bif1_body_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "bif1_body_3",
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_is_eq_exact_immed_24,
+	{ .label = &&get_list_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_eq_exact_immed_24",
+	  .var_name = "get_list_8",
 #endif
-	  .arg_size = 2 },
+	  .arg_size = 1 },
+
+	{ .label = &&l_select_val2_11,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_select_val2_11",
+#endif
+	  .arg_size = 5 },
 
 	{ .label = &&badmatch_5,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37533,17 +37548,11 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_is_eq_exact_immed_25,
+	{ .label = &&l_is_eq_exact_immed_24,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_eq_exact_immed_25",
+	  .var_name = "l_is_eq_exact_immed_24",
 #endif
 	  .arg_size = 2 },
-
-	{ .label = &&l_move_call_ext_25,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_25",
-#endif
-	  .arg_size = 1 },
 
 	{ .label = &&l_call_ext_30,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37556,6 +37565,24 @@ initialize:
 	  .var_name = "l_call_ext_29",
 #endif
 	  .arg_size = 0 },
+
+	{ .label = &&l_is_eq_exact_immed_25,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_is_eq_exact_immed_25",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_move_call_ext_25,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_25",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_select_val_atoms_2,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_select_val_atoms_2",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&extract_next_element2_11,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37575,17 +37602,11 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_select_val_atoms_2,
+	{ .label = &&self_5,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_select_val_atoms_2",
+	  .var_name = "self_5",
 #endif
-	  .arg_size = 2 },
-
-	{ .label = &&l_move_call_ext_last_5,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_last_5",
-#endif
-	  .arg_size = 3 },
+	  .arg_size = 1 },
 
 	{ .label = &&l_call_ext_31,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37629,33 +37650,15 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
+	{ .label = &&l_move_call_ext_last_5,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_last_5",
+#endif
+	  .arg_size = 3 },
+
 	{ .label = &&bif1_body_5,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "bif1_body_5",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&self_5,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "self_5",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_plus_2,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_plus_2",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&move_deallocate_return_8,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "move_deallocate_return_8",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_get_6,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_get_6",
 #endif
 	  .arg_size = 2 },
 
@@ -37683,11 +37686,11 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&test_arity_3,
+	{ .label = &&move_deallocate_return_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "test_arity_3",
+	  .var_name = "move_deallocate_return_8",
 #endif
-	  .arg_size = 2 },
+	  .arg_size = 1 },
 
 	{ .label = &&init_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37695,17 +37698,29 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_plus_2,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_plus_2",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&test_arity_3,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "test_arity_3",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_get_6,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_get_6",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&l_rem_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_rem_1",
 #endif
 	  .arg_size = 2 },
-
-	{ .label = &&l_move_call_ext_27,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_27",
-#endif
-	  .arg_size = 1 },
 
 	{ .label = &&l_call_ext_32,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37725,29 +37740,17 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_move_call_ext_27,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_27",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&l_move_call_ext_28,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_ext_28",
 #endif
 	  .arg_size = 1 },
-
-	{ .label = &&l_move_call_last_6,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_last_6",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&l_fsub_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fsub_0",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_jump_on_val_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_jump_on_val_0",
-#endif
-	  .arg_size = 2 },
 
 	{ .label = &&call_bif_42,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37761,15 +37764,15 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&get_tuple_element_9,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "get_tuple_element_9",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&is_nil_16,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_nil_16",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_fsub_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fsub_0",
 #endif
 	  .arg_size = 1 },
 
@@ -37779,15 +37782,27 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
+	{ .label = &&l_jump_on_val_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_jump_on_val_0",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&l_move_call_ext_29,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_ext_29",
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_bif2_5,
+	{ .label = &&get_tuple_element_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bif2_5",
+	  .var_name = "get_tuple_element_9",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_move_call_last_6,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_last_6",
 #endif
 	  .arg_size = 2 },
 
@@ -37809,15 +37824,33 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
+	{ .label = &&is_nonempty_list_20,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_nonempty_list_20",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_bif2_5,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bif2_5",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_move_call_ext_30,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_30",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&put_list_7,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "put_list_7",
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&is_nonempty_list_20,
+	{ .label = &&l_move_call_ext_31,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_nonempty_list_20",
+	  .var_name = "l_move_call_ext_31",
 #endif
 	  .arg_size = 1 },
 
@@ -37827,35 +37860,11 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_move_call_ext_31,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_31",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_move_call_ext_30,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_30",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_increment_4,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_increment_4",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&l_int_div_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_int_div_0",
 #endif
 	  .arg_size = 2 },
-
-	{ .label = &&l_put_tuple_7,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_put_tuple_7",
-#endif
-	  .arg_size = 0 },
 
 	{ .label = &&node_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37863,17 +37872,29 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_call_ext_34,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_call_ext_34",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&l_bsr_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bsr_1",
 #endif
 	  .arg_size = 2 },
+
+	{ .label = &&l_increment_4,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_increment_4",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_put_tuple_7,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_put_tuple_7",
+#endif
+	  .arg_size = 0 },
+
+	{ .label = &&l_call_ext_34,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_call_ext_34",
+#endif
+	  .arg_size = 0 },
 
 	{ .label = &&badmatch_6,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37899,17 +37920,17 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_increment_5,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_increment_5",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&move_10,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "move_10",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_increment_5,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_increment_5",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&l_allocate_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37928,12 +37949,6 @@ initialize:
 	  .var_name = "l_allocate_zero_8",
 #endif
 	  .arg_size = 0 },
-
-	{ .label = &&l_is_eq_exact_immed_26,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_eq_exact_immed_26",
-#endif
-	  .arg_size = 2 },
 
 	{ .label = &&call_bif_44,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -37977,9 +37992,9 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&put_list_10,
+	{ .label = &&l_is_eq_exact_immed_26,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "put_list_10",
+	  .var_name = "l_is_eq_exact_immed_26",
 #endif
 	  .arg_size = 2 },
 
@@ -38007,17 +38022,11 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&get_list_9,
+	{ .label = &&put_list_10,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "get_list_9",
+	  .var_name = "put_list_10",
 #endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_bs_skip_bits2_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_skip_bits2_0",
-#endif
-	  .arg_size = 4 },
+	  .arg_size = 2 },
 
 	{ .label = &&l_move_call_18,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38031,11 +38040,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_move_call_ext_33,
+	{ .label = &&get_list_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_33",
+	  .var_name = "get_list_9",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_bs_skip_bits2_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bs_skip_bits2_0",
+#endif
+	  .arg_size = 4 },
 
 	{ .label = &&l_fetch_17,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38103,15 +38118,15 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_move_call_ext_33,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_33",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&l_is_eq_exact_immed_27,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_is_eq_exact_immed_27",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&l_bs_get_integer_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_get_integer_0",
 #endif
 	  .arg_size = 2 },
 
@@ -38120,6 +38135,18 @@ initialize:
 	  .var_name = "move_return_10",
 #endif
 	  .arg_size = 0 },
+
+	{ .label = &&l_move_call_ext_34,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_34",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_bs_get_integer_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bs_get_integer_0",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&l_bs_append_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38130,12 +38157,6 @@ initialize:
 	{ .label = &&l_move_call_ext_35,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_ext_35",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_move_call_ext_34,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_34",
 #endif
 	  .arg_size = 1 },
 
@@ -38193,12 +38214,6 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&l_gc_bif1_6,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_gc_bif1_6",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&l_fetch_18,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_fetch_18",
@@ -38216,12 +38231,6 @@ initialize:
 	  .var_name = "call_bif_47",
 #endif
 	  .arg_size = 0 },
-
-	{ .label = &&l_int_div_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_int_div_1",
-#endif
-	  .arg_size = 2 },
 
 	{ .label = &&l_allocate_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38241,12 +38250,6 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_is_eq_exact_immed_28,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_eq_exact_immed_28",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&l_is_ne_exact_immed_6,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_is_ne_exact_immed_6",
@@ -38265,12 +38268,6 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&is_function_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_function_1",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&is_binary_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_binary_3",
@@ -38283,9 +38280,33 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_gc_bif1_6,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_gc_bif1_6",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_int_div_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_int_div_1",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&l_is_eq_exact_immed_29,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_is_eq_exact_immed_29",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_is_eq_exact_immed_28,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_is_eq_exact_immed_28",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&is_function_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_function_1",
 #endif
 	  .arg_size = 2 },
 
@@ -38294,6 +38315,12 @@ initialize:
 	  .var_name = "fconv_1",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&fmove_1_3,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "fmove_1_3",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&l_call_ext_42,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38325,6 +38352,12 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_select_val2_12,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_select_val2_12",
+#endif
+	  .arg_size = 5 },
+
 	{ .label = &&l_bs_save2_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_save2_1",
@@ -38355,18 +38388,6 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&fmove_1_3,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "fmove_1_3",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&l_select_val2_12,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_select_val2_12",
-#endif
-	  .arg_size = 5 },
-
 	{ .label = &&deallocate_return_12,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "deallocate_return_12",
@@ -38384,6 +38405,12 @@ initialize:
 	  .var_name = "l_move_call_ext_37",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_move_call_ext_last_4,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_last_4",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&call_bif_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38433,23 +38460,29 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_move_call_ext_last_4,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_last_4",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&l_move_call_ext_only_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_ext_only_4",
 #endif
 	  .arg_size = 1 },
 
+	{ .label = &&l_is_ne_exact_immed_7,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_is_ne_exact_immed_7",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&l_move_call_ext_38,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_ext_38",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_gc_bif1_7,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_gc_bif1_7",
+#endif
+	  .arg_size = 3 },
 
 	{ .label = &&l_call_ext_52,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38468,12 +38501,6 @@ initialize:
 	  .var_name = "l_call_ext_50",
 #endif
 	  .arg_size = 0 },
-
-	{ .label = &&l_is_ne_exact_immed_7,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_ne_exact_immed_7",
-#endif
-	  .arg_size = 2 },
 
 	{ .label = &&is_nil_19,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38505,11 +38532,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_gc_bif1_7,
+	{ .label = &&is_pid_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_gc_bif1_7",
+	  .var_name = "is_pid_1",
 #endif
-	  .arg_size = 3 },
+	  .arg_size = 2 },
+
+	{ .label = &&bif1_body_4,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "bif1_body_4",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&l_call_ext_55,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38541,21 +38574,9 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&is_pid_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_pid_1",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&l_move_call_24,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_24",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&bif1_body_4,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "bif1_body_4",
 #endif
 	  .arg_size = 1 },
 
@@ -38589,21 +38610,15 @@ initialize:
 #endif
 	  .arg_size = 4 },
 
-	{ .label = &&l_fetch_19,
+	{ .label = &&is_boolean_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_fetch_19",
+	  .var_name = "is_boolean_0",
 #endif
-	  .arg_size = 1 },
+	  .arg_size = 2 },
 
 	{ .label = &&l_bs_get_integer_small_imm_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_get_integer_small_imm_1",
-#endif
-	  .arg_size = 2 },
-
-	{ .label = &&is_boolean_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_boolean_0",
 #endif
 	  .arg_size = 2 },
 
@@ -38667,6 +38682,18 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_fetch_19,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_fetch_19",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&badmatch_16,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "badmatch_16",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&bs_init_writable_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "bs_init_writable_0",
@@ -38685,11 +38712,11 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&badmatch_16,
+	{ .label = &&put_list_12,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "badmatch_16",
+	  .var_name = "put_list_12",
 #endif
-	  .arg_size = 1 },
+	  .arg_size = 3 },
 
 	{ .label = &&case_end_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38708,12 +38735,6 @@ initialize:
 	  .var_name = "l_move_call_25",
 #endif
 	  .arg_size = 1 },
-
-	{ .label = &&put_list_12,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "put_list_12",
-#endif
-	  .arg_size = 3 },
 
 	{ .label = &&l_is_ne_exact_literal_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38829,6 +38850,12 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_bs_start_match2_2,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bs_start_match2_2",
+#endif
+	  .arg_size = 3 },
+
 	{ .label = &&move_jump_6,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "move_jump_6",
@@ -38841,29 +38868,17 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&deallocate_return_9,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "deallocate_return_9",
-#endif
-	  .arg_size = 0 },
-
-	{ .label = &&l_bs_skip_bits_all2_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_skip_bits_all2_1",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_bs_start_match2_2,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_start_match2_2",
-#endif
-	  .arg_size = 3 },
-
 	{ .label = &&put_list_11,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "put_list_11",
 #endif
 	  .arg_size = 2 },
+
+	{ .label = &&deallocate_return_9,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "deallocate_return_9",
+#endif
+	  .arg_size = 0 },
 
 	{ .label = &&l_wait_timeout_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38883,11 +38898,29 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
+	{ .label = &&l_bs_skip_bits_all2_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bs_skip_bits_all2_1",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&l_select_tuple_arity2_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_select_tuple_arity2_2",
 #endif
 	  .arg_size = 4 },
+
+	{ .label = &&l_is_eq_exact_immed_30,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_is_eq_exact_immed_30",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_bif2_6,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bif2_6",
+#endif
+	  .arg_size = 3 },
 
 	{ .label = &&l_call_ext_73,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38918,12 +38951,6 @@ initialize:
 	  .var_name = "l_call_ext_69",
 #endif
 	  .arg_size = 0 },
-
-	{ .label = &&l_is_eq_exact_immed_30,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_eq_exact_immed_30",
-#endif
-	  .arg_size = 2 },
 
 	{ .label = &&extract_next_element2_15,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -38961,12 +38988,6 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_bif2_6,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bif2_6",
-#endif
-	  .arg_size = 3 },
-
 	{ .label = &&l_move_call_28,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_28",
@@ -38996,6 +39017,12 @@ initialize:
 	  .var_name = "bif2_body_3",
 #endif
 	  .arg_size = 2 },
+
+	{ .label = &&l_new_bs_put_integer_imm_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_new_bs_put_integer_imm_1",
+#endif
+	  .arg_size = 4 },
 
 	{ .label = &&self_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -39033,12 +39060,6 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_new_bs_put_integer_imm_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_new_bs_put_integer_imm_1",
-#endif
-	  .arg_size = 4 },
-
 	{ .label = &&is_nonempty_list_25,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_nonempty_list_25",
@@ -39075,15 +39096,27 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&test_heap_1_put_list_3,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "test_heap_1_put_list_3",
+#endif
+	  .arg_size = 1 },
+
 	{ .label = &&catch_end_6,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "catch_end_6",
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&test_heap_1_put_list_3,
+	{ .label = &&l_is_ne_exact_immed_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "test_heap_1_put_list_3",
+	  .var_name = "l_is_ne_exact_immed_8",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_move_call_ext_only_6,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_move_call_ext_only_6",
 #endif
 	  .arg_size = 1 },
 
@@ -39098,12 +39131,6 @@ initialize:
 	  .var_name = "l_call_ext_77",
 #endif
 	  .arg_size = 0 },
-
-	{ .label = &&l_is_ne_exact_immed_8,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_ne_exact_immed_8",
-#endif
-	  .arg_size = 2 },
 
 	{ .label = &&extract_next_element3_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -39126,12 +39153,6 @@ initialize:
 	{ .label = &&l_move_call_31,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_move_call_31",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&l_move_call_ext_only_6,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_move_call_ext_only_6",
 #endif
 	  .arg_size = 1 },
 
@@ -39291,6 +39312,18 @@ initialize:
 #endif
 	  .arg_size = 3 },
 
+	{ .label = &&l_new_bs_put_integer_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_new_bs_put_integer_1",
+#endif
+	  .arg_size = 4 },
+
+	{ .label = &&test_heap_1_put_list_4,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "test_heap_1_put_list_4",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&self_4,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "self_4",
@@ -39321,12 +39354,6 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_new_bs_put_integer_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_new_bs_put_integer_1",
-#endif
-	  .arg_size = 4 },
-
 	{ .label = &&move_jump_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "move_jump_8",
@@ -39345,12 +39372,6 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&test_heap_1_put_list_4,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "test_heap_1_put_list_4",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&get_list_10,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "get_list_10",
@@ -39362,6 +39383,12 @@ initialize:
 	  .var_name = "l_select_val2_13",
 #endif
 	  .arg_size = 5 },
+
+	{ .label = &&l_increment_7,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_increment_7",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&l_call_ext_92,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -39423,6 +39450,12 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
+	{ .label = &&l_bs_get_float2_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bs_get_float2_0",
+#endif
+	  .arg_size = 5 },
+
 	{ .label = &&move_jump_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "move_jump_9",
@@ -39459,17 +39492,17 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_increment_7,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_increment_7",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&is_nonempty_list_27,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_nonempty_list_27",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&l_select_val2_14,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_select_val2_14",
+#endif
+	  .arg_size = 5 },
 
 	{ .label = &&l_move_call_ext_32,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -39482,18 +39515,6 @@ initialize:
 	  .var_name = "is_float_0",
 #endif
 	  .arg_size = 1 },
-
-	{ .label = &&l_bs_get_float2_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_get_float2_0",
-#endif
-	  .arg_size = 5 },
-
-	{ .label = &&l_select_val2_14,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_select_val2_14",
-#endif
-	  .arg_size = 5 },
 
 	{ .label = &&l_increment_6,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -39735,6 +39756,12 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
+	{ .label = &&l_select_val2_16,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_select_val2_16",
+#endif
+	  .arg_size = 5 },
+
 	{ .label = &&l_call_last_10,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_call_last_10",
@@ -39747,12 +39774,6 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_select_val2_16,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_select_val2_16",
-#endif
-	  .arg_size = 5 },
-
 	{ .label = &&is_atom_5,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_atom_5",
@@ -39762,6 +39783,24 @@ initialize:
 	{ .label = &&l_bs_get_integer_32_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_get_integer_32_2",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_trim_11,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_trim_11",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&move_deallocate_return_9,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "move_deallocate_return_9",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&is_map_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_map_0",
 #endif
 	  .arg_size = 2 },
 
@@ -39788,12 +39827,6 @@ initialize:
 	  .var_name = "move_return_21",
 #endif
 	  .arg_size = 0 },
-
-	{ .label = &&l_trim_11,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_trim_11",
-#endif
-	  .arg_size = 1 },
 
 	{ .label = &&l_trim_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -39825,18 +39858,6 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&move_deallocate_return_9,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "move_deallocate_return_9",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&is_map_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_map_0",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&l_new_bs_put_float_imm_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_new_bs_put_float_imm_2",
@@ -39855,12 +39876,6 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
-	{ .label = &&is_integer_allocate_1,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_integer_allocate_1",
-#endif
-	  .arg_size = 3 },
-
 	{ .label = &&l_bs_restore2_3,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_restore2_3",
@@ -39878,6 +39893,18 @@ initialize:
 	  .var_name = "is_bitstr_0",
 #endif
 	  .arg_size = 2 },
+
+	{ .label = &&is_integer_allocate_1,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_integer_allocate_1",
+#endif
+	  .arg_size = 3 },
+
+	{ .label = &&catch_end_8,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "catch_end_8",
+#endif
+	  .arg_size = 1 },
 
 	{ .label = &&move_jump_11,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -39909,24 +39936,6 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&catch_end_8,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "catch_end_8",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&is_tuple_8,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_tuple_8",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&is_tuple_7,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_tuple_7",
-#endif
-	  .arg_size = 1 },
-
 	{ .label = &&l_is_eq_exact_immed_34,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_is_eq_exact_immed_34",
@@ -39951,53 +39960,11 @@ initialize:
 #endif
 	  .arg_size = 3 },
 
-	{ .label = &&move_return_24,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "move_return_24",
-#endif
-	  .arg_size = 0 },
-
-	{ .label = &&move_return_23,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "move_return_23",
-#endif
-	  .arg_size = 0 },
-
-	{ .label = &&move_return_22,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "move_return_22",
-#endif
-	  .arg_size = 0 },
-
-	{ .label = &&badmatch_14,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "badmatch_14",
-#endif
-	  .arg_size = 0 },
-
 	{ .label = &&fconv_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "fconv_2",
 #endif
 	  .arg_size = 2 },
-
-	{ .label = &&is_nonempty_list_35,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_nonempty_list_35",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&is_nonempty_list_34,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_nonempty_list_34",
-#endif
-	  .arg_size = 1 },
-
-	{ .label = &&is_nonempty_list_33,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "is_nonempty_list_33",
-#endif
-	  .arg_size = 1 },
 
 	{ .label = &&l_bs_save2_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -40017,15 +39984,69 @@ initialize:
 #endif
 	  .arg_size = 3 },
 
-	{ .label = &&l_wait_timeout_0,
+	{ .label = &&is_tuple_8,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_wait_timeout_0",
+	  .var_name = "is_tuple_8",
 #endif
 	  .arg_size = 1 },
+
+	{ .label = &&is_tuple_7,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_tuple_7",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&move_return_24,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "move_return_24",
+#endif
+	  .arg_size = 0 },
+
+	{ .label = &&move_return_23,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "move_return_23",
+#endif
+	  .arg_size = 0 },
+
+	{ .label = &&move_return_22,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "move_return_22",
+#endif
+	  .arg_size = 0 },
 
 	{ .label = &&bs_context_to_binary_6,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "bs_context_to_binary_6",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&badmatch_14,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "badmatch_14",
+#endif
+	  .arg_size = 0 },
+
+	{ .label = &&is_nonempty_list_35,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_nonempty_list_35",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&is_nonempty_list_34,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_nonempty_list_34",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&is_nonempty_list_33,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_nonempty_list_33",
+#endif
+	  .arg_size = 1 },
+
+	{ .label = &&l_wait_timeout_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_wait_timeout_0",
 #endif
 	  .arg_size = 1 },
 
@@ -40046,6 +40067,24 @@ initialize:
 	  .var_name = "l_bs_put_utf16_0",
 #endif
 	  .arg_size = 3 },
+
+	{ .label = &&l_new_bs_put_binary_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_new_bs_put_binary_0",
+#endif
+	  .arg_size = 4 },
+
+	{ .label = &&l_bs_validate_unicode_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bs_validate_unicode_0",
+#endif
+	  .arg_size = 2 },
+
+	{ .label = &&l_bs_get_binary2_2,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_bs_get_binary2_2",
+#endif
+	  .arg_size = 5 },
 
 	{ .label = &&is_tuple_9,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -40101,18 +40140,6 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_new_bs_put_binary_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_new_bs_put_binary_0",
-#endif
-	  .arg_size = 4 },
-
-	{ .label = &&l_bs_validate_unicode_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_validate_unicode_0",
-#endif
-	  .arg_size = 2 },
-
 	{ .label = &&move_11,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "move_11",
@@ -40124,12 +40151,6 @@ initialize:
 	  .var_name = "l_bs_utf16_size_0",
 #endif
 	  .arg_size = 2 },
-
-	{ .label = &&l_bs_get_binary2_2,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bs_get_binary2_2",
-#endif
-	  .arg_size = 5 },
 
 	{ .label = &&l_is_eq_exact_immed_35,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -40191,6 +40212,18 @@ initialize:
 #endif
 	  .arg_size = 2 },
 
+	{ .label = &&l_is_function2_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_is_function2_0",
+#endif
+	  .arg_size = 3 },
+
+	{ .label = &&fmove_2_2,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "fmove_2_2",
+#endif
+	  .arg_size = 2 },
+
 	{ .label = &&is_nil_28,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "is_nil_28",
@@ -40215,12 +40248,6 @@ initialize:
 #endif
 	  .arg_size = 1 },
 
-	{ .label = &&l_is_function2_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_is_function2_0",
-#endif
-	  .arg_size = 3 },
-
 	{ .label = &&init_14,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "init_14",
@@ -40232,12 +40259,6 @@ initialize:
 	  .var_name = "init_13",
 #endif
 	  .arg_size = 0 },
-
-	{ .label = &&fmove_2_2,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "fmove_2_2",
-#endif
-	  .arg_size = 2 },
 
 	{ .label = &&is_port_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -40341,6 +40362,12 @@ initialize:
 #endif
 	  .arg_size = 5 },
 
+	{ .label = &&l_new_bs_put_float_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "l_new_bs_put_float_0",
+#endif
+	  .arg_size = 4 },
+
 	{ .label = &&l_bs_validate_unicode_retract_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_bs_validate_unicode_retract_0",
@@ -40353,23 +40380,17 @@ initialize:
 #endif
 	  .arg_size = 0 },
 
-	{ .label = &&l_new_bs_put_float_0,
+	{ .label = &&l_bxor_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_new_bs_put_float_0",
+	  .var_name = "l_bxor_0",
 #endif
-	  .arg_size = 4 },
+	  .arg_size = 3 },
 
 	{ .label = &&l_gc_bif3_0,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
 	  .var_name = "l_gc_bif3_0",
 #endif
 	  .arg_size = 5 },
-
-	{ .label = &&l_bxor_0,
-#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
-	  .var_name = "l_bxor_0",
-#endif
-	  .arg_size = 3 },
 
 	{ .label = &&l_bs_match_string_2,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -40538,6 +40559,12 @@ initialize:
 	  .var_name = "has_map_field_0",
 #endif
 	  .arg_size = 3 },
+
+	{ .label = &&is_bigint_0,
+#if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
+	  .var_name = "is_bigint_0",
+#endif
+	  .arg_size = 2 },
 
 	{ .label = &&test_heap_1,
 #if defined(LING_DEBUG) || defined(EXP_COUNT_IOPS) || defined(EXP_RUNTIME_METRICS)
@@ -40727,7 +40754,7 @@ uint32_t *backstep_to_func_info(uint32_t *p)
 
 opcode_info_t *opcode_lookup(void *label)
 {
-	for (int i = 0; i < 1147; i++)
+	for (int i = 0; i < 1148; i++)
 		if (ling_opcodes[i].label == label)
 			return ling_opcodes + i;
 	return 0;
@@ -40735,7 +40762,7 @@ opcode_info_t *opcode_lookup(void *label)
 
 opcode_info_t *opcode_get(uint32_t n)
 {
-	if (n > 1147)
+	if (n > 1148)
 		return 0;
 	return ling_opcodes + n;
 }
@@ -40744,7 +40771,7 @@ opcode_info_t *opcode_get(uint32_t n)
 void print_iop_counters(void)
 {
 	printk("\n================ iop counters ====================\n");
-	for (int i = 0; i < 1147; i++)
+	for (int i = 0; i < 1148; i++)
 	{
 		opcode_info_t *oi = &ling_opcodes[i];
 		printk("%12ld %s\n", oi->counter, oi->var_name);
@@ -40756,7 +40783,7 @@ void print_iop_counters(void)
 void print_variant_code_sizes(void)
 {
 	printk("\n================ variant code sizes ==============\n");
-	int num_vars = 1147;
+	int num_vars = 1148;
 	opcode_info_t *ptr = ling_opcodes;
 	while (ptr < ling_opcodes +num_vars)
 	{
