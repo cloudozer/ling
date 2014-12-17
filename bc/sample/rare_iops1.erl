@@ -10,6 +10,9 @@ apply(M, F, As) ->
 yield() ->
 	erlang:yield().	%% l_yield
 
+put_float(F) ->
+	<<F/float>>.
+
 foo(16#1234567800) -> big1;
 foo(16#1234567801) -> big2;
 foo(16#1234567802) -> big3.
