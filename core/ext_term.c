@@ -31,12 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/**
- *
- *
- *
- */
-
 #include "ext_term.h"
 
 #include "ling_common.h"
@@ -74,6 +68,7 @@
 #define LARGE_BIG_EXT		111
 #define NEW_REFERENCE_EXT	114
 #define SMALL_ATOM_EXT		115
+#define MAP_EXT				116
 #define	FUN_EXT				117
 #define NEW_FUN_EXT			112
 #define EXPORT_EXT			113
@@ -185,15 +180,12 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 	case ATOM_CACHE_REF:
 	{
 		MoreSkip(1);
-
 		//reported as not implemented later
-
 		break;
 	}
 	case SMALL_INTEGER_EXT:
 	{
 		MoreSkip(1);
-
 		break;
 	}
 	case ATOM_EXT:
@@ -201,7 +193,6 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		More(2);
 		int n = GetUint16();
 		MoreSkip(n);
-
 		break;
 	}
 	case SMALL_ATOM_EXT:
@@ -209,11 +200,26 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		More(1);
 		int n  = GetByte();
 		MoreSkip(n);
-
+		break;
+	}
+	case MAP_EXT:
+	{
+		More(4);
+		int arity = GetUint32();
+		for (int i = 0; i < arity; i++)
+		{
+			// K:V pair
+			int x = ext_term_decode_size2(depth+1, es);
+			if (x < 0)
+				return x;
+			int y = ext_term_decode_size2(depth+1, es);
+			if (y < 0)
+				return y;
+		}
+		es->heap_size += 1 +arity +2 +arity;
 		break;
 	}
 	case NIL_EXT:
-
 		break;
 	case INTEGER_EXT:
 	{
@@ -221,18 +227,14 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		int z = GetUint32();
 		if (fits_int(z))
 			break;
-
 		//max 2 digits
 		es->heap_size += sizeof(bignum_t) / 4 + 1;
-
 		break;
 	}
 	case FLOAT_EXT:
 	{
 		MoreSkip(31);
-
 		es->heap_size += sizeof(t_float_t) / 4;
-
 		break;
 	}
 	case REFERENCE_EXT:
@@ -241,13 +243,11 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		if (es->enc_data[0] != SMALL_ATOM_EXT &&
 			es->enc_data[0] != ATOM_EXT)
 				return -BAD_ARG;
-
 		//Node atom
 		term_t node = ext_term_decode2(es);
 		if (node == noval)
 			return -BAD_ARG;
 		MoreSkip(4+1);
-
 		es->heap_size += sizeof(t_long_ref_t) / 4;
 		break;
 	}
@@ -257,16 +257,13 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		if (es->enc_data[0] != SMALL_ATOM_EXT &&
 			es->enc_data[0] != ATOM_EXT)
 				return -BAD_ARG;
-
 		//Node atom
 		term_t node = ext_term_decode2(es);
 		if (node == noval)
 			return -BAD_ARG;
 		MoreSkip(4+1);
-
 		if (node != A_LOCAL)
 			es->heap_size += sizeof(t_long_oid_t) / 4;
-
 		break;
 	}
 	case PID_EXT:
@@ -275,16 +272,13 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		if (es->enc_data[0] != SMALL_ATOM_EXT &&
 			es->enc_data[0] != ATOM_EXT)
 				return -BAD_ARG;
-
 		//Node atom
 		term_t node = ext_term_decode2(es);
 		if (node == noval)
 			return -BAD_ARG;
 		MoreSkip(4+4+1);
-
 		if (node != A_LOCAL)
 			es->heap_size += sizeof(t_long_pid_t) / 4;
-
 		break;
 	}
 	case SMALL_TUPLE_EXT:
@@ -299,9 +293,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 			if (x < 0)
 				return x;
 		}
-
 		es->heap_size += 1 + arity;
-
 		break;
 	}
 	case LARGE_TUPLE_EXT:
@@ -316,9 +308,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 			if (x < 0)
 				return x;
 		}
-
 		es->heap_size += 1 + arity;
-
 		break;
 	}
 	case STRING_EXT:
@@ -328,9 +318,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		if (len < 0)
 			return -1;
 		MoreSkip(len);
-
 		es->heap_size += 2*len;
-
 		break;
 	}
 	case LIST_EXT:
@@ -345,9 +333,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 			if (x < 0)
 				return x;
 		}
-
 		es->heap_size += 2*len;
-
 		break;
 	}
 	case BINARY_EXT:
@@ -357,12 +343,10 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		if (len < 0)
 			return -1;
 		MoreSkip(len);
-
 		if (len > MAX_HEAP_BIN)
 			es->heap_size += WSIZE(t_proc_bin_t);
 		else
 			es->heap_size += (sizeof(t_heap_bin_t) + len+3) / 4;
-
 		break;
 	}
 	case SMALL_BIG_EXT:
@@ -371,9 +355,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		int len = GetByte();
 		Skip(1); //sign
 		MoreSkip(len);
-
 		es->heap_size += (sizeof(bignum_t) + len+3) / 4;
-
 		break;
 	}
 	case LARGE_BIG_EXT:
@@ -384,9 +366,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 			return -BAD_ARG;
 		Skip(1); //sign
 		MoreSkip(len);
-
 		es->heap_size += (sizeof(bignum_t) + len+3) / 4;
-
 		break;
 	}
 	case NEW_REFERENCE_EXT:
@@ -395,18 +375,15 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		int len = GetUint16();
 		if (len > 3)
 			return -1;
-
 		More(1);
 		if (es->enc_data[0] != SMALL_ATOM_EXT &&
 			es->enc_data[0] != ATOM_EXT)
 				return -BAD_ARG;
-
 		//Node atom
 		term_t node = ext_term_decode2(es);
 		if (node == noval)
 			return -BAD_ARG;
 		MoreSkip(1+ 4*len);
-
 		es->heap_size += sizeof(t_long_ref_t)/4;
 		break;
 	}
@@ -436,9 +413,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 			if (x < 0)
 				return x;
 		}
-
 		es->heap_size += WSIZE(t_fun_t) + num_free;
-
 		break;
 	}
 	case NEW_FUN_EXT:
@@ -472,9 +447,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		}
 		if (es->enc_data - saved_ptr != expected_size)
 			return -BAD_ARG;
-
 		es->heap_size += WSIZE(t_fun_t) + num_free;
-
 		break;
 	}
 	case EXPORT_EXT:
@@ -489,9 +462,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 			x = ext_term_decode_size2(depth+1, es);
 		if (x < 0)
 			return x;
-
 		es->heap_size += WSIZE(t_export_t);
-
 		break;
 	}
 	case BIT_BINARY_EXT:
@@ -507,19 +478,15 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 			es->heap_size += WSIZE(t_proc_bin_t);
 		else
 			es->heap_size += (sizeof(t_heap_bin_t) + len+3) / 4;
-
 		// additional sub binary is needed for odd binaries
 		if (bits > 0)
 			es->heap_size += WSIZE(t_sub_bin_t);
-		
 		break;
 	}
 	case NEW_FLOAT_EXT:
 	{
 		MoreSkip(8);
-
 		es->heap_size += sizeof(t_float_t) / 4;
-
 		break;
 	}
 	default:
@@ -583,6 +550,47 @@ static term_t ext_term_decode2(ext_term_scan_t *es)
 
 		MoreSkip2(n);
 		return tag_atom(index);
+	}
+	case MAP_EXT:
+	{
+		More2(4);
+		int arity  = GetUint32();
+		if (arity < 0)
+			return noval;
+
+		// arity
+		// key1
+		// key2
+		// ...
+		// hdr
+		// keys
+		// val1
+		// val2
+		// ...
+
+		//TODO
+		
+		term_t keys = tag_tuple(es->htop);
+		*es->htop++ = arity;
+		term_t *kw = es->htop;
+		es->htop += arity;
+		term_t map = tag_boxed(es->htop);
+		term_t *vw = es->htop;
+		box_map(es->htop, arity, keys);
+
+		for (int i = 0; i < arity; i++)
+		{
+			term_t k = ext_term_decode2(es);
+			if (k == noval)
+				return noval;
+			*kw++ = k;
+			term_t v = ext_term_decode2(es);
+			if (v == noval)
+				return noval;
+			*vw++ = v;
+		}
+
+		return map;
 	}
 	case NIL_EXT:
 		return nil;
@@ -1581,6 +1589,20 @@ static void encode2(term_t t, enc_ctx_t *ec)
 			PutByte(SMALL_INTEGER_EXT);
 			PutByte(exp->e->arity);
 			break;
+		}
+		case SUBTAG_MAP:
+		{
+			t_map_t *map = (t_map_t *)tdata;
+			uint32_t *p = peel_tuple(map->keys);
+			uint32_t size = *p++;
+			PutByte(MAP_EXT);
+			PutUint32(size);
+			for (int i = 0; i < size; i++)
+			{
+				encode2(*p++, ec);
+				encode2(map->values[i], ec);
+			}
+			break;		
 		}
 		case SUBTAG_PID:
 		{

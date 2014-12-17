@@ -1,0 +1,89 @@
+#!/usr/bin/env escript 
+%%! -pa ../bc gentab
+%% vim: set filetype=erlang :
+
+%% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+%% 
+%% Redistribution and use in source and binary forms, with or without
+%% modification, are permitted provided that the following conditions are met:
+%% 
+%% * Redistributions of source code must retain the above copyright notice, this
+%% list of conditions and the following disclaimer.
+%% 
+%% * Redistributions in binary form must reproduce the above copyright notice,
+%% this list of conditions and the following disclaimer in the documentation
+%% and/or other materials provided with the distribution.
+%% 
+%% * Redistributions in any form must be accompanied by information on how to
+%% obtain complete source code for the LING software and any accompanying
+%% software that uses the LING software. The source code must either be included
+%% in the distribution or be available for no more than the cost of distribution
+%% plus a nominal fee, and must be freely redistributable under reasonable
+%% conditions.  For an executable file, complete source code means the source
+%% code for all modules it contains. It does not include source code for modules
+%% or files that typically accompany the major components of the operating
+%% system on which the executable file runs.
+%% 
+%% THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+%% IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+%% DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+%% INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%% (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%% ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%% (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-mode(compile).
+
+-define(HOT_TOP, 100).
+
+main([LingMainTemplate,HotColdFile]) ->
+
+	{TopHits,HC} = parse_hot_cold(HotColdFile),
+
+	{OpVars,_} = lists:mapfoldl(fun({Op,No}, Index) ->
+		Types = ling_iopvars:var_args(Op, No),
+		%% Names = iops_tab:arg_names(Op),
+		Packed = ling_iops:packing_tags(Types),
+		Id = atom_to_list(Op) ++ "_" ++ integer_to_list(No),
+		Wsz = ling_iops:wsize(Types),
+
+		Attrs = case lists:keyfind({Op,No}, 2, HC) of
+			{Hits,_} when Hits >= TopHits -> [hot];
+			{0,_} -> [cold];
+			_ -> [] end,
+
+		{{Index,Op,Id,Packed,Wsz,Attrs},Index+1}
+	end, 0, ling_iopvars:var_order()),
+
+	%% io:format("Variants=~p~n", [OpVars]),
+	ok = erltl:compile(LingMainTemplate),
+	Data = {OpVars},
+	C = ling_main_c:render(Data),
+
+	{ok,Out} = file:open("ling_main.c", [write]),
+	io:format(Out, "~s~n", [C]),
+	file:close(Out).
+
+parse_hot_cold(HotColdFile) ->
+	case file:read_file(HotColdFile) of
+	{ok,Bin} ->
+		Qs = lists:map(fun(L) ->
+			{match,[Hits1,Op1,No1]} = re:run(L, "^ *([0-9]+) (.*)_([0-9]+)$",
+												[{capture,[1,2,3],list}]),
+			Hits = list_to_integer(Hits1),
+			Op = list_to_atom(Op1),
+			No = list_to_integer(No1),
+
+			{Hits,{Op,No}}
+		end, re:split(Bin, "\n", [trim])),
+
+		SQs = lists:reverse(lists:keysort(1, Qs)),
+		{TopHits,_} = lists:nth(?HOT_TOP, SQs),
+		{TopHits,SQs};
+	_ ->
+		{undefined,[]}
+	end.
+

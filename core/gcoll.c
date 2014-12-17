@@ -627,6 +627,23 @@ while (ss->top < ss->end)
 
 					break;
 				}
+				case SUBTAG_MAP:
+				{
+					t_map_t *map = (t_map_t *)term_data;
+					int size = map_size(map);
+					uint32_t *saved = htop;
+					box_map(htop, size, map->keys);
+					memcpy(saved +2, map->values, size *sizeof(term_t));
+
+					// hdr
+					// keys
+					// val1
+					// val2
+					// ...
+
+					RPUSH(ss, saved +1, saved +1 +size);  // both keys and values
+					break;
+				}
 				case SUBTAG_PID:
 				{
 					uint32_t id = opr_hdr_id(term_data);
@@ -828,6 +845,13 @@ while (ss->top < ss->end)
 
 					break;
 				}	
+				case SUBTAG_MAP:
+				{
+					int size = map_size(term_data);
+					term_t *kvs = (term_t *)term_data +1;
+					RPUSH(ss, kvs +1, kvs +1 +size);	// both keys and values
+					break;
+				}
 				case SUBTAG_MATCH_CTX:
 				{
 					t_match_ctx_t *mc = term_data;

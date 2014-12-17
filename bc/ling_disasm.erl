@@ -465,6 +465,12 @@ validate({try_end,[{y,_}]}) -> ok;
 validate({wait,[{f,_}]}) -> ok;
 validate({wait_timeout,[{f,_},S]}) -> src(S);
 
+validate({is_map,[{f,_},S]}) -> src(S);
+validate({put_map_assoc,[{f,_},S,D,_Live,{list,_}]}) -> src(S), dst(D);
+validate({put_map_exact,[{f,_},S,D,_Live,{list,_}]}) -> src(S), dst(D);
+validate({get_map_elements,[{f,_},S,{list,_}]}) -> src(S);
+validate({has_map_fields,[{f,_},S,{list,_}]}) -> src(S);
+
 validate({line,_}) -> ok;
 
 validate(X) -> erlang:error(X).
