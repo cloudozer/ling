@@ -218,6 +218,7 @@ erlang:is_reference(Pid)	bif_is_reference1
 
 erlang:and(A,B)				bif_and2
 erlang:or(A,B)				bif_or2
+erlang:xor(A,B)				bif_xor2
 erlang:not(A)				bif_not1
 
 erlang:<(A,B)				bif_less2

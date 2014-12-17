@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "bif_impl.h"
 
 double strtod(const char *str, char **endptr);
@@ -214,6 +210,18 @@ term_t bif_or2(term_t A, term_t B, proc_t *proc)
 	if (!is_bool(B))
 		badarg(B);
 	if (A == A_TRUE || B == A_TRUE)
+		return A_TRUE;
+
+	return A_FALSE;
+}
+
+term_t bif_xor2(term_t A, term_t B, proc_t *proc)
+{
+	if (!is_bool(A))
+		badarg(A);
+	if (!is_bool(B))
+		badarg(B);
+	if ((A == A_TRUE) ^ (B == A_TRUE))
 		return A_TRUE;
 
 	return A_FALSE;

@@ -174,11 +174,11 @@ static term_t invoke_bif(export_t *exp, proc_t *proc, term_t *rs, int live);
 
 static int send_to_outlet(outlet_t *outlet, term_t what, proc_t *proc);
 
-static int map_key_index(term_t k, term_t keys);
-static int map_merge(term_t *ks, term_t *vs, int n,
+UNUSED static int map_key_index(term_t k, term_t keys);
+UNUSED static int map_merge(term_t *ks, term_t *vs, int n,
 					 term_t *kvs, term_t nkvs,
 					 term_t *ks1, term_t *vs1);
-static int map_merge_exact(term_t *ks, term_t *vs, int n,
+UNUSED static int map_merge_exact(term_t *ks, term_t *vs, int n,
 						   term_t *kvs, int nkvs,
 						   term_t *vs1);
 

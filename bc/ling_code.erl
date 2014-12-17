@@ -856,8 +856,8 @@ tr([{call_ext_only,[{a,M},{a,F},N]}|Code]) ->
 tr([{trim,[N,_R]}|Code]) -> [{l_trim,[N]}|Code];	%% 1
 
 %% Maps
-tr([{put_map_assoc,[{f,0},{literal,#{}},D,_Live,L]}|Code]) ->
-	[{new_map,[D,L]}|Code];
+%%tr([{put_map_assoc,[{f,0},{literal,#{}},D,_Live,L]}|Code]) ->
+%%	[{new_map,[D,L]}|Code];
 tr([{put_map_assoc,[{f,0},{x,_}=S,D,_Live,L]}|Code]) ->
 	[{update_map_assoc,[S,D,L]}|Code];
 tr([{put_map_assoc,[{f,0},{y,_}=S,D,_Live,L]}|Code]) ->
@@ -865,8 +865,8 @@ tr([{put_map_assoc,[{f,0},{y,_}=S,D,_Live,L]}|Code]) ->
 tr([{put_map_assoc,[{f,0},S,D,_Live,L]}|Code]) ->
 	[{move,[S,?TMP_X]},{update_map_assoc,[?TMP_X,D,L]}|Code];
 
-tr([{put_map_exact,[{f,0},{literal,#{}},D,_Live,L]}|Code]) ->
-	[{new_map,[D,L]}|Code];
+%%tr([{put_map_exact,[{f,0},{literal,#{}},D,_Live,L]}|Code]) ->
+%%	[{new_map,[D,L]}|Code];
 tr([{put_map_exact,[F,{x,_}=S,D,_Live,L]}|Code]) ->
 	[{update_map_exact,[F,S,D,L]}|Code];
 tr([{put_map_exact,[F,{y,_}=S,D,_Live,L]}|Code]) ->

@@ -1,2 +1,2 @@
 LING_VER := 0.3.0
-OTP_VER := 17
+OTP_VER := R16B01

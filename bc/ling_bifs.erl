@@ -132,6 +132,7 @@ is_builtin(erlang, '=<', 2) -> true;
 is_builtin(erlang, '>', 2) -> true;
 is_builtin(erlang, '<', 2) -> true;
 is_builtin(erlang, 'not', 1) -> true;
+is_builtin(erlang, 'xor', 2) -> true;
 is_builtin(erlang, 'or', 2) -> true;
 is_builtin(erlang, 'and', 2) -> true;
 is_builtin(erlang, is_reference, 1) -> true;
