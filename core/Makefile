@@ -86,7 +86,7 @@ LWIP_SRCS := $(foreach dir,$(LWIP_SRC_DIRS),$(wildcard $(dir)/*.c))
 LWIP_OBJS := $(patsubst %.c,%.o,$(LWIP_SRCS))
 
 ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS) \
-	preload/literals.o
+	preload/literals.o ling_main.o
 
 $(STARTUP_OBJ): %.o: %.S
 	gcc $(ASFLAGS) $(CPPFLAGS) -c $< -o $@

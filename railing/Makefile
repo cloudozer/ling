@@ -2,7 +2,7 @@
 
 include ../Config.mk
 
-railing: $(patsubst %.erl,%.beam,$(wildcard *.erl))
+railing: $(patsubst %.erl,%.beam,$(wildcard *.erl)) escriptize
 	./escriptize
 
 clean:

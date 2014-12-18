@@ -3,7 +3,7 @@
 
 include Config.mk
 
-default: bc core apps railing | checkotp
+default: test bc core apps railing | checkotp
 
 checkotp:
 ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp_release)),erlang:halt(0)."))
@@ -24,7 +24,7 @@ railing:
 	make -C railing
 
 test:
-	make -C test
+	make -C test beams
 
 install: bc core apps railing
 	install railing/railing /usr/bin

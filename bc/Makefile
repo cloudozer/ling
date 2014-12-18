@@ -3,7 +3,7 @@
 
 BEAMS := $(patsubst %.erl,%.beam,$(wildcard *.erl))
 
-default: $(BEAMS)
+default: $(BEAMS) ling_iopvars.beam
 
 SAMPLES := $(patsubst %.erl,%.beam,$(wildcard sample/*.erl))
 
@@ -31,3 +31,5 @@ scripts/iopvars.tab: scripts/beam.src scripts/bif.tab \
 ling_iopvars.erl: scripts/iopvars.tab scripts/iopvars_erl.et
 	scripts/reorder_iopvars scripts/iopvars.tab scripts/hot_cold_iops $@
 
+ling_iopvars.beam: ling_iopvars.erl
+	erlc $<
