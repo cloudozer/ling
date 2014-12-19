@@ -7,8 +7,7 @@ default: test bc core apps railing | checkotp
 
 checkotp:
 ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp_release)),erlang:halt(0)."))
-	@echo Erlang/OTP $(OTP_VER) not found
-	@exit 1
+	$(error Erlang/OTP $(OTP_VER) not found)
 endif
 
 bc:
