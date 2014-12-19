@@ -564,7 +564,7 @@ system_monitor(Pid, Opts) ->
 
 system_info(os_type) -> {xen,ling};
 system_info(os_version) -> {7,7,7};
-system_info(version) -> "5.10.2";	%% Eshell version?
+system_info(version) -> "6.3";	%% Eshell version?
 
 system_info(system_version) ->
 	lists:flatten(["Erlang [ling-",?LING_VER,"]\n"]);
