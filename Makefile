@@ -12,19 +12,19 @@ ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp
 endif
 
 bc:
-	make -C bc
+	$(MAKE) -C bc
 
 core:
-	make -C core
+	$(MAKE) -C core
 
 apps:
-	make -C apps
+	$(MAKE) -C apps
 
 railing:
-	make -C railing
+	$(MAKE) -C railing
 
 test:
-	make -C test beams
+	$(MAKE) -C test beams
 
 install: bc core apps railing
 	install railing/railing /usr/bin
