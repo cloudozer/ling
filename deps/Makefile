@@ -12,7 +12,8 @@ $(OTP): otp.tar.gz
 	tar xvzf $<
 
 otp: $(OTP)
-	(cd $< && ./otp_build setup --disable-hipe --without-javac && make install)
+	(cd $< && ./otp_build setup --disable-hipe --without-javac)
+	$(MAKE) -C $< install
 
 cleanall:
 	rm -rf $(OTP)
