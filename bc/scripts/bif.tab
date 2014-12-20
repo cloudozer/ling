@@ -233,6 +233,7 @@ erlang:/=(A,B)				bif_ne2
 erlang:length(List)			gc_bif_length1
 erlang:size(TupleBin)		bif_size1
 erlang:tuple_size(Tuple)	bif_tuple_size1
+erlang:map_size(Tuple)		bif_map_size1
 erlang:byte_size(Bin)		gc_bif_byte_size1
 erlang:bit_size(Bin)		gc_bif_bit_size1
 

@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "heap.h"
 
 #include <math.h>
@@ -685,6 +681,29 @@ static int copy_terms(int depth, heap_t *hp, term_t *terms, int num)
 			case SUBTAG_EXPORT:
 				copy_simple(t_export_t);
 				break;
+			case SUBTAG_MAP:
+			{
+				t_map_t *m = (t_map_t *)term_data;
+				int size = map_size(m);
+				term_t keys = m->keys;
+				int rs = copy_terms(depth+1, hp, &keys, 1);
+				if (rs < 0)
+					return rs;
+				term_t values[size];
+				memcpy(values, m->values, size *sizeof(term_t));
+				rs = copy_terms(depth+1, hp, values, size);	
+				if (rs < 0)
+					return rs;
+				uint32_t *p = heap_alloc_N(hp, WSIZE(t_map_t) +size);
+				if (p == 0)
+					return -NO_MEMORY;
+				term_t *q = p + WSIZE(t_map_t);
+				box_map(p, size, keys);
+				memcpy(q, values, size *sizeof(term_t));
+				heap_set_top(hp, p);
+				
+				break;
+			}
 			case SUBTAG_PID:
 				copy_simple(t_long_pid_t);
 				break;

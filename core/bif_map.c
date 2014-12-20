@@ -193,7 +193,8 @@ term_t cbif_keys1(proc_t *proc, term_t *regs)
 		badarg(Map);
 
 	t_map_t *m = (t_map_t *)peel_boxed(Map);
-	return m->keys;
+	uint32_t *p = peel_tuple(m->keys);
+	return heap_vector_to_list(&proc->hp, p+1, *p);
 }
 
 // maps:is_key/2 [25]

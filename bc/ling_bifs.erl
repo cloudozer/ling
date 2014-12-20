@@ -132,6 +132,7 @@ is_builtin(erlang, trunc, 1) -> true;
 is_builtin(erlang, float, 1) -> true;
 is_builtin(erlang, bit_size, 1) -> true;
 is_builtin(erlang, byte_size, 1) -> true;
+is_builtin(erlang, map_size, 1) -> true;
 is_builtin(erlang, tuple_size, 1) -> true;
 is_builtin(erlang, size, 1) -> true;
 is_builtin(erlang, length, 1) -> true;

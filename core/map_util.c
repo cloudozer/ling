@@ -53,7 +53,7 @@ int map_key_index(term_t k, term_t keys)
 			alpha = mid;
 	}
 	assert(beta == alpha+1);
-	if (!are_terms_equal(k, *alpha, 1))
+	if (k != *alpha && !are_terms_equal(k, *alpha, 1))
 		return -1;
 	return alpha -p;
 }
@@ -73,7 +73,7 @@ int map_merge(term_t *ks, term_t *vs, int n,
 			*vs1++ = *vs++;
 			n--;
 		}
-		else if (are_terms_equal(a, b, 1))
+		else if (a == b || are_terms_equal(a, b, 1))
 		{
 			ks++; vs++;
 			n--;
@@ -122,7 +122,7 @@ int map_merge_exact(term_t *ks, term_t *vs, int n,
 			*vs1++ = *vs++;
 			n--;
 		}
-		else if (are_terms_equal(a, b, 1))
+		else if (a == b || are_terms_equal(a, b, 1))
 		{
 			ks++; vs++;
 			n--;

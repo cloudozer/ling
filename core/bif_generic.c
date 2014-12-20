@@ -344,6 +344,14 @@ term_t bif_tuple_size1(term_t Tuple, proc_t *proc)
 	return int_to_term(arity, &proc->hp);
 }
 
+term_t bif_map_size1(term_t Map, proc_t *proc)
+{
+	if (!is_boxed_map(Map))
+		badarg(Map);
+	int size = map_size(peel_boxed(Map));
+	return int_to_term(size, &proc->hp);
+}
+
 term_t gc_bif_byte_size1(term_t Bin, proc_t *proc, term_t *regs, int live)
 {
 	if (!is_boxed(Bin) || !is_binary(peel_boxed(Bin)))

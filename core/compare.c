@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "ling_common.h"
 #include "term.h"
 #include "bignum.h"
@@ -174,7 +170,21 @@ int are_terms_equal(term_t a, term_t b, int exact)
 			return e1->module == e2->module &&
 			   	   e1->function == e2->function &&
 				   e1->arity == e2->arity;
-		}		
+		}
+		case SUBTAG_MAP:
+		{
+			t_map_t *m1 = (t_map_t *)term_data1;
+			t_map_t *m2 = (t_map_t *)term_data2;
+			int size = map_size(m1);
+			if (size != map_size(m2))
+				return 0;
+			if (!are_terms_equal(m1->keys, m2->keys, exact))
+				return 0;
+			for (int i = 0; i < size; i++)
+				if (!are_terms_equal(m1->values[i], m2->values[i], exact))
+					return 0;
+			return 1;
+		}
 		case SUBTAG_PID:
 		{
 			t_long_pid_t *pid1 = (t_long_pid_t *)term_data1;
@@ -467,9 +477,10 @@ static int is_term_smaller_3(uint32_t *bin1, uint32_t *bin2)
 #define TERM_ORDER_OID		5
 #define TERM_ORDER_PID		6
 #define TERM_ORDER_TUPLE	7
-#define TERM_ORDER_NIL		8
-#define TERM_ORDER_CONS		9
-#define TERM_ORDER_BINARY	10
+#define TERM_ORDER_MAP		8
+#define TERM_ORDER_NIL		9
+#define TERM_ORDER_CONS		10
+#define TERM_ORDER_BINARY	11
 
 static int term_order(term_t t)
 {
@@ -499,6 +510,9 @@ static int term_order(term_t t)
 		return TERM_ORDER_FUN;
 	case SUBTAG_EXPORT:
 		return TERM_ORDER_EXPORT;
+
+	case SUBTAG_MAP:
+		return TERM_ORDER_MAP;
 
 	case SUBTAG_PID:
 		return TERM_ORDER_PID;
