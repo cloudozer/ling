@@ -1,3 +1,4 @@
+#pragma once
 // Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
@@ -31,78 +32,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "term.h"
 
-#include "bif.h"
+int map_key_index(term_t k, term_t keys);
+int map_merge(term_t *ks, term_t *vs, int n,
+			  term_t *kvs, term_t nkvs,
+			  term_t *ks1, term_t *vs1);
+int map_merge_exact(term_t *ks, term_t *vs, int n,
+					term_t *kvs, int nkvs,
+					term_t *vs1);
 
-#include "ling_common.h"
-
-#include <math.h>
-#include <stdlib.h>
-
-#include <nettle/md5.h>
-#include <nettle/sha.h>
-#include <nettle/hmac.h>
-#include <nettle/aes.h>
-#include <nettle/cbc.h>
-
-#include "crc32.h"
-#include "adler32.h"
-
-#include "atom_defs.h"
-#include "bits.h"
-#include "getput.h"
-#include "mixed.h"
-#include "term_util.h"
-#include "list_util.h"
-#include "map_util.h"
-#include "unicode.h"
-#include "catch_tab.h"
-
-#include "atoms.h"
-#include "ext_term.h"
-#include "time.h"
-#include "scheduler.h"
-#include "code_base.h"
-#include "string.h"
-#include "strings.h"
-#include "bignum.h"
-#include "snprintf.h"
-#include "stringify.h"
-#include "hash.h"
-#include "cluster.h"
-#include "decode.h"
-
-#include "monitors.h"
-#include "timers.h"
-#include "console.h"
-#include "netfe.h"
-#include "netif.h"
-#include "disk.h"
-#include "ser_cons.h"
-#include "ets.h"
-#include "counters.h"
-#include "embed.h"
-#include "mtwist.h"
-#include "prof.h"
-
-#include "lwip/ip_addr.h"
-#include "lwip/stats.h"
-#include "lwip/netif.h"
-
-#define fail(reason) do { \
-	proc->bif_excep_reason = (reason); \
-	return noval; \
-} while (0)
-
-#define bif_not_implemented() do { \
-	proc->bif_excep_reason = A_NOT_IMPLEMENTED; \
-	return noval; \
-} while (0)
-
-#define badarg(arg) do { \
-	proc->bif_excep_reason = A_BADARG; \
-	return noval; \
-} while (0)
-
-//EOF

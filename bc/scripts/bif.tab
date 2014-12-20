@@ -363,6 +363,20 @@ lists:keymember(Key,N,TupleList)	cbif_keymember3
 lists:keysearch(Key,N,TupleList)	cbif_keysearch3
 lists:keyfind(Key,N,TupleList)		cbif_keyfind3
 
+#bif_map.c
+maps:get(Key,Map)				cbif_get2
+maps:find(Key,Map)				cbif_find2
+maps:from_list(List)			cbif_from_list1
+maps:is_key(Key,Map)			cbif_is_key2
+maps:keys(Map)					cbif_keys1
+maps:merge(Map1,Map2)			cbif_merge2
+maps:new()						cbif_new0
+maps:put(Key,Value,Map1)		cbif_put3
+maps:remove(Key,Map)			cbif_remove2
+maps:to_list(Map)				cbif_to_list1
+maps:update(Key,Value,Map1)		cbif_update3
+maps:values(Map)				cbif_values1
+
 #bif_crypto.c
 crypto:md5(Data)				cbif_md5_1
 crypto:md5_init()				cbif_md5_init0

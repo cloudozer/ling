@@ -126,6 +126,7 @@ variant_index(Id, [_|Vs], N) ->
 #include "unicode.h"
 #include "term_util.h"
 #include "list_util.h"
+#include "map_util.h"
 #include "outlet.h"
 #include "timers.h"
 #include "hash.h"
@@ -173,14 +174,6 @@ static term_t get_stack_trace(uint32_t *ip, uint32_t *cp,
 static term_t invoke_bif(export_t *exp, proc_t *proc, term_t *rs, int live);
 
 static int send_to_outlet(outlet_t *outlet, term_t what, proc_t *proc);
-
-UNUSED static int map_key_index(term_t k, term_t keys);
-UNUSED static int map_merge(term_t *ks, term_t *vs, int n,
-					 term_t *kvs, term_t nkvs,
-					 term_t *ks1, term_t *vs1);
-UNUSED static int map_merge_exact(term_t *ks, term_t *vs, int n,
-						   term_t *kvs, int nkvs,
-						   term_t *vs1);
 
 void proc_main(proc_t *proc)
 {
@@ -917,119 +910,6 @@ badsig:
 	proc->result.victim = cont_proc;
 	proc->result.reason2 = A_BADSIG;
 	return DELIVER_SIGNALS;
-}
-
-static int map_key_index(term_t k, term_t keys)
-{
-	assert(is_tuple(keys));
-	term_t *p = peel_tuple(keys);
-	uint32_t size = *p++;
-	if (size == 0)
-		return -1;
-	term_t *alpha = p;
-	term_t *beta = p +size;
-	while (beta > alpha+1)
-	{
-		term_t *mid = alpha + (beta -alpha +1)/2;
-		if (is_term_smaller(k, *mid))
-			beta = mid;
-		else
-			alpha = mid;
-	}
-	assert(beta == alpha+1);
-	if (!are_terms_equal(k, *alpha, 1))
-		return -1;
-	return alpha -p;
-}
-
-static int map_merge(term_t *ks, term_t *vs, int n,
-					 term_t *kvs, term_t nkvs,
-					 term_t *ks1, term_t *vs1)
-{
-	int sz = 0;
-	while (n > 0 && nkvs > 0)
-	{
-		term_t a = *ks;
-		term_t b = *kvs;
-		if (is_term_smaller(a, b))
-		{
-			*ks1++ = *ks++;
-			*vs1++ = *vs++;
-			n--;
-		}
-		else if (are_terms_equal(a, b, 1))
-		{
-			ks++; vs++;
-			n--;
-			*ks1++ = *kvs++;
-			*vs1++ = *kvs++;
-			nkvs--;
-		}
-		else
-		{
-			*ks1++ = *kvs++;
-			*vs1++ = *kvs++;
-			nkvs--;
-		}
-		sz++;
-	}
-
-	while (n-- > 0)
-	{
-		*ks1++ = *ks++;
-		*vs1++ = *vs++;
-		sz++;
-	}
-
-	while (nkvs-- > 0)
-	{
-		*ks1++ = *kvs++;
-		*vs1++ = *kvs++;
-		sz++;
-	}
-
-	return sz;
-}
-
-static int map_merge_exact(term_t *ks, term_t *vs, int n,
-						   term_t *kvs, int nkvs,
-						   term_t *vs1)
-{
-	int sz = 0;
-	while (n > 0 && nkvs > 0)
-	{
-		term_t a = *ks;
-		term_t b = *kvs;
-		if (is_term_smaller(a, b))
-		{
-			ks++;
-			*vs1++ = *vs++;
-			n--;
-		}
-		else if (are_terms_equal(a, b, 1))
-		{
-			ks++; vs++;
-			n--;
-			kvs++;
-			*vs1++ = *kvs++;
-			nkvs--;
-		}
-		else
-			return -1;
-
-		sz++;
-	}
-
-	while (n-- > 0)
-	{
-		*vs1++ = *vs++;
-		sz++;
-	}
-
-	if (nkvs > 0)
-		return -1;
-
-	return sz;
 }
 
 //EOF

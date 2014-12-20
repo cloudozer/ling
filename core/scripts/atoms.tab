@@ -52,6 +52,7 @@ not_implemented
 not_found
 no_memory
 badsig
+bad_key
 
 # BIF implementation
 file
