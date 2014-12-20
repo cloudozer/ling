@@ -111,8 +111,39 @@ term_t cbif_to_list1(proc_t *proc, term_t *regs)
 // maps:remove/2 [20]
 term_t cbif_remove2(proc_t *proc, term_t *regs)
 {
-	//TODO
-	bif_not_implemented();
+	term_t Key = regs[0];
+	term_t Map = regs[1];
+
+	if (!is_boxed_map(Map))
+		badarg(Map);
+
+	t_map_t *m = (t_map_t *)peel_boxed(Map);
+	int index = map_key_index(Key, m->keys);
+	if (index < 0)
+		return Map;
+
+	uint32_t *p = peel_tuple(m->keys);
+	int size = *p++;
+	term_t *ks = p;
+
+	int needed = 1 +size-1 +WSIZE(t_map_t) +size-1;
+	uint32_t *htop = heap_alloc(&proc->hp, needed);
+	term_t keys = tag_tuple(htop);
+	*htop++ = size-1;
+	memcpy(htop, ks, index *sizeof(term_t));
+	htop += index;
+	memcpy(htop, ks +index +1, (size -index -1) *sizeof(term_t));
+	htop += (size -index -1);
+	term_t out = tag_boxed(htop);
+	t_map_t *m1 = (t_map_t *)htop;
+	box_map(htop, size-1, keys);
+	heap_set_top(&proc->hp, htop);
+
+	memcpy(m1->values, m->values, index *sizeof(term_t));
+	memcpy(m1->values +index +1,
+		    m->values +index +1, (size -index -1) *sizeof(term_t));
+ 
+	return out;	
 }
 
 // maps:put/3 [21]
@@ -181,8 +212,104 @@ term_t cbif_new0(proc_t *proc, term_t *regs)
 // maps:merge/2 [23]
 term_t cbif_merge2(proc_t *proc, term_t *regs)
 {
-	//TODO
-	bif_not_implemented();
+	term_t Map1 = regs[0];
+	term_t Map2 = regs[1];
+
+	if (!is_boxed_map(Map1))
+		badarg(Map1);
+	if (!is_boxed_map(Map2))
+		badarg(Map2);
+
+	t_map_t *m1 = (t_map_t *)peel_boxed(Map1);
+	uint32_t *p1 = peel_tuple(m1->keys);
+	int size1 = *p1++;
+	term_t *ks1 = p1;
+	term_t *vs1 = m1->values;
+	t_map_t *m2 = (t_map_t *)peel_boxed(Map2);
+	uint32_t *p2 = peel_tuple(m2->keys);
+	int size2 = *p2++;
+	term_t *ks2 = p2;
+	term_t *vs2 = m2->values;
+
+	term_t mks[size1+size2];	//XXX: stack overflow
+	term_t mvs[size1+size2];
+
+	term_t *ks3 = mks;
+	term_t *vs3 = mvs;
+
+	int ss1 = size1;
+	int ss2 = size2;
+
+	int size = 0;
+	while (size1 > 0 && size2 > 0)
+	{
+		term_t a = *ks1;
+		term_t b = *ks2;
+		if (is_term_smaller(a, b))
+		{
+			*ks3++ = *ks1++;
+			*vs3++ = *vs1++;
+			size1--;
+		}
+		else if (a == b || are_terms_equal(a, b, 1))
+		{
+			ks1++; vs1++;
+			size1--;
+			*ks3++ = *ks2++;
+			*vs3++ = *vs2++;
+			size2--;
+		}
+		else
+		{
+			*ks3++ = *ks2++;
+			*vs3++ = *vs2++;
+			size2--;
+		}
+		size++;
+	}
+
+	while (size1-- > 0)
+	{
+		*ks3++ = *ks1++;
+		*vs3++ = *vs1++;
+		size++;
+	}
+
+	while (size2-- > 0)
+	{
+		*ks3++ = *ks2++;
+		*vs3++ = *vs2++;
+		size++;
+	}
+
+	if (size == ss1 || size == ss2)
+	{
+		// reuse keys
+		term_t keys = (size == ss1) ?m1->keys :m2->keys;
+		int needed = WSIZE(t_map_t) +size;
+		uint32_t *p = heap_alloc(&proc->hp, needed);
+		term_t out = tag_boxed(p);
+		term_t *values = p +WSIZE(t_map_t);
+		box_map(p, size, keys);
+		heap_set_top(&proc->hp, p);
+		memcpy(values, mvs, size *sizeof(term_t));
+		return out;
+	}
+	else
+	{
+		// new keys
+		int needed = 1 +size +WSIZE(t_map_t) +size;
+		uint32_t *p = heap_alloc(&proc->hp, needed);
+		term_t keys = tag_tuple(p);
+		*p++ = size;
+		memcpy(p, mks, size *sizeof(term_t));
+		term_t out = tag_boxed(p);
+		term_t *values = p +WSIZE(t_map_t);
+		box_map(p, size, keys);
+		heap_set_top(&proc->hp, p);
+		memcpy(values, mvs, size *sizeof(term_t));
+		return out;
+	}
 }
 
 // maps:keys/1 [24]
@@ -214,8 +341,81 @@ term_t cbif_is_key2(proc_t *proc, term_t *regs)
 // maps:from_list/1 [26]
 term_t cbif_from_list1(proc_t *proc, term_t *regs)
 {
-	//TODO
-	bif_not_implemented();
+	term_t List = regs[0];
+	if (!is_list(List))
+		badarg(List);
+
+	int len = list_len(List);
+	term_t ks[len];		//XXX: imminent stack overflow
+	term_t vs[len];
+	int n = 0;
+
+	term_t l = List;
+	while (is_cons(l))
+	{
+		term_t *cons = peel_cons(l);
+		if (!is_tuple(cons[0]))
+			badarg(List);
+		uint32_t *p = peel_tuple(cons[0]);
+		if (*p++ != 2)
+			badarg(List);
+		term_t k = *p++;
+		term_t v = *p++;
+
+		if (n == 0 || is_term_smaller(k, ks[0]))
+		{
+			memmove(ks +1, ks, n *sizeof(term_t));
+			memmove(vs +1, vs, n *sizeof(term_t));
+			ks[0] = k;
+			vs[0] = v;
+			n++;
+		}
+		else
+		{
+			term_t *alpha = ks;
+			term_t *beta = ks +n;
+			// *alpha =< k
+			while (beta > alpha+1)
+			{
+				term_t *mid = alpha + (beta -alpha +1)/2;
+				if (is_term_smaller(k, *mid))
+					beta = mid;
+				else
+					alpha = mid;
+			}
+			assert(beta == alpha+1);
+			int index = alpha -ks;
+			if (k == *alpha || are_terms_equal(k, *alpha, 1))
+				vs[index] = v;
+			else
+			{
+				index++;	// ks[index] > k now
+				memmove(ks +index +1, ks +index, (n -index) *sizeof(term_t));
+				memmove(vs +index +1, vs +index, (n -index) *sizeof(term_t));
+				ks[index] = k;
+				vs[index] = v;
+				n++;
+			}
+		}
+		l = cons[1];
+	}
+
+	if (!is_nil(l))
+		badarg(List);
+
+	int needed = 1 +n + WSIZE(t_map_t) +n;
+	uint32_t *htop = heap_alloc(&proc->hp, needed);
+	term_t keys = tag_tuple(htop);
+	*htop++ = n;
+	memcpy(htop, ks, n *sizeof(term_t));
+	htop += n;
+	term_t out = tag_boxed(htop);
+	term_t *values = htop +WSIZE(t_map_t);
+	box_map(htop, n, keys);
+	heap_set_top(&proc->hp, htop);
+	memcpy(values, vs, n *sizeof(term_t));
+
+	return out;	
 }
 
 // maps:find/2 [27]
