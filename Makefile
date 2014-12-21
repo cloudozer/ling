@@ -19,7 +19,7 @@ core: bc
 apps:
 	$(MAKE) -C apps
 
-railing:
+railing: bc core
 	$(MAKE) -C railing
 
 test:
