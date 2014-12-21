@@ -13,7 +13,7 @@ endif
 bc:
 	$(MAKE) -C bc
 
-core:
+core: bc
 	$(MAKE) -C core
 
 apps:
