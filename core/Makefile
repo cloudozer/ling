@@ -151,7 +151,7 @@ vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS)
 nettle: lib/nettle/libnettle.a
 
 lib/nettle/libnettle.a: lib/nettle/config.h
-	make -C lib/nettle
+	$(MAKE) -C lib/nettle
 
 lib/nettle/config.h: lib/nettle.tar.gz
 	mkdir -p lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \
