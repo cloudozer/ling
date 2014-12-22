@@ -1,5 +1,4 @@
+sudo: false
 language: erlang
 otp_release: 17.3
-before_install: sudo apt-get update -qq
-install: sudo apt-get install -y nettle-dev
 script: make
