@@ -7,12 +7,10 @@ Ling requires the following libraries:
 1. lwIP (TCP/IP networking)
 2. Nettle (Low-level crypto)
 3. PCRE (Regular expressions)
-4. uClibc (General low-level functions)
 
 The dependency on the external libraries is minimized. Only the portion of the
-Nettle library that does not use bignums is imported. Just a handful of
-functions are imported from uClibc and the dependency on uClibc can be avoided
-with a little effort. lwIP and PCRE are imported almost fully.
+Nettle library that does not use bignums is imported. lwIP and PCRE are
+imported almost fully.
 
 How to obtain and build the libraries
 =====================================
@@ -57,12 +55,3 @@ Now build it using the following commands:
 				--enable-unicode-properties CFLAGS=-O2 --no-recursion
 
 Then 'make' the library.
-4. uClibc
-
-Obtain uClibc source from http://www.uclibc.org/downloads/uClibc-0.9.33.2.tar.bz2.
-Copy openling/deps/uClibc_config file to uClibc directory as .config. Use 'make'
-to build the library. You may need to run 'make menuconfig' to adjust the
-target architecture: x86_32 or x86_64.
-
-Use 'sudo make install' to install the library.
-
