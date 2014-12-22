@@ -1,5 +1,7 @@
 ## LING: Erlang on Xen
 
+[![Build Status](https://api.travis-ci.org/FlowForwarding/lincx.svg)](https://travis-ci.org/FlowForwarding/lincx)
+
 Wikipedia: -ling, an English diminutive suffix
 
 ### How to get started?
