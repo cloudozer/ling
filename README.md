@@ -8,24 +8,22 @@ Wikipedia: -ling, an English diminutive suffix
 
 The easy way is to use pre-built railing utility:
 
-1. Grab the binary named railing-&lt;version&gt; from
-[releases](https://github.com/cloudozer/ling/releases).
+1. Grab a binary named railing-&lt;version&gt; from [releases](https://github.com/cloudozer/ling/releases).
 
 1. Rename the binary to `railing` and move it to your Erlang project directory.
 
 1. Create the image and the domain configuration file:
-```
-./railing image
-```
+
+        ./railing image
+
 1. Boot the Xen domain and get the familiar Erlang shell:
 
-```
-xl create -c domain_config
-```
+        xl create -c domain_config
+
 
 ### How to build LING from sources?
 
-See INSTALL.md.
+See [INSTALL.md](INSTALL.md).
 
 ### How to use railing?
 
