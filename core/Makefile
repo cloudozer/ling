@@ -15,6 +15,7 @@ CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
 CPPFLAGS += -iquote lib
 CPPFLAGS += -isystem lib/misc/include
 CPPFLAGS += -isystem lib/pcre
+CPPFLAGS += -isystem lib
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
 CPPFLAGS += -iquote bignum
 CPPFLAGS += -iquote lib/lwip/src/include
