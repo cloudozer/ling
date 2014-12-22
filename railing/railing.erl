@@ -15,6 +15,15 @@ opt_spec() -> [
 	% clean
 ].
 
+cross_prefix() ->
+    case os:getenv("RAILING_CROSS_PREFIX") of
+        false -> case os:type() of
+                    {unix, darwin} -> "x86_64-pc-linux-";
+                    _ -> ""
+                 end;
+        X -> X
+    end.
+
 cache_dir() -> ".railing".
 
 main(Args) ->
@@ -219,8 +228,8 @@ main(Args) ->
 
 	file:close(EmbedFs),
 
-	ok = sh("ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
-	ok = sh("ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
+	ok = sh(cross_prefix() ++ "ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
+	ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
 
 	io:format("Generate: ~s\n", [DomName]),
 
