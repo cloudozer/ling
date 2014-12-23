@@ -38,6 +38,7 @@ This instructs railing to scan all subdirectories for `*.beam` files. All files
 found are embedded into the Xen image and become accessible during runtime.
 Certain subdirectories can be excluded from the search using `-x` option.
 
-### How to report issue LING/railing
+### How to report issues in LING/railing
 
-Open a ticket in [Bugzilla](http://issues.erlangonxen.org/buglist.cgi?bug_status=__open__&order=changeddate%20DESC) or [GitHub](https://github.com/cloudozer/ling/issues).
+Please open a ticket in [GitHub](https://github.com/cloudozer/ling/issues).
+Tickets in [Bugzilla](http://issues.erlangonxen.org/buglist.cgi?bug_status=__open__&order=changeddate%20DESC) will eventually be migrated to GitHub too.
