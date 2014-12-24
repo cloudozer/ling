@@ -361,13 +361,13 @@ static term_t ol_tcp_control(outlet_t *ol,
 			PUT_UINT_16(reply, ref);
 			reply += 2;
 		}
+		else if (err == ERR_OK)
+			REPLY_INET_ERROR("enomem");
 		else
 		{
-			//
-			//TODO: ERR_RTE possible too (IPv6)
-			//
-			assert(err == ERR_MEM);
-			REPLY_INET_ERROR("enomem");
+			// ERR_RTE?
+			printk("ol_tcp: connect failed: %d\n", err);
+			REPLY_INET_ERROR("enotcon");
 		}
 	}
 	break;

@@ -246,12 +246,12 @@ void __box_map(uint32_t **p, uint32_t size, term_t keys)
 	assert(is_tuple(keys));
 	assert(*peel_tuple(keys) == size);
 
-	((t_map_t *)(*p))->hdr = HDR_IS_NOT_CP | (size << 4) | SUBRAG_MAP;
+	((t_map_t *)(*p))->hdr = HDR_IS_NOT_CP | (size << 4) | SUBTAG_MAP;
 	((t_map_t *)(*p))->keys = keys;
 	(*p) += WSIZE(t_map_t) + size;
 }
 
-uint32_t __map_size(uin32_t *p)
+uint32_t __map_size(uint32_t *p)
 {
 	assert(p != 0);
 	ALIGNED_PTR(p);

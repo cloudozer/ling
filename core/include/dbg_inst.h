@@ -60,6 +60,9 @@ int __fun_num_free(uint32_t *p);
 void __box_export(uint32_t **p, export_t *e);
 int __export_arity(uint32_t *p);
 
+void __box_map(uint32_t **p, uint32_t size, term_t keys);
+uint32_t __map_size(uint32_t *p);
+
 void __box_proc_bin(uint32_t **p, uint32_t size, binnode_t *node);
 void __box_heap_bin(uint32_t **p, uint32_t size, uint8_t *data);
 
