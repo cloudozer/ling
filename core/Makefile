@@ -128,7 +128,7 @@ ling_main.c: scripts/ling_main_c.et scripts/hot_cold_iops
 	scripts/main_gen $^
 
 ling_main.o: ling_main.c include/atom_defs.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fno-reorder-blocks -o $@ -c $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-error=unused-label -fno-reorder-blocks -o $@ -c $<
 
 include/bif.h: ../bc/scripts/bif.tab
 	scripts/bifs_gen $< $@
