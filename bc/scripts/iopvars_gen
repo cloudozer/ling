@@ -322,7 +322,7 @@ find_beams(BeamSrc) ->
 		case code:lib_dir(list_to_atom(Lib)) of
 		{error,_} ->
 			io:format("OTP library ~s not found\n", [Lib]),
-			halt();
+			halt(1);
 		Dir ->
 			filelib:wildcard(filename:join([Dir,ebin,"*.beam"]))
 				++ Beams
@@ -338,7 +338,7 @@ find_beams(BeamSrc) ->
 				[Name|Beams];
 			false ->
 				io:format("~s not found\n", [Name]),
-				halt()
+				halt(1)
 			end
 		end
 	end, [], re:split(Bin, "\n", [{return,list},trim])).
