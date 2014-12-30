@@ -1,5 +1,5 @@
 
-.PHONY: default bc core apps railing test install checkotp
+.PHONY: default bc core apps railing test install checkotp test.img
 
 include Config.mk
 
@@ -10,7 +10,7 @@ ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp
 	$(error Erlang/OTP $(OTP_VER) not found)
 endif
 
-bc:
+bc: test
 	$(MAKE) -C bc
 
 core: bc
@@ -27,3 +27,6 @@ test:
 
 install: bc core apps railing
 	install railing/railing /usr/bin
+
+test.img: railing
+	$(MAKE) -C test test.img
