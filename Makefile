@@ -3,7 +3,7 @@
 
 include Config.mk
 
-default: test bc core apps railing | checkotp
+default: railing | checkotp
 
 checkotp:
 ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp_release)),erlang:halt(0)."))
@@ -16,10 +16,10 @@ bc: test
 core: bc
 	$(MAKE) -C core
 
-apps:
+apps: bc
 	$(MAKE) -C apps
 
-railing: bc core
+railing: bc core apps
 	$(MAKE) -C railing
 
 test:
