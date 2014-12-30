@@ -1,4 +1,4 @@
 sudo: false
 language: erlang
 otp_release: 17.3
-script: make railing && make test.img
+script: make && make test.img
