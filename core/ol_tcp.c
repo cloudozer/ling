@@ -31,9 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-
 #include "outlet.h"
 #include "ol_inet.h"
 
@@ -361,7 +358,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 			PUT_UINT_16(reply, ref);
 			reply += 2;
 		}
-		else if (err == ERR_OK)
+		else if (err == ERR_MEM)
 			REPLY_INET_ERROR("enomem");
 		else
 		{
