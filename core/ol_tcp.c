@@ -358,13 +358,12 @@ static term_t ol_tcp_control(outlet_t *ol,
 			PUT_UINT_16(reply, ref);
 			reply += 2;
 		}
-		else if (err == ERR_MEM)
-			REPLY_INET_ERROR("enomem");
+		else if (err == ERR_RTE)
+			REPLY_INET_ERROR("eunreach");
 		else
 		{
-			// ERR_RTE?
-			printk("ol_tcp: connect failed: %d\n", err);
-			REPLY_INET_ERROR("enotcon");
+			assert(err == ERR_MEM);
+			REPLY_INET_ERROR("enomem");
 		}
 	}
 	break;
