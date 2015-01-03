@@ -104,8 +104,8 @@
 
 -compile({no_auto_import,[halt/2,port_command/3]}).
 
--define(LING_COMPAT_REL, 16).
--define(LING_COMPAT_OTP_RELEASE, "R16B01").	%% do not forget to update this
+-define(LING_COMPAT_REL, 17).
+-define(LING_COMPAT_OTP_RELEASE, "17").	%% do not forget to update this
 
 get_module_info(Module) when is_atom(Module) ->
 	Items = [exports,imports,attributes,compile],
