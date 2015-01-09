@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "bif_impl.h"
 
 extern int max_backtrace_depth;
@@ -468,7 +464,6 @@ term_t cbif_load_module2(proc_t *proc, term_t *regs)
 
 	return heap_tuple2(&proc->hp, A_MODULE, Mod);
 }
-
 
 term_t cbif_delete_module1(proc_t *proc, term_t *regs)
 {

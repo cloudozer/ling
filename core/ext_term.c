@@ -216,7 +216,8 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 			if (y < 0)
 				return y;
 		}
-		es->heap_size += 1 +arity +2 +arity;
+		es->heap_size += (arity == 0) ? 2
+									  : 1 +arity +2 +arity;
 		break;
 	}
 	case NIL_EXT:
@@ -568,8 +569,13 @@ static term_t ext_term_decode2(ext_term_scan_t *es)
 		// val2
 		// ...
 
-		//TODO
-		
+		if (arity == 0)
+		{
+			term_t map = tag_boxed(es->htop);
+			box_map(es->htop, 0, ZERO_TUPLE);
+			return map;
+		}
+
 		term_t keys = tag_tuple(es->htop);
 		*es->htop++ = arity;
 		term_t *kw = es->htop;
