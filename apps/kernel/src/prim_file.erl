@@ -77,7 +77,7 @@
 -export([start/0,stop/1]).
 
 -export([position/2,truncate/1]).
--export([sendfile/10]).
+-export([sendfile/8]).
 -export([sync/1,datasync/1]).
 -export([advise/4]).
 
@@ -932,7 +932,7 @@ truncate(#file_descriptor{module =?MODULE,data ={ConnPid,Fid,_}}) ->
 %%------------------------------------------------------------------------------
 
 %% Not supported -- file:sendfile will revert to fallback
-sendfile(_Fd, _Sock, _Offs, _Bytes, _ChunkSz, _, _, _, _, _) ->
+sendfile(_Fd, _Dest, _Offset, _Bytes, _ChunkSize, _Headers, _Trailers, _Flags) ->
 	{error,enotsup}.
 
 %% @doc Sync.
