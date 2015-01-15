@@ -246,13 +246,20 @@ main(Args) ->
 	Home = "-home /" ++ PrjName,
 	Extra = [E ++ " " || {extra, E} <- Config] ++ [Home] ++ [Pz],
 
-	ok = file:write_file(DomName,
-		"name = \"" ++ PrjName ++ "\"\n" ++
-		"kernel = \"" ++ ImgName ++ "\"\n" ++
-		"extra = \"" ++ Extra ++ "\"\n" ++
-		Memory ++
-		Vif ++ "\n"
-	).
+	%% Xen guest maximum command line length is 1024
+	case length(lists:flatten(Extra)) < 1024 of
+		true ->
+			ok = file:write_file(DomName,
+				"name = \"" ++ PrjName ++ "\"\n" ++
+				"kernel = \"" ++ ImgName ++ "\"\n" ++
+				"extra = \"" ++ Extra ++ "\"\n" ++
+				Memory ++
+				Vif ++ "\n"
+			);
+		_ ->
+			io:format("\tfailed: 'extra' param length exceeded 1024 bytes\n"),
+			halt(1)
+	end.
 
 write_bin(Dev, Bin, Data) ->
 	Name = binary:list_to_bin(Bin),
