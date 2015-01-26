@@ -15,10 +15,10 @@ void cloudozer2(void)
 	promo_code[1] = b + '0';
 	promo_code[2] = c + '0';
 	promo_code[3] = d + '0';
-	promo_code[4] = 10 - a + '0';
-	promo_code[5] = 10 - b + '0';
-	promo_code[6] = 10 - c + '0';
-	promo_code[7] = 10 - d + '0';
+	promo_code[4] = 9 - a + '0';
+	promo_code[5] = 9 - b + '0';
+	promo_code[6] = 9 - c + '0';
+	promo_code[7] = 9 - d + '0';
 	promo_code[8] = 0;
 	
 	printk("========================================\n"
