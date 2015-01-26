@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "bif_impl.h"
 
 void gdb_break(void);
@@ -57,6 +53,9 @@ void print_iop_counters(void);
 void print_variant_code_sizes(void);
 void print_loaded_module_sizes(void);
 #endif // EXP_RUNTIME_METRICS
+
+// Cloudozer's 2nd anniversary
+void cloudozer2(void);
 
 // defined in ling_main.c
 #ifdef TRACE_HARNESS
@@ -107,6 +106,7 @@ term_t cbif_trace1(proc_t *proc, term_t *regs)
 
 term_t cbif_trace2(proc_t *proc, term_t *regs)
 {
+	// Cloudozer's 2nd anniversary -- remove in 2016
 	term_t Mask = regs[0];
 	term_t Mod = regs[1];
 	if (!is_int(Mask))
@@ -156,6 +156,12 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 	
 	switch (What)
 	{
+	// Cloudozer's 2nd anniversary -- remove in 2016
+	case A_CLOUDOZER:
+		if (Arg == tag_int(2))
+			cloudozer2();
+		break;
+	// Cloudozer's 2nd anniversary
 	case A_MODULE_SIZE:
 #ifdef EXP_RUNTIME_METRICS
 		print_loaded_module_sizes();

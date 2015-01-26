@@ -31,19 +31,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/*
-**
-**
-**
-*/
-
 #include "ling_common.h"
 #include "ling_xen.h"
 #include "xen/grant_table.h"
 
 #include "mm.h"
 
-#define NR_GRANT_PAGES		8
+#define NR_GRANT_PAGES		32
 
 #define NR_RESERVED_ENTRIES	8
 
@@ -69,9 +63,8 @@ void grants_init(void)
 	int rs = HYPERVISOR_grant_table_op(GNTTABOP_setup_table, &op, 1);
 	if (rs < 0)
 		fatal_error("grants_init: setup_table failed: %d\n", rs);
-	
-	int i;
-	for (i = NR_GRANT_ENTRIES-1; i >= NR_RESERVED_ENTRIES; i--)
+
+	for (int i = NR_GRANT_ENTRIES-1; i >= NR_RESERVED_ENTRIES; i--)
 	{
 		free_list[i] = free_entry;
 		free_entry = i;
@@ -120,6 +113,4 @@ void grants_end_access(grant_ref_t ref)
 	free_list[ref] = free_entry;
 	free_entry = ref;
 }
-
-/*EOF*/
 
