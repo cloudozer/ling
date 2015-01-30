@@ -32,7 +32,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //
-// A Xen front-end driver
+// A Xen vif front-end driver
 //
 
 #include "netfe.h"
@@ -604,15 +604,24 @@ int build_getifaddrs_reply(char *buf, int sz)
 	while (fe != 0)
 	{
 		// ethNN
-		more(3);
-		*p++ = 'e'; *p++ = 't'; *p++ = 'h';
+
+		// convert NN first and append in reverse order - NN may be more than 9
 		int n = fe->index;
 		assert(n >= 0);
+		char pad[16];
+		char *conv = pad;
 		do {
-			more(1);
-			*p++ = (n % 10) +'0';
+			*conv++ = (n % 10) +'0';
 			n /= 10;
 		} while (n > 0);
+		
+		more(3);
+		*p++ = 'e'; *p++ = 't'; *p++ = 'h';
+		do {
+			more(1);
+			conv--;
+			*p++ = *conv;
+		} while (conv > pad);
 		more(1);
 		*p++ = 0;
 
