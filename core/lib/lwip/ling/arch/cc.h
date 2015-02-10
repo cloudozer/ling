@@ -1,6 +1,8 @@
 #ifndef CC_H
 #define CC_H
 
+#include <stdint.h>
+
 #if defined(__x86_64__)
 typedef char	s8_t;
 typedef short	s16_t;

@@ -60,9 +60,9 @@ struct embed_bin_t {
 
 // These are four (of many) undefined symbols of vmling.o. They represent files
 // embedded into the vmling image.
-extern embed_buck_t embed_bucks[];
+extern embed_buck_t *embed_bucks;
 extern int nr_embed_bucks;
-extern embed_bin_t embed_bins[];
+extern embed_bin_t *embed_bins;
 extern int nr_embed_bins;
 
 int embed_init(void);

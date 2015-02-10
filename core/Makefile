@@ -14,7 +14,7 @@ OBJCOPY := $(CROSS_PREFIX)-objcopy
 
 CPPFLAGS := -DTEXT_BASE=$(TEXT_BASE)
 CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
-CPPFLAGS += -isystem $(NETTLE_DIR)
+CPPFLAGS += -isystem lib/nettle
 CPPFLAGS += -isystem lib/pcre
 CPPFLAGS += -isystem lib
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
@@ -113,7 +113,6 @@ $(LWIP_OBJS): %.o: %.c
 
 ling_main.c: scripts/ling_main_c.et scripts/hot_cold_iops
 	scripts/main_gen $^
->>>>>>> master
 
 ling_main.o: ling_main.c include/atom_defs.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fno-reorder-blocks -o $@ -c $<
@@ -143,7 +142,7 @@ $(INCLUDES): gentab/atoms.beam gentab/exp_tab.beam include/atom_defs.h $(PREMODS
 	scripts/premod_gen preload premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc copy
 
 preload/literals.o: preload/literals.bin
-	$(OBJCOPY) -I binary -O elf64-x86-64 -B i386 \
+	$(OBJCOPY) -I binary -O elf32-littlearm -B arm \
 		--redefine-sym _binary_preload_literals_bin_start=literals_blob_start \
 		--redefine-sym _binary_preload_literals_bin_end=literals_blob_end \
 		--redefine-sym _binary_preload_literals_bin_size=literals_blob_size \
