@@ -47,6 +47,7 @@
 #include <nettle/cbc.h>
 
 #include "crc32.h"
+#include "adler32.h"
 
 #include "atom_defs.h"
 #include "bits.h"
@@ -54,6 +55,7 @@
 #include "mixed.h"
 #include "term_util.h"
 #include "list_util.h"
+#include "map_util.h"
 #include "unicode.h"
 #include "catch_tab.h"
 

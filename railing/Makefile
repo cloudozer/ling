@@ -1,13 +1,12 @@
-
-.PHONY: default dist
+.PHONY: clean
 
 include ../Config.mk
 
-default:
-	@echo "{escript_emu_args,\"%%! -ling_root $(LING_ROOT)\\n\"}." > rebar.config
-	./rebar compile escriptize
+railing: $(patsubst %.erl,%.beam,$(wildcard *.erl)) escriptize
+	./escriptize
 
-dist:
-	@echo "" > rebar.config
-	./rebar compile escriptize
+clean:
+	rm -f *.beam railing
 
+%.beam: %.erl
+	erlc -DLING_VER=\"$(LING_VER)\" -DOTP_VER=\"$(OTP_VER)\" $<

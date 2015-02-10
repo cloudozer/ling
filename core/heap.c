@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "heap.h"
 
 #include <math.h>
@@ -83,8 +79,11 @@ void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends)
 	//hp->gc_spot = 0;
 	//hp->proc_bins = 0;
 	//hp->total_pb_size = 0;
+	//hp->suppress_gc = 0;
 	hp->full_sweep_after = DEFAULT_FULL_SWEEP_AFTER;
 	//hp->sweep_after_count = 0;
+	//hp->minor_gcs = 0;
+	//hp->wait_gc_runs = 0;
 	//hp->expected_top = 0;
 }
 
@@ -682,6 +681,29 @@ static int copy_terms(int depth, heap_t *hp, term_t *terms, int num)
 			case SUBTAG_EXPORT:
 				copy_simple(t_export_t);
 				break;
+			case SUBTAG_MAP:
+			{
+				t_map_t *m = (t_map_t *)term_data;
+				int size = map_size(m);
+				term_t keys = m->keys;
+				int rs = copy_terms(depth+1, hp, &keys, 1);
+				if (rs < 0)
+					return rs;
+				term_t values[size];
+				memcpy(values, m->values, size *sizeof(term_t));
+				rs = copy_terms(depth+1, hp, values, size);	
+				if (rs < 0)
+					return rs;
+				uint32_t *p = heap_alloc_N(hp, WSIZE(t_map_t) +size);
+				if (p == 0)
+					return -NO_MEMORY;
+				term_t *q = p + WSIZE(t_map_t);
+				box_map(p, size, keys);
+				memcpy(q, values, size *sizeof(term_t));
+				heap_set_top(hp, p);
+				
+				break;
+			}
 			case SUBTAG_PID:
 				copy_simple(t_long_pid_t);
 				break;

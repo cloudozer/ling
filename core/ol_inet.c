@@ -144,6 +144,10 @@ int inet_set_opt(outlet_t *ol, int opt, uint32_t val)
 		ol->send_timeout = val;
 		break;
 
+	case INET_LOPT_TCP_SEND_TIMEOUT_CLOSE:
+		// ignore silently
+		break;
+
 	case INET_LOPT_TCP_HIWTRMRK:
 	case INET_LOPT_TCP_LOWTRMRK:
 	case INET_LOPT_BIT8:
@@ -159,11 +163,9 @@ int inet_set_opt(outlet_t *ol, int opt, uint32_t val)
 
 	case INET_LOPT_READ_PACKETS:
 	case INET_OPT_RAW:
-	case INET_LOPT_TCP_SEND_TIMEOUT_CLOSE:
 		goto unsupported;
 
 	default:
-		assert(opt == INET_LOPT_TCP_SEND_TIMEOUT_CLOSE);
 unsupported:
 		printk("inet_set_opt: unsupported option [%d] set\n", opt);
 		return -BAD_ARG;

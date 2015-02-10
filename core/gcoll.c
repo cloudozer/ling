@@ -39,7 +39,7 @@
 
 #include "ling_common.h"
 
-#include "qsort.h"
+#include "stdlib.h"
 #include "bits.h"
 #include "string.h"
 #include "mm.h"
@@ -82,6 +82,8 @@ static region_t *containing_region(region_t *regions, int n, void *addr);
 int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 {
 	ssi(SYS_STATS_GC_RUNS);
+	hp->minor_gcs++;
+
 	// select the GC node
 	memnode_t *gc_node = (hp->gc_spot != 0)
 		? hp->gc_spot->next
@@ -625,6 +627,23 @@ while (ss->top < ss->end)
 
 					break;
 				}
+				case SUBTAG_MAP:
+				{
+					t_map_t *map = (t_map_t *)term_data;
+					int size = map_size(map);
+					uint32_t *saved = htop;
+					box_map(htop, size, map->keys);
+					memcpy(saved +2, map->values, size *sizeof(term_t));
+
+					// hdr
+					// keys
+					// val1
+					// val2
+					// ...
+
+					RPUSH(ss, saved +1, saved +1 +size);  // both keys and values
+					break;
+				}
 				case SUBTAG_PID:
 				{
 					uint32_t id = opr_hdr_id(term_data);
@@ -826,6 +845,13 @@ while (ss->top < ss->end)
 
 					break;
 				}	
+				case SUBTAG_MAP:
+				{
+					int size = map_size(term_data);
+					term_t *kvs = (term_t *)term_data +1;
+					RPUSH(ss, kvs +1, kvs +1 +size);	// both keys and values
+					break;
+				}
 				case SUBTAG_MATCH_CTX:
 				{
 					t_match_ctx_t *mc = term_data;

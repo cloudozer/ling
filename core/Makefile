@@ -16,6 +16,7 @@ CPPFLAGS := -DTEXT_BASE=$(TEXT_BASE)
 CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
 CPPFLAGS += -isystem $(NETTLE_DIR)
 CPPFLAGS += -isystem lib/pcre
+CPPFLAGS += -isystem lib
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
 CPPFLAGS += -iquote bignum
 CPPFLAGS += -iquote lib/lwip/src/include
@@ -24,7 +25,6 @@ CPPFLAGS += -iquote lib/lwip/src/include/ipv6
 CPPFLAGS += -iquote lib/lwip/ling
 
 CPPFLAGS += -DLING_VER=$(LING_VER)
-CPPFLAGS += -DLING_HOSTNAME=$(LING_HOSTNAME)
 
 #CPPFLAGS += -DLING_DEBUG
 #CPPFLAGS += -DDEBUG_UNUSED_MEM
@@ -38,32 +38,82 @@ CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -g $(COMMON_FLAGS)
 LDFLAGS := -Ttext $(TEXT_BASE)
 LDFLAGS += -T ling.lds
 LDFLAGS += -nostdlib
-LDFLAGS += -L $(NETTLE_DIR)
+LDFLAGS += -L lib/nettle
 LDFLAGS += -Xlinker --relocatable
 LDFLAGS += -Xlinker --build-id=none
 LDFLAGS += -Xlinker --cref -Xlinker -Map=ling.map
 LDFLAGS += -static
-LDFLAGS += -L lib/pcre/.libs
-LDFLAGS += -L lib/lwip
-LDFLAGS_FINAL := -lgcc -lc -lm -lnettle
-LDFLAGS_FINAL += -lpcre -llwip
+LDFLAGS_FINAL := -lgcc lib/nettle/libnettle.a
 
 STARTUP_OBJ := $(patsubst %.S,%.o,arch/$(ARCH)/startup.S)
 
 ARCH_OBJS := $(patsubst %.c,%.o,$(wildcard arch/$(ARCH)/*.c))
 OBJS := $(patsubst %.c,%.o,$(wildcard *.c))
 BIGNUM_OBJS := $(patsubst %.c,%.o,$(wildcard bignum/*.c))
+MISC_OBJS := $(patsubst %.c,%.o,$(wildcard lib/misc/*.c))
+MISC_AS_OBJS := $(patsubst %.s,%.o,$(wildcard lib/misc/arch/$(ARCH)/*.s))
+PCRE_OBJS := \
+	lib/pcre/pcre_chartables.o \
+	lib/pcre/pcre_compile.o \
+	lib/pcre/pcre_config.o \
+	lib/pcre/pcre_dfa_exec.o \
+	lib/pcre/pcre_exec.o \
+	lib/pcre/pcre_fullinfo.o \
+	lib/pcre/pcre_get.o \
+	lib/pcre/pcre_globals.o \
+	lib/pcre/pcre_maketables.o \
+	lib/pcre/pcre_newline.o \
+	lib/pcre/pcre_ord2utf8.o \
+	lib/pcre/pcre_study.o \
+	lib/pcre/pcre_tables.o \
+	lib/pcre/pcre_try_flipped.o \
+	lib/pcre/pcre_ucp_searchfuncs.o \
+	lib/pcre/pcre_valid_utf8.o \
+	lib/pcre/pcre_version.o \
+	lib/pcre/pcre_xclass.o
 
-ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) \
-	preload/literals.o
+LWIP_SRC_DIRS := \
+	lib/lwip/src/api \
+	lib/lwip/src/core \
+	lib/lwip/src/core/ipv4 \
+	lib/lwip/src/core/ipv6 \
+	lib/lwip/src/netif
+
+LWIP_SRCS := $(foreach dir,$(LWIP_SRC_DIRS),$(wildcard $(dir)/*.c))
+LWIP_OBJS := $(patsubst %.c,%.o,$(LWIP_SRCS))
+
+ifeq ($(CROSS),1)
+NETTLE_FLAGS := --host=x86_64-pc-linux
+else
+NETTLE_FLAGS :=
+endif
+
+ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS) \
+	preload/literals.o ling_main.o
 
 $(STARTUP_OBJ): %.o: %.S
-	$(CC) $(CPPFLAGS) -c $< -o $@
+	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Stop iops reordering in ling_main.o
 OBJS1 := $(filter-out ling_main.o,$(OBJS))
 $(ARCH_OBJS) $(OBJS1) $(BIGNUM_OBJS): %.o: %.c include/atom_defs.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+$(MISC_OBJS): %.o: %.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+$(MISC_AS_OBJS): %.o: %.s
+	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
+
+$(PCRE_OBJS): %.o: %.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -DHAVE_CONFIG_H -o $@ -c $<
+
+$(LWIP_OBJS): %.o: %.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-char-subscripts -o $@ -c $<
+
+ling_main.c: scripts/ling_main_c.et scripts/hot_cold_iops
+	scripts/main_gen $^
+>>>>>>> master
 
 ling_main.o: ling_main.c include/atom_defs.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -fno-reorder-blocks -o $@ -c $<
@@ -78,7 +128,7 @@ $(BEAMS): %.beam: %.erl
 
 PREMODS := $(patsubst %.erl,%.beam,$(wildcard preload/*.erl))
 $(PREMODS): %.beam: %.erl
-	erlc -o preload $<
+	erlc -DLING_VER=\"$(LING_VER)\" -o preload $<
 
 gentab/exp_tab.erl: $(PREMODS) ../bc/scripts/bif.tab
 	scripts/exptab_gen preload ../bc/scripts/bif.tab $@
@@ -89,33 +139,27 @@ include/atom_defs.h atoms.inc gentab/atoms.erl: scripts/atoms.tab gentab/exp_tab
 
 
 premod: $(INCLUDES)
-$(INCLUDES): \
-				gentab/atoms.beam gentab/exp_tab.beam include/atom_defs.h $(PREMODS)
-	scripts/premod_gen preload \
-		premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc copy
+$(INCLUDES): gentab/atoms.beam gentab/exp_tab.beam include/atom_defs.h $(PREMODS)
+	scripts/premod_gen preload premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc copy
 
 preload/literals.o: preload/literals.bin
-	$(OBJCOPY) -I binary -O elf32-littlearm -B arm\
+	$(OBJCOPY) -I binary -O elf64-x86-64 -B i386 \
 		--redefine-sym _binary_preload_literals_bin_start=literals_blob_start \
 		--redefine-sym _binary_preload_literals_bin_end=literals_blob_end \
 		--redefine-sym _binary_preload_literals_bin_size=literals_blob_size \
-	   	$< $@
+		$< $@
 
-lwip:
-	make -C lib/lwip
+vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS)
+	$(CC) -o $@ $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL) $(CFLAGS)
 
-lib/pcre/config.log:
-	cd lib/pcre && autoreconf -i && ./configure --disable-shared \
-							 --disable-cpp \
-							 --disable-stack-for-recursion \
-							 --enable-utf8 \
-							 --enable-unicode-properties \
-							 CFLAGS="-O2 $(COMMON_CFLAGS)" \
-							 --no-recursion
-	
-pcre: lib/pcre/config.log
-	make -C lib/pcre
+nettle: lib/nettle/libnettle.a
 
-vmling.o: $(STARTUP_OBJ) $(ALL_OBJS)
-	$(CC) -o $@ $(STARTUP_OBJ) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL) $(CFLAGS)
+lib/nettle/libnettle.a: lib/nettle/config.h
+	$(MAKE) -C lib/nettle
 
+lib/nettle/config.h: lib/nettle.tar.gz
+	mkdir -p lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \
+	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl $(NETTLE_FLAGS) CFLAGS="-fno-stack-protector -U_FORTIFY_SOURCE"
+
+lib/nettle.tar.gz:
+	wget -O $@ --no-check-certificate -c https://ftp.gnu.org/gnu/nettle/nettle-2.7.1.tar.gz

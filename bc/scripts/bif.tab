@@ -168,6 +168,8 @@ erlang:decode_packet$(Type,Bin,PackSize,LineLen)	cbif_decode_packet4
 lwip:setup(IpAddr,NetMask,Gateway,Dhcp)		cbif_setup4
 
 # bif_ling.c
+ling:domain_name()			cbif_domain_name0
+
 ling:b1()					cbif_b1_0
 ling:b2()					cbif_b2_0
 ling:b3()					cbif_b3_0
@@ -195,6 +197,8 @@ erlang:md5_final(Ctx)			cbif_md5_final1
 
 erlang:crc32(Old,Data)				cbif_crc32_2
 erlang:crc32_combine(Fst,Sec,Sz)	cbif_crc32_combine3
+erlang:adler32(Old,Data)			cbif_adler32_2
+erlang:adler32_combine(Fst,Sec,Sz)	cbif_adler32_combine3
 
 # bif_generic.c
 erlang:is_binary(Binary)	bif_is_binary1
@@ -214,6 +218,7 @@ erlang:is_reference(Pid)	bif_is_reference1
 
 erlang:and(A,B)				bif_and2
 erlang:or(A,B)				bif_or2
+erlang:xor(A,B)				bif_xor2
 erlang:not(A)				bif_not1
 
 erlang:<(A,B)				bif_less2
@@ -228,6 +233,7 @@ erlang:/=(A,B)				bif_ne2
 erlang:length(List)			gc_bif_length1
 erlang:size(TupleBin)		bif_size1
 erlang:tuple_size(Tuple)	bif_tuple_size1
+erlang:map_size(Tuple)		bif_map_size1
 erlang:byte_size(Bin)		gc_bif_byte_size1
 erlang:bit_size(Bin)		gc_bif_bit_size1
 
@@ -357,6 +363,20 @@ lists:reverse(Ls,Hs)				cbif_reverse2
 lists:keymember(Key,N,TupleList)	cbif_keymember3
 lists:keysearch(Key,N,TupleList)	cbif_keysearch3
 lists:keyfind(Key,N,TupleList)		cbif_keyfind3
+
+#bif_map.c
+maps:get(Key,Map)				cbif_get2
+maps:find(Key,Map)				cbif_find2
+maps:from_list(List)			cbif_from_list1
+maps:is_key(Key,Map)			cbif_is_key2
+maps:keys(Map)					cbif_keys1
+maps:merge(Map1,Map2)			cbif_merge2
+maps:new()						cbif_new0
+maps:put(Key,Value,Map1)		cbif_put3
+maps:remove(Key,Map)			cbif_remove2
+maps:to_list(Map)				cbif_to_list1
+maps:update(Key,Value,Map1)		cbif_update3
+maps:values(Map)				cbif_values1
 
 #bif_crypto.c
 crypto:md5(Data)				cbif_md5_1

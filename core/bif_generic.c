@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "bif_impl.h"
 
 double strtod(const char *str, char **endptr);
@@ -219,6 +215,18 @@ term_t bif_or2(term_t A, term_t B, proc_t *proc)
 	return A_FALSE;
 }
 
+term_t bif_xor2(term_t A, term_t B, proc_t *proc)
+{
+	if (!is_bool(A))
+		badarg(A);
+	if (!is_bool(B))
+		badarg(B);
+	if ((A == A_TRUE) ^ (B == A_TRUE))
+		return A_TRUE;
+
+	return A_FALSE;
+}
+
 term_t bif_not1(term_t Term, proc_t *proc)
 {
 	//TODO: should this be an instruction?
@@ -334,6 +342,14 @@ term_t bif_tuple_size1(term_t Tuple, proc_t *proc)
 		badarg(Tuple);
 	int arity = *peel_tuple(Tuple);
 	return int_to_term(arity, &proc->hp);
+}
+
+term_t bif_map_size1(term_t Map, proc_t *proc)
+{
+	if (!is_boxed_map(Map))
+		badarg(Map);
+	int size = map_size(peel_boxed(Map));
+	return int_to_term(size, &proc->hp);
 }
 
 term_t gc_bif_byte_size1(term_t Bin, proc_t *proc, term_t *regs, int live)

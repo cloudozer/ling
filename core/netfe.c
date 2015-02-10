@@ -48,4 +48,3 @@ int build_getifaddrs_reply(char *buf, int len)
 	fatal_error("not implemented");
 }
 
-//EOF

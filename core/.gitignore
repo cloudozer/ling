@@ -2,3 +2,5 @@ catch_tab.inc
 code_base.inc
 ling.map
 premod.inc
+atoms.inc
+ling_main.c

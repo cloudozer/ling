@@ -38,6 +38,7 @@
 typedef uint32_t term_t;
 
 typedef struct t_float_t t_float_t;
+typedef struct t_map_t t_map_t;
 typedef struct t_fun_t t_fun_t;
 typedef struct t_export_t t_export_t;
 typedef struct t_proc_bin_t t_proc_bin_t;
@@ -200,7 +201,7 @@ extern uint32_t zero;
 // x0000		bignum (positive)
 // x0001		bignum (negative)
 // x0010		float
-// x0011		(unused)
+// x0011		map
 // x0100		(unused)
 // x0101		(unused)
 // x0110		fun
@@ -225,6 +226,7 @@ extern uint32_t zero;
 #define SUBTAG_POS_BIGNUM		0x0
 #define SUBTAG_NEG_BIGNUM		0x1
 #define SUBTAG_FLOAT			0x2
+#define SUBTAG_MAP				0x3
 #define SUBTAG_FUN				0x6
 #define SUBTAG_EXPORT			0x7
 #define SUBTAG_PID				0x8
@@ -250,6 +252,7 @@ extern uint32_t zero;
 #define is_boxed_bignum(t)	(is_boxed((t)) && is_bignum(peel_boxed((t))))
 
 #define is_boxed_float(t)	(is_boxed((t)) && boxed_tag(peel_boxed((t))) == SUBTAG_FLOAT)
+#define is_boxed_map(t)		(is_boxed((t)) && boxed_tag(peel_boxed((t))) == SUBTAG_MAP)
 
 #define is_boxed_pid(t)	(is_boxed((t)) && boxed_tag(peel_boxed((t))) == SUBTAG_PID)
 #define is_boxed_oid(t)	(is_boxed((t)) && boxed_tag(peel_boxed((t))) == SUBTAG_OID)
@@ -398,6 +401,24 @@ struct t_export_t {
 	(p) += WSIZE(t_export_t); \
 } while (0)
 #endif
+
+struct t_map_t {
+	uint32_t hdr;	// size:27,tag:4
+	term_t keys;	// key tuple
+	term_t values[];
+};
+
+#ifdef LING_DEBUG
+#define box_map(p, sz, k)		__box_map(&(p), (sz), (k))
+#define map_size(p)				__map_size((uint32_t *)(p))
+#else
+#define box_map(p, sz, k) do { \
+	((t_map_t *)(p))->hdr = HDR_IS_NOT_CP | ((sz) << 4) | SUBTAG_MAP; \
+	((t_map_t *)(p))->keys = (k); \
+	(p) += WSIZE(t_map_t) + (sz); \
+} while (0)
+#define map_size(p)				((((t_map_t *)(p))->hdr >> 4) & 0x7ffffff)
+#endif // LING_DEBUG
 
 struct t_proc_bin_t {
 	uint32_t hdr;		// subtag only

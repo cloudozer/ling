@@ -73,8 +73,8 @@ void counters_init(void);
 
 static void spawn_init_start(char *cmd_line);
 
-// think /etc/hostname
-const char *ling_hostname = quote_and_expand(LING_HOSTNAME);
+// both domain and host name
+char my_domain_name[256];
 
 void start_ling(void)
 {

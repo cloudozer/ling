@@ -313,7 +313,7 @@ void outlet_pass_new_data(outlet_t *ol, uint8_t *data, int dlen)
 
 	int needed = 3 +3;	// two 2-tuples: {Port,{data,Data}}
 	uint32_t *htop;
-	term_t td;
+	term_t td = nil;
 
 	if (ol->binary)
 	{

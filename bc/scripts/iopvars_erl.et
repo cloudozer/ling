@@ -1,0 +1,124 @@
+<%~
+hg({u,V}, _) -> {integer_to_list(V),[]};
+hg({u8,V}, _) -> {integer_to_list(V),[]};
+hg(u32, _) -> {"_",[]};
+hg(u8, N) -> {N,[N ++ " >= 0",N ++ " =< 255"]};
+hg(x8, _) -> {"{x,_}",[]};
+hg(y8, N) -> {"{y," ++ N ++ "}",[N ++ " >= 0",N ++ " =< 255"]};
+hg(f, _) -> {"{f,_}",[]};
+hg(i8, N) -> {"{i," ++ N ++ "}",[N ++ " >= -128",N ++ " =< 127"]};
+hg(fr, _) -> {"{fr,_}",[]};
+hg(e, _) -> {"{e,_}",[]};
+hg(b, _) -> {"{b,_}",[]};
+hg(fu, _) -> {"{fu,_}",[]};
+hg(str, _) -> {"{str,_}",[]};
+hg(t, _) -> {"_",[]};
+hg(nil, _) -> {"nil",[]};
+hg({_,_}=Val, _) -> {lists:flatten(io_lib:format("~w", [Val])),[]}.
+
+head_guard(Op, Args) ->
+	NAs = lists:zip(iops_tab:arg_names(Op), Args),
+	{Hs,Gs} = lists:unzip([hg(A, N) || {N,A} <- NAs]),
+
+	Head = string:join(Hs, ","),
+	Guard = case lists:concat(Gs) of
+	[] ->
+		"";
+	Xs ->
+		" when " ++ string:join(Xs, ", ")
+	end,
+	{Head,Guard}.
+
+fit_vars(Variants) ->
+	lists:keysort(1, [{fit_key(Op, ArgTypes),Op,No,ArgTypes}
+							|| {_,Op,No,ArgTypes} <- Variants]).
+
+fit_key(Op, ArgTypes) ->
+	{Op,[to(T) || T <- ArgTypes]}.
+
+to({a,_}) -> 0;
+to(nil) -> 0;
+to({u8,_}) -> 0;
+to({u,_}) -> 1;
+to(u8) -> 2;
+to(u32) -> 3;
+to(i8) -> 0;
+to({smallint,_}) -> 1;
+to({x,_}) -> 0;
+to(x8) -> 1;
+to({y,_}) -> 0;
+to(y8) -> 1;
+to(f) -> 0;
+to({fr,_}) -> 0;
+to(fr) -> 1;
+to({e,_}) -> 0;
+to(e) -> 1;
+to({b,_}) -> 0;
+to(b) -> 1;
+to(fu) -> 0;
+to(str) -> 0;
+to(t) -> 3.
+
+%>
+<%?
+	{Variants} = Data,
+	%% Variants are ordered by number of hits (descending)
+
+	%% group by Op and order from specific to general
+	FitVars = fit_vars(Variants),
+
+	IndVars = [{Index,Op,No} || {Index,{_,Op,No,_}}
+			<- lists:zip(lists:seq(0, length(Variants)-1), Variants)]
+
+%>
+-module(ling_iopvars).
+-export([var_order/0]).
+-export([fit_args/2]).
+-export([var_args/2]).
+-export([var_index/2]).
+-export([var_by_index/1]).
+
+var_order() -> [
+	<% var_order(Variants) %>
+].
+
+<% [fit_args(Op, Args, No) || {_,Op,No,Args} <- FitVars] %>
+fit_args(Op, As) -> erlang:error({nofit,Op,As}).
+
+<% [var_args(Op, No, Args) || {_,Op,No,Args} <- Variants] %>
+var_args(Op, No) -> erlang:error({novar,Op,No}).
+
+<% [var_index(Op, No, Index) || {Index,Op,No} <- IndVars] %>
+var_index(Op, No) -> erlang:error({noindex,Op,No}).
+
+<% [var_by_index(Op, No, Index) || {Index,Op,No} <- IndVars] %>
+var_by_index(Index) -> erlang:error({novarat,Index}).
+
+%%EOF
+
+<%@ var_order([{_,Op,No,_}]) %>
+	{<% atom_to_list(Op) %>,<% integer_to_list(No) %>}
+<%@ var_order([{_,Op,No,_}|Vs]) %>
+	{<% atom_to_list(Op) %>,<% integer_to_list(No) %>},
+<% var_order(Vs) %><%@ eat1 %>
+
+<%@ fit_args(Op, Args, No) %>
+<%? {Head,Guard} = head_guard(Op, Args) %>
+fit_args(<% atom_to_list(Op) %>, [<% Head %>])<% Guard %> -> <%
+	integer_to_list(No) %>;<%@ eat2 %>
+
+<%@ var_args(Op, No, Args) %>
+var_args(<% atom_to_list(Op) %>, <% integer_to_list(No) %>) -> <%
+	io_lib:format("~p", [Args]) %>;
+<%@ eat3 %>
+
+<%@ var_index(Op, No, Index) %>
+var_index(<% atom_to_list(Op) %>, <% integer_to_list(No) %>) -> <%
+	integer_to_list(Index) %>;
+<%@ eat4 %>
+
+<%@ var_by_index(Op, No, Index) %>
+var_by_index(<% integer_to_list(Index) %>) -> {<% atom_to_list(Op) %>, <%
+											integer_to_list(No) %>};
+<%@ eat5 %>
+

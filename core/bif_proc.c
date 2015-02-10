@@ -149,8 +149,8 @@ term_t cbif_process_info2(proc_t *proc, term_t *regs)
 		val = A_ERROR_HANDLER;
 	else if (What == A_GARBAGE_COLLECTION)
 	{
-		//TODO
-		val = A_UNDEFINED;
+		// BEAM returns a property list
+		val = tag_int(probe->hp.minor_gcs);
 	}
 	else if (What == A_GROUP_LEADER)
 		val = probe->group_leader;
@@ -349,6 +349,7 @@ term_t cbif_is_process_alive1(proc_t *proc, term_t *rs)
 term_t cbif_garbage_collect0(proc_t *proc, term_t *rs)
 {
 	//NB: no live registers
+	//NB: supress_gc flag ignored
 
 	int nr_messages = msg_queue_len(&proc->mailbox);
 	int nr_regs = 1 +1 +1 +nr_messages +proc->pending_timers;

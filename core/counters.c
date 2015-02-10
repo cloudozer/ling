@@ -45,7 +45,7 @@
 
 typedef struct counter_t counter_t;
 struct counter_t {
-	uint64_t ref_id;
+	uint64_t id;
 	uint64_t value;
 	uint64_t mask;
 };
@@ -55,7 +55,7 @@ static counter_t *all_counters = 0;
 static int nr_counters = 0;
 static memnode_t *counters_node = 0;
 
-static counter_t *counter_lookup(uint64_t ref_id);
+static counter_t *counter_lookup(uint64_t id);
 
 void counters_init()
 {
@@ -63,9 +63,12 @@ void counters_init()
 	all_counters = (counter_t *)counters_node->starts;
 }
 
-void counter_add(uint64_t ref_id, uint64_t mask)
+uint64_t counter_add(uint64_t mask)
 {
-	if (all_counters +1 > (counter_t *)counters_node->ends)
+	static uint64_t next_counter_id = 0;
+	uint64_t id = next_counter_id++;
+
+	if (all_counters +nr_counters +1 > (counter_t *)counters_node->ends)
 	{
 		// overflow, need a bigger node
 		int cur_size = counters_node->index *PAGE_SIZE;
@@ -77,39 +80,26 @@ void counter_add(uint64_t ref_id, uint64_t mask)
 		all_counters = (counter_t *)new_node->starts;
 	}
 
-	counter_t *alpha = all_counters;
-	counter_t *beta = all_counters +nr_counters;
-	while (beta > alpha)
-	{
-		counter_t *mid = alpha + (beta-alpha)/2;
-		if (mid->ref_id > ref_id)
-			beta = mid;
-		else
-			alpha = mid +1;
-	}
-
-	// insert the new counter before *alpha
-	memmove(alpha +1, alpha, (void *)(all_counters +nr_counters) -(void *)alpha);
-	nr_counters++;
-
-	counter_t *cntr = alpha;
-	cntr->ref_id = ref_id;
+	counter_t *cntr = all_counters +nr_counters;
+	cntr->id = id;
 	cntr->value = 0;
 	cntr->mask = mask;
+	nr_counters++;
+	return id;
 }
 
-int counter_read(uint64_t ref_id, uint64_t *pval)
+int counter_read(uint64_t id, uint64_t *pval)
 {
-	counter_t *cntr = counter_lookup(ref_id);
+	counter_t *cntr = counter_lookup(id);
 	if (cntr == 0)
 		return -NOT_FOUND;
 	*pval = cntr->value;
 	return 0;
 }
 
-int counter_increment(uint64_t ref_id, uint64_t incr)
+int counter_increment(uint64_t id, uint64_t incr)
 {
-	counter_t *cntr = counter_lookup(ref_id);
+	counter_t *cntr = counter_lookup(id);
 	if (cntr == 0)
 		return -NOT_FOUND;
 	cntr->value += incr;
@@ -117,9 +107,9 @@ int counter_increment(uint64_t ref_id, uint64_t incr)
 	return 0;
 }
 
-int counter_remove(uint64_t ref_id)
+int counter_remove(uint64_t id)
 {
-	counter_t *cntr = counter_lookup(ref_id);
+	counter_t *cntr = counter_lookup(id);
 	if (cntr == 0)
 		return -NOT_FOUND;
 	memmove(cntr, cntr +1,
@@ -128,17 +118,17 @@ int counter_remove(uint64_t ref_id)
 	return 0;
 }
 
-static counter_t *counter_lookup(uint64_t ref_id)
+static counter_t *counter_lookup(uint64_t id)
 {
 	counter_t *alpha = all_counters;
 	counter_t *beta = all_counters +nr_counters;
 	while (beta > alpha)
 	{
 		counter_t *mid = alpha + (beta-alpha)/2;
-		if (mid->ref_id == ref_id)
+		if (mid->id == id)
 			return mid;
 
-		if (mid->ref_id > ref_id)
+		if (mid->id > id)
 			beta = mid;
 		else
 			alpha = mid +1;

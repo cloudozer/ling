@@ -52,6 +52,7 @@ not_implemented
 not_found
 no_memory
 badsig
+bad_key
 
 # BIF implementation
 file
@@ -93,6 +94,7 @@ noproc
 trap_exit
 fullsweep_after
 monitor_nodes
+suppress_gc
 backtrace
 binary
 catchlevel
@@ -382,5 +384,6 @@ processing_delay
 llstat
 stop
 help
+cloudozer
 
 #EOF

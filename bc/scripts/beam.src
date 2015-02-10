@@ -1,0 +1,25 @@
+#
+# The list of sources of beam files for iopvars analysis
+#
+# @<lib_name>	- OTP library
+# <file.beam>	- A single file
+# <dir>			- Any .beam in <dir> or any subdir
+#
+
+@tools
+@public_key
+@asn1
+@crypto
+@ssh
+@xmerl
+@mnesia
+@syntax_tools
+@compiler
+@stdlib
+
+# The analysis must see all possible iops. Rare iops are typically seen in
+# tests.
+#
+sample
+../test/ebin
+

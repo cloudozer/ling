@@ -1,73 +1,40 @@
 ## LING: Erlang on Xen
 
+[![Build Status](https://api.travis-ci.org/cloudozer/ling.svg)](https://travis-ci.org/cloudozer/ling)
+
 Wikipedia: -ling, an English diminutive suffix
 
 ### How to get started?
 
-The easy way is to use pre-built binaries:
+The easy way is to use pre-built railing utility:
 
-1. Grab the archive named ling-&lt;version&gt;.tar.gz.
+1. Grab a binary named railing-&lt;version&gt; from [releases](https://github.com/cloudozer/ling/releases).
 
-1. Extract it locally. This creates directory &lt;path&gt;/ling.
+1. Rename the binary to `railing` and move it to your Erlang project directory.
 
-1. Go to your Erlang project directory and run:
+1. Create the image and the domain configuration file:
 
+        ./railing image
+
+1. Boot the Xen domain and get the familiar Erlang shell:
+
+        xl create -c domain_config
+
+
+### How to build LING from sources?
+
+See [INSTALL.md](INSTALL.md).
+
+### How to use railing?
+
+Run `railing` without options to get help.
+
+To generate the image and the domain configuration file use the `image`
+subcommand:
 ```
-	<path>/ling/bin/railing image dconf
+./railing image
 ```
-
-1. This creates vmling, the Xen image file and domain\_config, the Xen domain
-configuration file.
-
-1. Launch the Xen domain and get the familiar Erlang shell:
-
-```
-	xl create -c domain_config
-```
-
-### Building from sources
-
-The recommended way to build LING from sources is to use a Docker container with
-the right environment already set up for you. See DOCKER.md for details.
-
-If you are not easily daunted, then you may try to build everything yourself.
-See INSTALL for instructions.
-
-### Creating LING images
-
-To create LING-based images for your Erlang projects you need a utility called
-_railing_. Railing is in a way similar to reltool. The typical invocation of
-railing is:
-
-	railing image
-
-This instructs railing to read railing.config and perform all steps necessary to
-build an image named vmling.
-
-To launch a Xen image you also need a domain configuration file. You may start
-with a skeleton domain\_config file created as follows:
-
-	railing dconf
-
-### railing.config
-
-The railing.config contains a series of options represented as Erlang terms. The
-following options are recongized:
-
-	{import,<path>}.
-
-The option imports files referred to by &lt;path&gt; to the image. They become
-accessible inside the VM. The option can be repeated multiple times. Example:
-`{import,"priv/*/*"}`.
-
-	{import_lib,<std_app>}.
-
-The option imports a standard library from the installed Erlang/OTP. Example:
-`{import_lib,crypto}`. stdlib and kernel applications are imported
-automatically. The option can also contain a list of libraries to import.
-
-	{build_config,<config>}}.
-
-The option sets the build configuration for the image. Currently, the only
-recognized configuration is 'fastest'.
+This instructs railing to scan all subdirectories for `*.beam` files. All files
+found are embedded into the Xen image and become accessible during runtime.
+Certain subdirectories can be excluded from the search using `-x` option.
 

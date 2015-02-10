@@ -1,9 +1,8 @@
 *.o
 *.beam
-/Makefile
-/Config.mk
+*.ling
 *.la
 *.lo
-/core/include/xen
-/dist
-ling-*.tag.gz
+/.railing/
+domain_config
+ling.img

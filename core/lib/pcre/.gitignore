@@ -9,7 +9,6 @@ config.status
 /autom4te.cache/
 /compile
 /config.guess
-/config.h
 /config.h.in
 /config.log
 /config.status
@@ -36,12 +35,10 @@ config.status
 /missing
 /*.o
 *.orig
-/pcre_chartables.c
 /pcre-config
 /pcrecpparg.h
 /pcrecpp_unittest
 pcregrep
-/pcre.h
 /pcre.h.generic
 /pcre-*-coverage.info
 /pcre-*-coverage/
