@@ -29,6 +29,7 @@
  * next character after the last one that was part of the
  * floating-point number.
  */
+
 #include <stdlib.h>
 #include <ctype.h>
 

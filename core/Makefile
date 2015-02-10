@@ -19,6 +19,7 @@ CPPFLAGS += -isystem lib/pcre
 CPPFLAGS += -isystem lib
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
 CPPFLAGS += -iquote bignum
+CPPFLAGS += -isystem lib/misc/include
 CPPFLAGS += -iquote lib/lwip/src/include
 CPPFLAGS += -iquote lib/lwip/src/include/ipv4
 CPPFLAGS += -iquote lib/lwip/src/include/ipv6

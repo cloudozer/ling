@@ -63,6 +63,9 @@
 #define quote(x) #x
 #define quote_and_expand(x) quote(x)
 
+// capabilities of the ARM processor - how to set this?
+size_t __hwcap = 0;
+
 void proc_main(proc_t *proc);
 
 void time_init(void);

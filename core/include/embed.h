@@ -36,35 +36,6 @@
 #include "term.h"
 #include "heap.h"
 
-//
-// embed_buck_t and embed_bin_t both have a '_raw' fields that are resolved to
-// terms at runtime. It is possible to resolve them during compile time but this
-// greatly increases the build time.
-//
-
-typedef struct embed_buck_t embed_buck_t;
-struct embed_buck_t {
-	uint8_t *bucket_raw;	//see above
-	term_t bucket;
-	int start_index;
-	int end_index;
-};
-
-typedef struct embed_bin_t embed_bin_t;
-struct embed_bin_t {
-	uint8_t *name_raw;		//see above
-	term_t name;
-	uint8_t *starts;
-	uint8_t *ends;
-};
-
-// These are four (of many) undefined symbols of vmling.o. They represent files
-// embedded into the vmling image.
-extern embed_buck_t *embed_bucks;
-extern int nr_embed_bucks;
-extern embed_bin_t *embed_bins;
-extern int nr_embed_bins;
-
 int embed_init(void);
 term_t embed_all_buckets(heap_t *hp);
 term_t embed_list_bucket(term_t bucket, heap_t *hp);
