@@ -3,8 +3,10 @@ ENTRY(_start)
 
 SECTIONS {
 
-	_text = 0;
-	.text : { *(.text) } = 0x9090
+	. = 0x10000;
+
+	_text = .;
+	.text : { *(.text) }
 	_etext = .;
 
 	.rodata : { *(.rodata) }

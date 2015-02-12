@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include <ctype.h>
 
 #include "term.h"
@@ -83,7 +79,7 @@ static int term_to_str_1(int depth, term_t t, char *buf, int len)
 
 #ifdef LING_DEBUG
 #define RETERR(t) do { \
-		int written__ = snprintf(buf, len, "#err(0x%08x)", t); \
+		int written__ = snprintf(buf, len, "#err(0x%08x)", (int)(t)); \
 		if (written__ >= len) \
 			written__ = len - 1; \
 		return written__; \
@@ -518,4 +514,3 @@ static void quote_atom(unsigned char *name, char *buf, int len)
 	*p2 = 0;
 }
 
-//EOF

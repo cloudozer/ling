@@ -31,12 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/**
- *
- *
- *
- */
-
 #include "hash.h"
 
 #include <stdint.h>
@@ -275,4 +269,3 @@ uint32_t hash_used_mem_size(hash_t *ht)
 	return mem_size;
 }
 
-//EOF

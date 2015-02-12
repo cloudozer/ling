@@ -37,24 +37,31 @@
 
 #include "time.h"
 
+//TODO
+//TODO
+//TODO
+
+// Stubby stubs
+
 uint64_t start_of_day_wall_clock = 0;
+
+uint64_t fake_clock = 1234567890;
 
 void time_init(void)
 {
 	//TODO
-	fatal_error("not implemented");
 }
 
 uint64_t monotonic_clock(void)
 {
 	//TODO
-	fatal_error("not implemented");
+	return fake_clock++;
 }
 
 uint64_t wall_clock(void)
 {
 	//TODO
-	fatal_error("not implemented");
+	return fake_clock++;
 }
 
 void expand_time(struct time_exp_t *xt, uint64_t wall_clock)

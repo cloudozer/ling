@@ -31,12 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/**
- *
- *
- *
- */
-
 #include <stdint.h>
 
 #include "ling_common.h"
@@ -204,4 +198,3 @@ uint32_t atoms_estimate_used_memory(void)
 	return mem_size;
 }
 
-//EOF
