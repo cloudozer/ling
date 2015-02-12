@@ -1,15 +1,14 @@
-//
-//
-//
 
 #include "ling_common.h"
 
 #include "console.h"
 
+// this works only for qemu-system-arm -M versatilepb
+volatile uint32_t * const UART0 = (uint32_t *)0x101f1000;
+
 int console_is_initialized(void)
 {
-	//TODO
-	fatal_error("not implemented");
+	return 0;
 }
 
 void console_attach(outlet_t *ol)
@@ -32,14 +31,16 @@ int console_write(char *buf, int len)
 
 int ser_cons_present(void)
 {
-	//TODO
-	fatal_error("not implemented");
+	return 1;
 }
 
-int ser_cons_write(char *bur, int len)
+int ser_cons_write(char *buf, int len)
 {
-	//TODO
-	fatal_error("not implemented");
+	while (len > 0)
+	{
+		*UART0 = (uint32_t)(*buf++);
+		len--;
+	}
+	return 0;
 }
 
-//EOF
