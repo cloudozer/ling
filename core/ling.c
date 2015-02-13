@@ -114,7 +114,7 @@ void start_ling(void)
 	//print_xenstore_values();
 	//run_bignum_tests();
 	
-	//printk("\r\nLing %s is here\r\n", quote_and_expand(LING_VER));
+	printk("\r\nLing %s is here\r\n", quote_and_expand(LING_VER));
 
 	proc_main(0); // preliminary run
 

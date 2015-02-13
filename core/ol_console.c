@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "outlet.h"
 
 #include "ling_common.h"
@@ -154,7 +150,7 @@ static term_t ol_console_control(outlet_t *ol,
 		break;
 
 	case CONSOLE_OP_SET_UNICODE_STATE:
-		assert(dlen == 1);
+		assert(dlen == 1);/
 		ol->unicode_state = *data;
 		break;
 
@@ -180,4 +176,3 @@ static void ol_console_detach(outlet_t *ol)
 	console_detach(ol);
 }
 
-//EOF
