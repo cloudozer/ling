@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "outlet.h"
 
 #include <string.h>
@@ -410,4 +406,3 @@ int outlet_notify_owner(outlet_t *ol, term_t what)
 	return scheduler_new_local_mail_N(proc, tag_tuple(p));
 }
 
-//EOF

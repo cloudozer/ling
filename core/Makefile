@@ -35,6 +35,7 @@ COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer 
 
 #CFLAGS := -Wall -Werror -std=gnu99 -O3 -Wno-nonnull -Wno-strict-aliasing $(COMMON_CFLAGS)
 CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3 $(COMMON_FLAGS)
+CFLAGS += -mfloat-abi=soft
 
 LDFLAGS := -Ttext $(TEXT_BASE)
 LDFLAGS += -T ling.lds

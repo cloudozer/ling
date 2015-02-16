@@ -114,7 +114,7 @@ void start_ling(void)
 	//print_xenstore_values();
 	//run_bignum_tests();
 	
-	printk("\r\nLing %s is here\r\n", quote_and_expand(LING_VER));
+	//printk("\r\nLing %s is here\r\n", quote_and_expand(LING_VER));
 
 	proc_main(0); // preliminary run
 
@@ -142,11 +142,7 @@ void printk(const char *fmt, ...)
     va_end(ap);
 
 	int len = strlen(buffer);
-
-	if (console_is_initialized())
-		console_write(buffer, len);
-	if (ser_cons_present())
-		ser_cons_write(buffer, len);
+	console_write(buffer, len);
 }
 
 void fatal_error(const char *fmt, ...)
@@ -158,7 +154,9 @@ void fatal_error(const char *fmt, ...)
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 		
-	printk("*** CRASH: %s\r\n", buffer);
+	ser_cons_write("*** CRASH: ", 11);
+	int len = strlen(buffer);
+	ser_cons_write(buffer, len);
 
 	while (1)
 	{

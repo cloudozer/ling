@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "outlet.h"
 
 #include "ling_common.h"
@@ -67,4 +63,3 @@ static int ol_echo_send(outlet_t *ol, int len, term_t reply_to)
 	return 0;
 }
 
-//EOF

@@ -34,9 +34,10 @@
 */
 
 .global _start
+.global _stack_bottom
 
 _start:
-		mov	sp, #TEXT_BASE
+		ldr	sp, =_stack_bottom
 		bl	start_ling
 
 ;@EOF
