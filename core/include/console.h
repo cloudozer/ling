@@ -2,31 +2,28 @@
 
 #include <stdint.h>
 
-typedef volatile struct {
-	uint32_t DR;
-	uint32_t RSR_ECR;
-	uint8_t reserved1[0x10];
-	const uint32_t FR;
-	uint8_t reserved2[0x4];
-	uint32_t LPR;
-	uint32_t IBRD;
-	uint32_t FBRD;
-	uint32_t LCR_H;
-	uint32_t CR;
-	uint32_t IFLS;
-	uint32_t IMSC;
-	const uint32_t RIS;
-	const uint32_t MIS;
-	uint32_t ICR;
-	uint32_t DMACR;
-} pl011_t;
+#define GPFSEL1 	0x20200004
+#define GPSET0  	0x2020001C
+#define GPCLR0  	0x20200028
+#define GPPUD       0x20200094
+#define GPPUDCLK0   0x20200098
 
-enum {
-	RXFE = 0x10,
-	TXFF = 0x20,
-};
- 
+#define AUX_ENABLES     0x20215004
+#define AUX_MU_IO_REG   0x20215040
+#define AUX_MU_IER_REG  0x20215044
+#define AUX_MU_IIR_REG  0x20215048
+#define AUX_MU_LCR_REG  0x2021504C
+#define AUX_MU_MCR_REG  0x20215050
+#define AUX_MU_LSR_REG  0x20215054
+#define AUX_MU_MSR_REG  0x20215058
+#define AUX_MU_SCRATCH  0x2021505C
+#define AUX_MU_CNTL_REG 0x20215060
+#define AUX_MU_STAT_REG 0x20215064
+#define AUX_MU_BAUD_REG 0x20215068
+
 typedef struct outlet_t outlet_t;
+
+void console_init(void);
 
 void console_attach(outlet_t *ol);
 void console_detach(outlet_t *ol);
