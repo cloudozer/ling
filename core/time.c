@@ -37,6 +37,8 @@
 
 #include "time.h"
 
+#include <string.h>
+
 //TODO
 //TODO
 //TODO
@@ -55,18 +57,24 @@ void time_init(void)
 uint64_t monotonic_clock(void)
 {
 	//TODO
-	return fake_clock++;
+	fake_clock += 1000000;
+	return fake_clock;
 }
 
 uint64_t wall_clock(void)
 {
 	//TODO
-	return fake_clock++;
+	fake_clock += 1000000;
+	return fake_clock;
 }
 
 void expand_time(struct time_exp_t *xt, uint64_t wall_clock)
 {
 	//TODO
-	fatal_error("not implemented");
+	memset(xt, 0, sizeof(*xt));
+	xt->tm_year = 115;
+	xt->tm_mon = 1;
+	xt->tm_mday = 17;
+	xt->tm_wday = 2;
 }
 

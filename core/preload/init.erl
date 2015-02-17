@@ -830,8 +830,8 @@ do_boot(Init,Flags,Start) ->
 
 	%%MK: wait for network to configure
 	receive start_em -> ok end,
-
 	%%MK
+
 	Secrets = get_flag_list('-secret',Flags,[]),
 	set_secrets(Secrets),
 	MntFlags = mount_flags(Flags),

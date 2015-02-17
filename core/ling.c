@@ -118,7 +118,7 @@ void start_ling(void)
 
 	proc_main(0); // preliminary run
 
-	static char *hardcoded_command_line = "-hello";
+	static char *hardcoded_command_line = "-home /";
 	spawn_init_start(hardcoded_command_line);
 
 	//while (1)
@@ -157,6 +157,7 @@ void fatal_error(const char *fmt, ...)
 	ser_cons_write("*** CRASH: ", 11);
 	int len = strlen(buffer);
 	ser_cons_write(buffer, len);
+	ser_cons_write("\r\n", 2);
 
 	while (1)
 	{
