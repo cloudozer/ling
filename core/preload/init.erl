@@ -180,11 +180,9 @@ boot(BootArgs) ->
     register(init, self()),
     process_flag(trap_exit, true),
 
-	%%
 	%% MK
-	%%
     %%start_on_load_handler_process(),
-
+	
     {Start0,Flags,Args} = parse_boot_args(BootArgs),
     Start = map(fun prepare_run_args/1, Start0),
     Flags0 = flags_to_atoms_again(Flags),

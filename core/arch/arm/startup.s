@@ -34,10 +34,55 @@
 */
 
 .global _start
-.global _stack_bottom
+.global reset_handler
+.global undef_handler
+.global swi_handler
+.global prefetch_handler
+.global data_abort_handler
+.global irq_handler
+.global fiq_handler
+
+.global _stack_bottom, _irq_stack_bottom
+.global _vectors_start, _vectors_end
 
 _start:
 		ldr	sp, =_stack_bottom
+		bl setup_vectors
+		mrs r0, cpsr
+		bic r1, r0, #0x1f
+		orr r1, r1, #0x12
+		msr cpsr, r1
+		ldr sp, =_irq_stack_bottom
+		bic r0, r0, #0x80
+		msr cpsr, r0
+
+		@ enable VFP
+		mrc p15, 0, r0, c1, c0, 2
+		orr r0, r0, #0xf00000
+		mcr p15, 0, r0, c1, c0, 2 
+		mov r0, #0x40000000       
+		fmxr fpexc,r0           
+
 		bl	start_ling
+		b	.
+
+_vectors_start:
+		ldr pc, vector0
+		ldr	pc, vector1
+		ldr pc, vector2
+		ldr pc, vector3
+		ldr pc, vector4
+		b .
+		ldr pc, vector6
+		ldr pc, vector7
+
+vector0: .word _start
+vector1: .word undef_handler
+vector2: .word swi_handler
+vector3: .word prefetch_abort_handler
+vector4: .word data_abort_handler
+vector6: .word irq_handler
+vector7: .word fiq_handler
+_vectors_end:
 
 ;@EOF

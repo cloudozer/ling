@@ -31,12 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-//
-//
-
 #include "bignum.h"
 
 #include "bits.h"
@@ -236,4 +230,3 @@ bignum_t *bignum_div(heap_t *hp, bignum_t *a, bignum_t *b, bignum_t **r)
 	return q;
 }
 
-//EOF

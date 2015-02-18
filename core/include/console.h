@@ -31,6 +31,5 @@ int console_write(char *buf, int len);
 
 int console_do_pending(void);
 
-int ser_cons_present(void);
 int ser_cons_write(char *bur, int len);
 

@@ -54,9 +54,6 @@ void print_variant_code_sizes(void);
 void print_loaded_module_sizes(void);
 #endif // EXP_RUNTIME_METRICS
 
-// Cloudozer's 2nd anniversary
-void cloudozer2(void);
-
 // defined in ling_main.c
 #ifdef TRACE_HARNESS
 extern uint32_t trace_mask;
@@ -156,12 +153,6 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 	
 	switch (What)
 	{
-	// Cloudozer's 2nd anniversary -- remove in 2016
-	case A_CLOUDOZER:
-		if (Arg == tag_int(2))
-			cloudozer2();
-		break;
-	// Cloudozer's 2nd anniversary
 	case A_MODULE_SIZE:
 #ifdef EXP_RUNTIME_METRICS
 		print_loaded_module_sizes();

@@ -18,17 +18,7 @@ static uint32_t load(uint32_t addr)
 	return val;
 }
 
-void marker(char ch)
-{
-     while(1)
-     {
-     	if(load(AUX_MU_LSR_REG) & 0x20)
-			break;
-     }
-     
-	store(AUX_MU_IO_REG, ch);
-}
- 
+
 void console_init(void)
 {
     store(AUX_ENABLES,1);
@@ -83,14 +73,28 @@ void console_detach(outlet_t *ol)
 int console_write(char *buf, int len)
 {
 	int left = SEND_BUF_SIZE -send_buf_off -send_buf_len;
-	if (len > left)
+	uint8_t *ptr = send_buffer +send_buf_off +send_buf_len;
+	while (len > 0)
 	{
-		buffer_overrun += (len -left);
-		len = left;
+		if (left > 1 && *buf == '\n')
+		{
+			*ptr++ = '\r';
+			*ptr++ = '\n';
+			send_buf_len += 2;
+			left -= 2;
+			buf++;
+		}
+		else if (left > 0)
+		{
+			*ptr++ = *buf++;
+			send_buf_len++;
+			left--;
+		}
+		else
+			buffer_overrun++;
+		len--;
 	}
-	memcpy(send_buffer +send_buf_off +send_buf_len, buf, len);
-	send_buf_len += len;
-	return len;
+	return 0;
 }
 
 int console_do_pending(void)
@@ -109,7 +113,6 @@ int console_do_pending(void)
 		memmove(send_buffer, send_buffer +send_buf_off, send_buf_len);
 		send_buf_off = 0;
 	}
-
 	
 	while (load(AUX_MU_LSR_REG) & 1)
 	{
@@ -121,18 +124,20 @@ int console_do_pending(void)
 	return nr_fired;
 }
 
-int ser_cons_present(void)
-{
-	return 1;
-}
-
 int ser_cons_write(char *buf, int len)
 {
-//	while (len > 0)
-//	{
-//		UART0->DR = (uint32_t)(*buf++);
-//		len--;
-//	}
+	while (len > 0)
+	{
+		char ch = *buf++;
+		if (ch == '\n')
+		{
+			while((load(AUX_MU_LSR_REG) & 0x20) == 0);
+			store(AUX_MU_IO_REG, '\r');
+		}
+    	while((load(AUX_MU_LSR_REG) & 0x20) == 0);
+		store(AUX_MU_IO_REG, ch);
+		len--;
+	}
 	return 0;
 }
 

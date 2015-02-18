@@ -6,14 +6,12 @@ default: lwip pcre $(INCLUDES) vmling.o
 include ../Config.mk
 
 ARCH := arm
-TEXT_BASE := 0x200000
 
 CROSS_PREFIX := arm-unknown-eabi
 CC := $(CROSS_PREFIX)-gcc
 OBJCOPY := $(CROSS_PREFIX)-objcopy
 
-CPPFLAGS := -DTEXT_BASE=$(TEXT_BASE)
-CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
+CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
 CPPFLAGS += -isystem lib/nettle
 CPPFLAGS += -isystem lib/pcre
 CPPFLAGS += -isystem lib
@@ -35,10 +33,11 @@ COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer 
 
 #CFLAGS := -Wall -Werror -std=gnu99 -O3 -Wno-nonnull -Wno-strict-aliasing $(COMMON_CFLAGS)
 CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3 $(COMMON_FLAGS)
-CFLAGS += -mfloat-abi=soft
+CFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 
-LDFLAGS := -Ttext $(TEXT_BASE)
-LDFLAGS += -T ling.lds
+ASFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+
+LDFLAGS := -T ling.lds
 LDFLAGS += -nostdlib
 LDFLAGS += -L lib/nettle
 LDFLAGS += -Xlinker --relocatable
@@ -47,7 +46,7 @@ LDFLAGS += -Xlinker --cref -Xlinker -Map=ling.map
 LDFLAGS += -static
 LDFLAGS_FINAL := -lgcc lib/nettle/libnettle.a
 
-STARTUP_OBJ := $(patsubst %.S,%.o,arch/$(ARCH)/startup.S)
+STARTUP_OBJ := $(patsubst %.s,%.o,arch/$(ARCH)/startup.s)
 
 ARCH_OBJS := $(patsubst %.c,%.o,$(wildcard arch/$(ARCH)/*.c))
 OBJS := $(patsubst %.c,%.o,$(wildcard *.c))
@@ -93,7 +92,7 @@ endif
 ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS) \
 	preload/literals.o ling_main.o
 
-$(STARTUP_OBJ): %.o: %.S
+$(STARTUP_OBJ): %.o: %.s
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Stop iops reordering in ling_main.o

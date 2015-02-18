@@ -14,6 +14,8 @@
 #include "string.h"
 #include "ctype.h"
 
+#define MP_LOGTAB	1
+
 /* 
    If MP_LOGTAB is not defined, use the math library to compute the
    logarithms on the fly.  Otherwise, use the static table below.
@@ -3163,7 +3165,6 @@ char     s_mp_todigit(int val, int r, int low)
 int      s_mp_outlen(int bits, int r)
 {
   return (int)((double)bits * LOG_V_2(r) + 0.5);
-
 } /* end s_mp_outlen() */
 
 /* }}} */

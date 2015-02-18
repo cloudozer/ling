@@ -11,9 +11,11 @@ setjmp:
 	stmia ip!,{v1,v2,v3,v4,v5,v6,sl,fp,sp,lr}
 	mov r0,#0
 
-	adr r1,1f
-	ldr r2,1f
-	ldr r1,[r1,r2]
+	@MK
+	@adr r1,1f
+	@ldr r2,1f
+	@ldr r1,[r1,r2]
+	mov r1, #0
 
 	tst r1,#0x260
 	beq 3f
@@ -35,5 +37,5 @@ setjmp:
 	moveq pc,lr
 	bx lr
 
-.hidden __hwcap
-1:	.word __hwcap-1b
+@.hidden __hwcap
+@1:	.word __hwcap-1b

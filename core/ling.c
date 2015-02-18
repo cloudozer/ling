@@ -63,9 +63,6 @@
 #define quote(x) #x
 #define quote_and_expand(x) quote(x)
 
-// capabilities of the ARM processor - how to set this?
-size_t __hwcap = 0;
-
 void proc_main(proc_t *proc);
 
 void time_init(void);
@@ -79,46 +76,38 @@ static void spawn_init_start(char *cmd_line);
 // both domain and host name
 char my_domain_name[256];
 
-void marker(char ch);
-
 void start_ling(void)
 {
 	//-------- init phase 1 --------
 	//
+	// wipe out bss segment
+	extern uint8_t _bss_start;
+	extern uint8_t _bss_end;
+	memset(&_bss_start, 0, &_bss_end - &_bss_start);
+
 	time_init();	// sets start_of_day_wall_clock
 
 	// use the time value to seed PRNG
 	mt_seed(start_of_day_wall_clock);
 
 	console_init();
-	marker('A'); marker('\r'); marker('\n');
 	nalloc_init();
-	marker('B'); marker('\r'); marker('\n');
 	//lwip_init();
 
 	//-------- init phase 2 --------
 	//
 	if (nalloc_no_memory())
 		fatal_error("init phase 2: no memory"); 	
-	marker('C'); marker('\r'); marker('\n');
 
 	sys_stats_init();
-	marker('D'); marker('\r'); marker('\n');
 
 	atoms_init();
-	marker('E'); marker('\r'); marker('\n');
 	embed_init();
-	marker('F'); marker('\r'); marker('\n');
 	code_base_init();
-	marker('G'); marker('\r'); marker('\n');
 	scheduler_init();
-	marker('H'); marker('\r'); marker('\n');
 	ets_init();
-	marker('I'); marker('\r'); marker('\n');
 	pcre_init();
-	marker('J'); marker('\r'); marker('\n');
 	counters_init();
-	marker('K'); marker('\r'); marker('\n');
 
 	//print_start_info();
 	//print_xenmem_info();
@@ -130,9 +119,7 @@ void start_ling(void)
 	//printk("\r\nLing %s is here\r\n", quote_and_expand(LING_VER));
 
 	proc_main(0); // preliminary run
-	marker('L'); marker('\r'); marker('\n');
 
-	marker('M'); marker('\r'); marker('\n');
 	static char *hardcoded_command_line = "-home /";
 	spawn_init_start(hardcoded_command_line);
 
@@ -157,7 +144,7 @@ void printk(const char *fmt, ...)
     va_end(ap);
 
 	int len = strlen(buffer);
-	console_write(buffer, len);
+	ser_cons_write(buffer, len);
 }
 
 void fatal_error(const char *fmt, ...)
