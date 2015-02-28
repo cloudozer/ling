@@ -1,8 +1,8 @@
 
 TARGET := liblwip.a
 
-CROSS_PREFIX := arm-unknown-eabi
-CC := $(CROSS_PREFIX)-gcc
+CROSS_COMPILE ?= arm-unknown-eabi-
+CC := $(CROSS_COMPILE)gcc
 
 SRC_DIRS := src/api src/core src/core/ipv4 src/core/ipv6
 SRC_DIRS += src/netif
