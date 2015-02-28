@@ -6,3 +6,4 @@
 /.railing/
 domain_config
 ling.img
+.vagrant/
