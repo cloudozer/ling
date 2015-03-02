@@ -16,7 +16,7 @@ opt_spec() -> [
 ].
 
 cross_prefix() ->
-    case os:getenv("RAILING_CROSS_PREFIX") of
+    case os:getenv("CROSS_COMPILE") of
         false -> case os:type() of
                     {unix, darwin} -> "x86_64-pc-linux-";
                     _ -> ""

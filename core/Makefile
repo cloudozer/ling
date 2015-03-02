@@ -7,9 +7,9 @@ include ../Config.mk
 
 ARCH := arm
 
-CROSS_PREFIX := arm-unknown-eabi
-CC := $(CROSS_PREFIX)-gcc
-OBJCOPY := $(CROSS_PREFIX)-objcopy
+CROSS_COMPILE ?= arm-unknown-eabi-
+CC := $(CROSS_COMPILE)gcc
+OBJCOPY := $(CROSS_COMPILE)objcopy
 
 CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
 CPPFLAGS += -isystem lib/nettle
