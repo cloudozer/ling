@@ -241,7 +241,7 @@ main(Args) ->
 				"memory = " ++ integer_to_list(M) ++ "\n"
 		end,
 
-	Vif = "vif = " ++ lists:flatten(io_lib:format("~p", [[Vif || {vif, Vif} <- Config]])),
+	Vif = "vif = " ++ lists:flatten(io_lib:print([Vif || {vif, Vif} <- Config],1,4096,-1)),
 	Pz = " -pz" ++ lists:flatten([" " ++ Dir || {_, Dir, _} <- CustomBucks]),
 	Home = "-home /" ++ PrjName,
 	Extra = [E ++ " " || {extra, E} <- Config] ++ [Home] ++ [Pz],
