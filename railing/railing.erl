@@ -10,21 +10,49 @@ opt_spec() -> [
 	{domain,  $d, "domain",  string,    "set domain config file name (default: 'domain_config')"},
 	{memory,  $m, "memory",  integer,   "set domain memory size (megabytes)"},
 	{extra,   $e, "extra",   string,    "append to kernel command line"},
-	{version, $v, "version", undefined, "print version info"}
+	{version, $v, "version", undefined, "print version info"},
+	{apple,   $a, "apple",   undefined, "generate native binaries for Apple OS X (experimental)"}
 	% debug
 	% clean
 ].
 
 cross_prefix() ->
-    case os:getenv("CROSS_COMPILE") of
-        false -> case os:type() of
-                    {unix, darwin} -> "x86_64-pc-linux-";
-                    _ -> ""
-                 end;
-        X -> X
-    end.
+	case os:getenv("CROSS_COMPILE") of
+		false -> case os:type() of
+					{unix, darwin} -> "x86_64-pc-linux-";
+					_ -> ""
+				end;
+		X -> X
+	end.
 
 cache_dir() -> ".railing".
+
+project_name(Config) ->
+	DefPrjName =
+		case file:get_cwd() of
+			{ok,"/"} ->
+				"himmel";
+			{ok,Cwd} ->
+				filename:basename(Cwd)
+		end,
+
+	Name =
+		lists:foldl(
+			fun
+				({name, undefined}, Res) ->
+					Res;
+				({name, N}, _) ->
+					N;
+				(_, Res) ->
+					Res
+			end,
+			DefPrjName,
+			Config
+		),
+		Name.
+
+image_name(Config) ->
+	project_name(Config) ++ ".img".
 
 main(Args) ->
 	case erlang:system_info(otp_release) of
@@ -126,43 +154,8 @@ main(Args) ->
 	zip:unzip(Archive, [keep_old_files]),
 	file:set_cwd(".."),
 
-	DefPrjName =
-		case file:get_cwd() of
-			{ok,"/"} ->
-				"himmel";
-			{ok,Cwd} ->
-				filename:basename(Cwd)
-		end,
-
-	PrjName =
-		lists:foldl(
-			fun
-				({name, undefined}, Res) ->
-					Res;
-				({name, N}, _) ->
-					N;
-				(_, Res) ->
-					Res
-			end,
-			DefPrjName,
-			Config
-		),
-
-	DomName =
-		lists:foldl(
-			fun
-				({domain, undefined}, Res) ->
-					Res;
-				({domain, D}, _) ->
-					D;
-				(_, Res) ->
-					Res
-			end,
-			"domain_config",
-			Config
-		),
-
-	ImgName = PrjName ++ ".img",
+	PrjName = project_name(Config),
+	ImgName = image_name(Config),
 
 	DFs = [{filename:dirname(F),F} || F <- lists:usort(Files)],
 	CustomBucks = [
@@ -229,14 +222,38 @@ main(Args) ->
 
 	file:close(EmbedFs),
 
-    %ok = sh(cross_prefix() ++ "ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
-    {ok, Embed} = file:read_file(EmbedFsPath),
-    ok = file:write_file("embedfs.c",
-                        iolist_to_binary(binary_to_c_iolist("_binary_embed_fs", Embed))),
-	ok = sh("cc -c embedfs.c", []),
+	case lists:member(apple, Opts) of
+		false ->
+			ok = sh(cross_prefix() ++ "ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
+			ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
+			domain_config(CustomBucks, Config);
+		true ->
+			CC = [{cd, cache_dir()}],
+			EmbedCPath = filename:join(cache_dir(), "embedfs.c"),
+			{ok, Embed} = file:read_file(EmbedFsPath),
+			ok = bfd_objcopy:blob_to_src(EmbedCPath, "_binary_embed_fs", Embed),
+			ok = sh("cc -c embedfs.c", CC),
+			% assumes nettle is installed elsewhere for now
+			ok = sh("ld -image_base 0x8000 -pagezero_size 0x8000 -arch x86_64 embedfs.o vmling.o -framework System -lnettle -o ../macling", CC)
+			% doesn't build domain config here
+	end.
 
-	%ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
-    halt(42),
+domain_config(CustomBucks, Config) ->
+	Project = project_name(Config),
+	Image = image_name(Config),
+	DomName =
+		lists:foldl(
+			fun
+				({domain, undefined}, Res) ->
+					Res;
+				({domain, D}, _) ->
+					D;
+				(_, Res) ->
+					Res
+			end,
+			"domain_config",
+			Config
+		),
 
 	io:format("Generate: ~s\n", [DomName]),
 
@@ -250,15 +267,15 @@ main(Args) ->
 
 	Vif = "vif = " ++ lists:flatten(io_lib:format("~p", [[Vif || {vif, Vif} <- Config]])),
 	Pz = " -pz" ++ lists:flatten([" " ++ Dir || {_, Dir, _} <- CustomBucks]),
-	Home = "-home /" ++ PrjName,
+	Home = "-home /" ++ Project,
 	Extra = [E ++ " " || {extra, E} <- Config] ++ [Home] ++ [Pz],
 
 	%% Xen guest maximum command line length is 1024
 	case length(lists:flatten(Extra)) < 1024 of
 		true ->
 			ok = file:write_file(DomName,
-				"name = \"" ++ PrjName ++ "\"\n" ++
-				"kernel = \"" ++ ImgName ++ "\"\n" ++
+				"name = \"" ++ Project ++ "\"\n" ++
+				"kernel = \"" ++ Image ++ "\"\n" ++
 				"extra = \"" ++ Extra ++ "\"\n" ++
 				Memory ++
 				Vif ++ "\n"
@@ -383,36 +400,7 @@ avoid_ebin_stem(Dir) ->
 		Stem -> list_to_atom(Stem)
 	end.
 
-is_print(C) when C >= $0, C =< $9 -> true;
-is_print(C) when C >= $a, C =< $z -> true;
-is_print(C) when C >= $A, C =< $Z -> true;
-is_print($ ) -> true;
-is_print(_) -> false.
-
-array_format(Xs) -> ["    ", intersperse(<<", ">>, <<"\n    ">>, 10, Xs)].
-intersperse(Sep, GroupSep, Count, Xs) -> nice_intersperse(Sep, GroupSep, Count, Xs, 0).
-
-nice_intersperse(_,  _, _, [],  _)  -> [];
-nice_intersperse(_,  _, _, [X], _)  -> [X];
-nice_intersperse(Sep, GroupSep, Count, [X|Xs], Count) -> [X, [Sep, GroupSep]|nice_intersperse(Sep, GroupSep, Count, Xs, 0)];
-nice_intersperse(Sep, GroupSep, Count, [X|Xs], N)     -> [X, Sep|nice_intersperse(Sep, GroupSep, Count, Xs, N + 1)].
-
-binary_to_c_iolist(Tag, Blob) ->
-    Size = integer_to_list(size(Blob)),
-
-    P1 = ["const char ", Tag, "_start[] = {\n"],
-    Chars = lists:map(fun(C) ->
-                              case is_print(C) of
-                                  %true -> [$', C, $'];
-                                  _ when C < 16 -> [$0, $x, $0, integer_to_list(C, 16)];
-                                  _ -> [$0, $x, integer_to_list(C, 16)]
-                              end
-                      end, binary_to_list(Blob)),
-    Intercalated = array_format(Chars),
-
-    P2 = ["const unsigned long ", Tag, "_size = ", Size, ";\n"],
-    P3 = ["const char *", Tag, "_end = (char *)&", Tag, "_start + ", Size, ";\n"],
-    [ P1, Intercalated, "\n};\n", P2, P3 ].
 
 
+%% vim: noet ts=4 sw=4 sts=4
 %%EOF

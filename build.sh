@@ -16,7 +16,7 @@ erlang() {
 
 clone() {
 	# Get ling
-	git clone https://github.com/thenewwazoo/ling.git || true
+	git clone https://github.com/cloudozer/ling.git || true
 	cd ling && git checkout raspberry-pi
 }
 

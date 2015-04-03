@@ -11,6 +11,7 @@ files() -> [
 	"bc/ling_iops.beam",
 	"bc/ling_iopvars.beam",
 	"bc/ling_lib.beam",
+	"bc/bfd_objcopy.beam",
 
 	"core/ling.lds",
 	"core/vmling.o"
@@ -44,3 +45,5 @@ main(_) ->
 	ok = escript:create(Filename, [shebang, {archive, FileList1 ++ FileList2, [memory]}]),
 	{ok, #file_info{mode = Mode}} = file:read_file_info(Filename),
 	ok = file:change_mode(Filename, Mode bor 8#00111).
+
+%% vim: noet ts=4 sts=4 sw=4

@@ -289,8 +289,8 @@ write_literals_blob(Lings, LitBlobFile) -> %% {M,Off,Num}
 		{{[Rec|Tab], [Iolist, Bin]},Off + size(Bin)}
 	end, {{[], []}, 0}, Lings),
 
-    Binary = binary_to_c_iolist("literals_blob", iolist_to_binary(Iolist)),
-    ok = file:write_file(LitBlobFile, Binary),
+	ok = bfd_objcopy:blob_to_src(LitBlobFile,
+			"literals_blob", iolist_to_binary(Iolist)),
 	Tab.
 
 write_catch_table(Lings, CatchTabFile) -> %% [{M,CatchOffset}]
@@ -321,23 +321,6 @@ write_string_table_1(Out, <<B1:32/binary,B2/binary>>) ->
 	write_string_table_1(Out, B2);
 write_string_table_1(Out, B) ->
 	io:format(Out, "\"~s\"", [hex_str(B)]).
-
-binary_to_c_iolist(Tag, Blob) ->
-    Size = integer_to_list(size(Blob)),
-
-    P1 = ["const char ", Tag, "_start[] = {\n"],
-    Chars = lists:map(fun(C) ->
-                              case is_print(C) of
-                                  %true -> [$', C, $'];
-                                  _ when C < 16 -> [$0, $x, $0, integer_to_list(C, 16)];
-                                  _ -> [$0, $x, integer_to_list(C, 16)]
-                              end
-                      end, binary_to_list(Blob)),
-    Intercalated = array_format(Chars),
-
-    P2 = ["const unsigned long ", Tag, "_size = ", Size, ";\n"],
-    P3 = ["const char *", Tag, "_end = (char *)&", Tag, "_start + ", Size, ";\n"],
-    [ P1, Intercalated, "\n};\n", P2, P3 ].
 
 hex_str(B) ->
 	lists:map(fun(C) ->
@@ -436,12 +419,5 @@ bif_type("gc_bif_" ++_, 3) -> "BIF_TYPE_GC_3";
 bif_type(Impl, Arity) ->
 	erlang:error({no_bif_type,Impl,Arity}).
 
-array_format(Xs) -> ["    ", intersperse(<<", ">>, <<"\n    ">>, 10, Xs)].
-intersperse(Sep, GroupSep, Count, Xs) -> nice_intersperse(Sep, GroupSep, Count, Xs, 0).
-
-nice_intersperse(_,  _, _, [],  _)  -> [];
-nice_intersperse(_,  _, _, [X], _)  -> [X];
-nice_intersperse(Sep, GroupSep, Count, [X|Xs], Count) -> [X, [Sep, GroupSep]|nice_intersperse(Sep, GroupSep, Count, Xs, 0)];
-nice_intersperse(Sep, GroupSep, Count, [X|Xs], N)     -> [X, Sep|nice_intersperse(Sep, GroupSep, Count, Xs, N + 1)].
-
+%% vim: noet ts=4 sts=4 sw=4
 %%EOF
