@@ -80,10 +80,12 @@ void start_ling(void)
 {
 	//-------- init phase 1 --------
 	//
+#if 0
 	// wipe out bss segment
 	extern uint8_t _bss_start;
 	extern uint8_t _bss_end;
 	memset(&_bss_start, 0, &_bss_end - &_bss_start);
+#endif
 
 	time_init();	// sets start_of_day_wall_clock
 
@@ -147,6 +149,7 @@ void printk(const char *fmt, ...)
 	ser_cons_write(buffer, len);
 }
 
+extern void exit(int) __attribute__((noreturn));
 void fatal_error(const char *fmt, ...)
 {
 	char buffer[BUFSIZ];
@@ -161,6 +164,7 @@ void fatal_error(const char *fmt, ...)
 	ser_cons_write(buffer, len);
 	ser_cons_write("\r\n", 2);
 
+	exit(42);
 	while (1)
 	{
 #ifdef LING_DEBUG

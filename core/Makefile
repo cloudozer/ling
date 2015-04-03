@@ -5,11 +5,11 @@ default: lwip pcre $(INCLUDES) vmling.o
 
 include ../Config.mk
 
-ARCH := arm
-
+ifeq ($(ARCH),arm)
 CROSS_COMPILE ?= arm-unknown-eabi-
+endif
+
 CC := $(CROSS_COMPILE)gcc
-OBJCOPY := $(CROSS_COMPILE)objcopy
 
 CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
 CPPFLAGS += -isystem lib/nettle
@@ -23,36 +23,74 @@ CPPFLAGS += -iquote lib/lwip/src/include/ipv4
 CPPFLAGS += -iquote lib/lwip/src/include/ipv6
 CPPFLAGS += -iquote lib/lwip/ling
 
+CPPFLAGS += -isystem config/include
+
 CPPFLAGS += -DLING_VER=$(LING_VER)
 
 CPPFLAGS += -DLING_DEBUG
 CPPFLAGS += -DDEBUG_UNUSED_MEM
 CPPFLAGS += -DTRACE_HARNESS
 
+ifneq ($(ARCH),posix)
 COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer -ffreestanding
+else
+COMMON_CFLAGS := -fno-omit-frame-pointer
+endif
 
-#CFLAGS := -Wall -Werror -std=gnu99 -O3 -Wno-nonnull -Wno-strict-aliasing $(COMMON_CFLAGS)
 CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3 $(COMMON_FLAGS)
+
+ifeq ($(ARCH),posix)
+# assuming clang
+CPPFLAGS += -Wno-tautological-compare -Wno-typedef-redefinition -Wno-empty-body
+CPPFLAGS += -Wno-unknown-pragmas -Wno-int-conversion -Wno-self-assign
+F_NO_REORDER_BLOCKS :=
+else
+F_NO_REORDER_BLOCKS := -fno-reorder-blocks
+endif
+
+ifeq ($(ARCH),arm)
+CROSS_COMPILE ?= arm-unknown-eabi-
 CFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+SFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+endif
 
-ASFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+#LDFLAGS += -nostdlib
+#LDFLAGS += -L lib/nettle
 
-LDFLAGS := -T ling.lds
-LDFLAGS += -nostdlib
-LDFLAGS += -L lib/nettle
-LDFLAGS += -Xlinker --relocatable
+# relocatable
+LDFLAGS := -Xlinker -r
+
+ifneq ($(ARCH),posix)
+LDFLAGS += -T ling.lds
+LDFLAGS += -static
 LDFLAGS += -Xlinker --build-id=none
 LDFLAGS += -Xlinker --cref -Xlinker -Map=ling.map
-LDFLAGS += -static
-LDFLAGS_FINAL := -lgcc lib/nettle/libnettle.a
+#LDFLAGS += -static
+LDFLAGS_FINAL := -lgcc
+else
+#LDFLAGS_FINAL := -lnettle -L/usr/local/lib
+endif
 
+#LDFLAGS_FINAL += lib/nettle/libnettle.a
+
+ifneq ($(ARCH),posix)
 STARTUP_OBJ := $(patsubst %.s,%.o,arch/$(ARCH)/startup.s)
+else
+STARTUP_OBJ :=
+endif
 
 ARCH_OBJS := $(patsubst %.c,%.o,$(wildcard arch/$(ARCH)/*.c))
-OBJS := $(patsubst %.c,%.o,$(wildcard *.c))
+OBJS := $(patsubst %.c,%.o,$(wildcard *.c)) preload/literals.o
 BIGNUM_OBJS := $(patsubst %.c,%.o,$(wildcard bignum/*.c))
+
+ifneq ($(ARCH),posix)
 MISC_OBJS := $(patsubst %.c,%.o,$(wildcard lib/misc/*.c))
 MISC_AS_OBJS := $(patsubst %.s,%.o,$(wildcard lib/misc/arch/$(ARCH)/*.s))
+else
+MISC_OBJS :=
+MISC_AS_OBJS :=
+endif
+
 PCRE_OBJS := \
 	lib/pcre/pcre_chartables.o \
 	lib/pcre/pcre_compile.o \
@@ -89,11 +127,12 @@ else
 NETTLE_FLAGS :=
 endif
 
-ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS) \
-	preload/literals.o ling_main.o
+ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS)
 
+ifneq ($(ARCH),posix)
 $(STARTUP_OBJ): %.o: %.s
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
+endif
 
 # Stop iops reordering in ling_main.o
 OBJS1 := $(filter-out ling_main.o,$(OBJS))
@@ -116,7 +155,7 @@ ling_main.c: scripts/ling_main_c.et scripts/hot_cold_iops
 	scripts/main_gen $^
 
 ling_main.o: ling_main.c include/atom_defs.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fno-reorder-blocks -o $@ -c $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(F_NO_REORDER_BLOCKS) -o $@ -c $<
 
 include/bif.h: ../bc/scripts/bif.tab
 	scripts/bifs_gen $< $@
@@ -140,17 +179,11 @@ include/atom_defs.h atoms.inc gentab/atoms.erl: scripts/atoms.tab gentab/exp_tab
 
 premod: $(INCLUDES)
 $(INCLUDES): gentab/atoms.beam gentab/exp_tab.beam include/atom_defs.h $(PREMODS)
-	scripts/premod_gen preload premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc copy
+	scripts/premod_gen preload premod.inc code_base.inc include/mod_info.inc preload/literals.c catch_tab.inc copy
 
-preload/literals.o: preload/literals.bin
-	$(OBJCOPY) -I binary -O elf32-littlearm -B arm \
-		--redefine-sym _binary_preload_literals_bin_start=literals_blob_start \
-		--redefine-sym _binary_preload_literals_bin_end=literals_blob_end \
-		--redefine-sym _binary_preload_literals_bin_size=literals_blob_size \
-		$< $@
 
 vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS)
-	$(CC) -o $@ $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL) $(CFLAGS)
+	$(CC) -o $@ $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL)
 
 nettle: lib/nettle/libnettle.a
 

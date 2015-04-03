@@ -189,7 +189,8 @@ main(Args) ->
 			Bucks
 		),
 
-	{ok, EmbedFs} = file:open(filename:join(cache_dir(),"embed.fs"), [write]),
+    EmbedFsPath = filename:join(cache_dir(),"embed.fs"),
+	{ok, EmbedFs} = file:open(EmbedFsPath, [write]),
 
 	BuckCount = erlang:length(Bucks),
 	BinCount =
@@ -228,8 +229,14 @@ main(Args) ->
 
 	file:close(EmbedFs),
 
-	ok = sh(cross_prefix() ++ "ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
-	ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
+    %ok = sh(cross_prefix() ++ "ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
+    {ok, Embed} = file:read_file(EmbedFsPath),
+    ok = file:write_file("embedfs.c",
+                        iolist_to_binary(binary_to_c_iolist("_binary_embed_fs", Embed))),
+	ok = sh("cc -c embedfs.c", []),
+
+	%ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
+    halt(42),
 
 	io:format("Generate: ~s\n", [DomName]),
 
@@ -375,5 +382,36 @@ avoid_ebin_stem(Dir) ->
 		"ebin" -> avoid_ebin_stem(filename:dirname(Dir));
 		Stem -> list_to_atom(Stem)
 	end.
+
+is_print(C) when C >= $0, C =< $9 -> true;
+is_print(C) when C >= $a, C =< $z -> true;
+is_print(C) when C >= $A, C =< $Z -> true;
+is_print($ ) -> true;
+is_print(_) -> false.
+
+array_format(Xs) -> ["    ", intersperse(<<", ">>, <<"\n    ">>, 10, Xs)].
+intersperse(Sep, GroupSep, Count, Xs) -> nice_intersperse(Sep, GroupSep, Count, Xs, 0).
+
+nice_intersperse(_,  _, _, [],  _)  -> [];
+nice_intersperse(_,  _, _, [X], _)  -> [X];
+nice_intersperse(Sep, GroupSep, Count, [X|Xs], Count) -> [X, [Sep, GroupSep]|nice_intersperse(Sep, GroupSep, Count, Xs, 0)];
+nice_intersperse(Sep, GroupSep, Count, [X|Xs], N)     -> [X, Sep|nice_intersperse(Sep, GroupSep, Count, Xs, N + 1)].
+
+
+binary_to_c_iolist(Tag, Blob) ->
+    Size = integer_to_list(size(Blob)),
+
+    P1 = ["const char ", Tag, "_start[] = {\n"],
+    Chars = lists:map(fun(C) ->
+                              case is_print(C) of
+                                  true -> [$', C, $'];
+                                  false -> [integer_to_list(C)]
+                              end
+                      end, binary_to_list(Blob)),
+    Intercalated = array_format(Chars),
+
+    P2 = ["const unsigned long ", Tag, "_size = ", Size, ";\n"],
+    P3 = ["const void *", Tag, "_end = &", Tag, "_start + ", Size, ";\n"],
+    [ P1, Intercalated, "\n};\n", P2, P3 ].
 
 %%EOF
