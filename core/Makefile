@@ -1,6 +1,6 @@
 
 .PHONY: default lwip pcre
-INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.bin catch_tab.inc
+INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.c catch_tab.inc
 default: lwip pcre $(INCLUDES) vmling.o
 
 include ../Config.mk
@@ -40,7 +40,7 @@ endif
 CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3 $(COMMON_FLAGS)
 
 ifeq ($(ARCH),posix)
-# assuming clang
+# assuming Apple LLVM version 6.0 (clang-600.0.57)
 CPPFLAGS += -Wno-tautological-compare -Wno-typedef-redefinition -Wno-empty-body
 CPPFLAGS += -Wno-unknown-pragmas -Wno-int-conversion -Wno-self-assign
 F_NO_REORDER_BLOCKS :=
@@ -51,13 +51,10 @@ endif
 ifeq ($(ARCH),arm)
 CROSS_COMPILE ?= arm-unknown-eabi-
 CFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
-SFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+ASFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 endif
 
-#LDFLAGS += -nostdlib
-#LDFLAGS += -L lib/nettle
-
-# relocatable
+# relocatable (partial linking)
 LDFLAGS := -Xlinker -r
 
 ifneq ($(ARCH),posix)
@@ -65,13 +62,13 @@ LDFLAGS += -T ling.lds
 LDFLAGS += -static
 LDFLAGS += -Xlinker --build-id=none
 LDFLAGS += -Xlinker --cref -Xlinker -Map=ling.map
-#LDFLAGS += -static
+LDFLAGS += -nostdlib
+LDFLAGS += -L lib/nettle
 LDFLAGS_FINAL := -lgcc
+LDFLAGS_FINAL += lib/nettle/libnettle.a
 else
 #LDFLAGS_FINAL := -lnettle -L/usr/local/lib
 endif
-
-#LDFLAGS_FINAL += lib/nettle/libnettle.a
 
 ifneq ($(ARCH),posix)
 STARTUP_OBJ := $(patsubst %.s,%.o,arch/$(ARCH)/startup.s)

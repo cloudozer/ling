@@ -1,2 +1,0 @@
-
-#include <machine/interrupt.c>

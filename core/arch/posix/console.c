@@ -1,11 +1,9 @@
-
 #include "ling_common.h"
 
 #include "console.h"
 #include "outlet.h"
 
-#include <fcntl.h>
-#include <unistd.h>
+#include "syscalls.h"
 
 #define constwrite1(s) write(1, (s), sizeof(s)-1)
 
@@ -14,7 +12,9 @@ static outlet_t *attached_outlet;
 void
 console_init(void)
 {
+#if CONSOLE_DEBUG
 	constwrite1("console hello\n");
+#endif
 	int flag = O_NONBLOCK;
 	fcntl(0, F_SETFL, flag);
 }
@@ -22,14 +22,18 @@ console_init(void)
 void
 console_attach(outlet_t *ol)
 {
+#if CONSOLE_DEBUG
 	constwrite1("console attach\n");
+#endif
 	attached_outlet = ol;
 }
 
 void
 console_detach(outlet_t *ol)
 {
+#if CONSOLE_DEBUG
 	constwrite1("console detach\n");
+#endif
 	attached_outlet = NULL;
 }
 
@@ -58,4 +62,3 @@ console_do_pending(void)
 	}
 	return total;
 }
-
