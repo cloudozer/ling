@@ -4,41 +4,58 @@
 #include "console.h"
 #include "outlet.h"
 
-extern int printf(const char * restrict format, ...);
+#include <fcntl.h>
+#include <unistd.h>
+
+#define constwrite1(s) write(1, (s), sizeof(s)-1)
+
+static outlet_t *attached_outlet;
 
 void
 console_init(void)
 {
-	printf("console hello\n");
+	constwrite1("console hello\n");
+	int flag = O_NONBLOCK;
+	fcntl(0, F_SETFL, flag);
 }
 
 void
 console_attach(outlet_t *ol)
 {
-	printf("console attach\n");
+	constwrite1("console attach\n");
+	attached_outlet = ol;
 }
 
 void
 console_detach(outlet_t *ol)
 {
-	printf("console detach\n");
+	constwrite1("console detach\n");
+	attached_outlet = NULL;
 }
 
 int
 console_write(char *buf, int len)
 {
-	return printf("%.*s",len,buf);
+	return write(1, buf, len);
 }
 
 int
 ser_cons_write(char *buf, int len)
 {
-	return printf("%.*s",len,buf);
+	return write(1, buf, len);
 }
 
 int
 console_do_pending(void)
 {
-	return 0;
+	char buf[1];
+	int total = 0;
+
+	while (read(0, buf, 1) == 1) {
+		if (attached_outlet)
+			outlet_pass_new_data(attached_outlet, (uint8_t *)buf, 1);
+		total++;
+	}
+	return total;
 }
 

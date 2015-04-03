@@ -397,21 +397,22 @@ nice_intersperse(_,  _, _, [X], _)  -> [X];
 nice_intersperse(Sep, GroupSep, Count, [X|Xs], Count) -> [X, [Sep, GroupSep]|nice_intersperse(Sep, GroupSep, Count, Xs, 0)];
 nice_intersperse(Sep, GroupSep, Count, [X|Xs], N)     -> [X, Sep|nice_intersperse(Sep, GroupSep, Count, Xs, N + 1)].
 
-
 binary_to_c_iolist(Tag, Blob) ->
     Size = integer_to_list(size(Blob)),
 
     P1 = ["const char ", Tag, "_start[] = {\n"],
     Chars = lists:map(fun(C) ->
                               case is_print(C) of
-                                  true -> [$', C, $'];
-                                  false -> [integer_to_list(C)]
+                                  %true -> [$', C, $'];
+                                  _ when C < 16 -> [$0, $x, $0, integer_to_list(C, 16)];
+                                  _ -> [$0, $x, integer_to_list(C, 16)]
                               end
                       end, binary_to_list(Blob)),
     Intercalated = array_format(Chars),
 
     P2 = ["const unsigned long ", Tag, "_size = ", Size, ";\n"],
-    P3 = ["const void *", Tag, "_end = &", Tag, "_start + ", Size, ";\n"],
+    P3 = ["const char *", Tag, "_end = (char *)&", Tag, "_start + ", Size, ";\n"],
     [ P1, Intercalated, "\n};\n", P2, P3 ].
+
 
 %%EOF

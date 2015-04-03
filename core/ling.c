@@ -80,13 +80,8 @@ void start_ling(void)
 {
 	//-------- init phase 1 --------
 	//
-#if 0
-	// wipe out bss segment
-	extern uint8_t _bss_start;
-	extern uint8_t _bss_end;
-	memset(&_bss_start, 0, &_bss_end - &_bss_start);
-#endif
 
+	mm_init();
 	time_init();	// sets start_of_day_wall_clock
 
 	// use the time value to seed PRNG
