@@ -473,6 +473,7 @@ port_driver(vif) -> vif;
 port_driver(disk) -> disk;
 port_driver({fd,2,2}) -> dumb_console;
 port_driver({spawn,console}) -> console;
+port_driver({spawn,'tty_sl -c -e'}) -> console;
 port_driver({spawn,"inet_gethost " ++ _}) -> dns;
 port_driver({spawn_driver,"udp_inet"}) -> udp;
 port_driver({spawn_driver,"tcp_inet"}) -> tcp;
