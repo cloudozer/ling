@@ -125,7 +125,7 @@ else
 NETTLE_FLAGS :=
 endif
 
-ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS)
+ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS) ling_main.o
 
 ifneq ($(ARCH),posix)
 $(STARTUP_OBJ): %.o: %.s
