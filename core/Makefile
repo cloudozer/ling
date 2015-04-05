@@ -23,8 +23,6 @@ CPPFLAGS += -iquote lib/lwip/src/include/ipv4
 CPPFLAGS += -iquote lib/lwip/src/include/ipv6
 CPPFLAGS += -iquote lib/lwip/ling
 
-CPPFLAGS += -isystem config/include
-
 CPPFLAGS += -DLING_VER=$(LING_VER)
 
 CPPFLAGS += -DLING_DEBUG

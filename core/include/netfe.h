@@ -7,7 +7,7 @@
 #define ETH_MTU		1500
 #define ETH_ALEN	6
 
-#include <machine/arch_netfe.h>
+#include "arch_netfe.h"
 
 typedef struct outlet_t outlet_t;
 

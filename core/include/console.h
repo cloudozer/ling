@@ -1,8 +1,8 @@
 #pragma once
 
 #include <stdint.h>
-#include <machine/arch_console.h>
-#include <machine/ser_cons.h>
+#include "arch_console.h"
+#include "ser_cons.h"
 
 typedef struct outlet_t outlet_t;
 
