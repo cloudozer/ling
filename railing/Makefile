@@ -3,7 +3,7 @@
 include ../Config.mk
 
 railing: $(patsubst %.erl,%.beam,$(wildcard *.erl)) escriptize
-	./escriptize
+	./escriptize $(ARCH)
 
 clean:
 	rm -f *.beam railing

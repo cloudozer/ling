@@ -2,7 +2,7 @@
 -mode(compile).
 -include_lib("kernel/include/file.hrl").
 
-files() -> [
+files(Arch) -> [
 	"railing/railing.beam",
 	"railing/getopt.beam",
 	"bc/ling_bifs.beam",
@@ -13,11 +13,11 @@ files() -> [
 	"bc/ling_lib.beam",
 	"bc/bfd_objcopy.beam",
 
-	"core/ling.lds",
+	"core/arch/" ++ Arch ++ "/ling.lds",
 	"core/vmling.o"
 ].
 	
-main(_) ->
+main([Arch]) ->
 	% cd to ling root directory
 	ok = file:set_cwd(filename:join(filename:dirname(escript:script_name()), "..")),
 
@@ -27,7 +27,7 @@ main(_) ->
 				{ok, Bin} = file:read_file(F),
 				{filename:basename(F), Bin}
 			end,
-			files()
+			files(Arch)
 		),
 
 	FileList2 = 
