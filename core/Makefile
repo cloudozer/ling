@@ -1,17 +1,20 @@
-
 .PHONY: default lwip pcre
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.c catch_tab.inc
-default: lwip pcre $(INCLUDES) vmling.o
+default: lwip pcre nettle $(INCLUDES) vmling.o
 
 include ../Config.mk
-
-ifeq ($(ARCH),arm)
-CROSS_COMPILE ?= arm-unknown-eabi-
-endif
-
-CC := $(CROSS_COMPILE)gcc
+include Compiler.mk
 
 CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
+
+CPPFLAGS += -DLING_VER=$(LING_VER)
+
+ifdef LING_DEBUG
+CPPFLAGS += -DLING_DEBUG
+CPPFLAGS += -DDEBUG_UNUSED_MEM
+CPPFLAGS += -DTRACE_HARNESS
+endif
+
 CPPFLAGS += -isystem lib/nettle
 CPPFLAGS += -isystem lib/pcre
 CPPFLAGS += -isystem lib
@@ -23,33 +26,26 @@ CPPFLAGS += -iquote lib/lwip/src/include/ipv4
 CPPFLAGS += -iquote lib/lwip/src/include/ipv6
 CPPFLAGS += -iquote lib/lwip/ling
 
-CPPFLAGS += -DLING_VER=$(LING_VER)
-
-CPPFLAGS += -DLING_DEBUG
-CPPFLAGS += -DDEBUG_UNUSED_MEM
-CPPFLAGS += -DTRACE_HARNESS
+CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3
+CFLAGS += -fno-omit-frame-pointer
 
 ifneq ($(ARCH),posix)
-COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer -ffreestanding
-else
-COMMON_CFLAGS := -fno-omit-frame-pointer
+CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
 endif
 
-CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3 $(COMMON_FLAGS)
+ifeq ($(ARCH),x86)
+CFLAGS += -fexcess-precision=standard -frounding-math -mfpmath=sse -msse2
+CFLAGS += -Wno-nonnull -Wno-strict-aliasing
+endif
 
 ifeq ($(ARCH),posix)
-# assuming Apple LLVM version 6.0 (clang-600.0.57)
-CPPFLAGS += -Wno-tautological-compare -Wno-typedef-redefinition -Wno-empty-body
-CPPFLAGS += -Wno-unknown-pragmas -Wno-int-conversion -Wno-self-assign
 F_NO_REORDER_BLOCKS :=
-CPPFLAGS += -DLING_POSIX
 else
 F_NO_REORDER_BLOCKS := -fno-reorder-blocks
 endif
 
 ifeq ($(ARCH),arm)
-CROSS_COMPILE ?= arm-unknown-eabi-
-CFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+CFLAGS  += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 ASFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 endif
 
@@ -57,7 +53,7 @@ endif
 LDFLAGS := -Xlinker -r
 
 ifneq ($(ARCH),posix)
-LDFLAGS += -T ling.lds
+LDFLAGS += -T arch/$(ARCH)/ling.lds
 LDFLAGS += -static
 LDFLAGS += -Xlinker --build-id=none
 LDFLAGS += -Xlinker --cref -Xlinker -Map=ling.map
@@ -69,16 +65,22 @@ else
 #LDFLAGS_FINAL := -lnettle -L/usr/local/lib
 endif
 
-ifneq ($(ARCH),posix)
-STARTUP_OBJ := $(patsubst %.s,%.o,arch/$(ARCH)/startup.s)
-else
+ifeq ($(ARCH),posix)
 STARTUP_OBJ :=
+else
+STARTUP_OBJ := arch/$(ARCH)/startup.o
+ifeq ($(ARCH),x86)
+STARTUP_SRC_EXT = S
+else
+STARTUP_SRC_EXT = s
+endif
 endif
 
 ARCH_OBJS := $(patsubst %.c,%.o,$(wildcard arch/$(ARCH)/*.c))
 OBJS := $(patsubst %.c,%.o,$(wildcard *.c)) preload/literals.o
 BIGNUM_OBJS := $(patsubst %.c,%.o,$(wildcard bignum/*.c))
 
+# posix currently uses system libc
 ifneq ($(ARCH),posix)
 MISC_OBJS := $(patsubst %.c,%.o,$(wildcard lib/misc/*.c))
 MISC_AS_OBJS := $(patsubst %.s,%.o,$(wildcard lib/misc/arch/$(ARCH)/*.s))
@@ -117,16 +119,12 @@ LWIP_SRC_DIRS := \
 LWIP_SRCS := $(foreach dir,$(LWIP_SRC_DIRS),$(wildcard $(dir)/*.c))
 LWIP_OBJS := $(patsubst %.c,%.o,$(LWIP_SRCS))
 
-ifeq ($(CROSS),1)
-NETTLE_FLAGS := --host=x86_64-pc-linux
-else
-NETTLE_FLAGS :=
-endif
-
-ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS) ling_main.o
+ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS)
+ALL_OBJS += ling_main.o
 
 ifneq ($(ARCH),posix)
-$(STARTUP_OBJ): %.o: %.s
+# this is a c file in posix
+$(STARTUP_OBJ): %.o: %.$(STARTUP_SRC_EXT)
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 endif
 
@@ -176,7 +174,6 @@ include/atom_defs.h atoms.inc gentab/atoms.erl: scripts/atoms.tab gentab/exp_tab
 premod: $(INCLUDES)
 $(INCLUDES): gentab/atoms.beam gentab/exp_tab.beam include/atom_defs.h $(PREMODS)
 	scripts/premod_gen preload premod.inc code_base.inc include/mod_info.inc preload/literals.c catch_tab.inc copy
-
 
 vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS)
 	$(CC) -o $@ $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS) $(LDFLAGS) $(LDFLAGS_FINAL)
