@@ -6,3 +6,8 @@ main(int argc, char **argv)
 {
 	start_ling();
 }
+
+void
+yield(void)
+{
+}

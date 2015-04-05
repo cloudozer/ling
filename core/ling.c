@@ -46,6 +46,8 @@
 
 #include "console.h"
 #include "netif.h"
+#include "netfe.h"
+#include "disk.h"
 
 #include "bignum.h"
 #include "atoms.h"
@@ -54,14 +56,34 @@
 #include "code_base.h"
 #include "proc.h"
 #include "scheduler.h"
+#include "time.h"
 #include "ets.h"
 #include "list_util.h"
+
+#ifdef LING_XEN
+#include "ling_xen.h"
+#include "xenstore.h"
+#include "event.h"
+#include "grant.h"
+#endif
 
 // PRNG
 #include "mtwist.h"
 
 #define quote(x) #x
 #define quote_and_expand(x) quote(x)
+
+#ifdef LING_XEN
+char stack[2*STACK_SIZE];
+start_info_t start_info;
+unsigned long *phys_to_machine_mapping;
+shared_info_t *HYPERVISOR_shared_info;
+
+UNUSED static void print_start_info(void);
+UNUSED static void print_xenmem_info(void);
+UNUSED static void print_xenstore_values(void);
+UNUSED static void print_xs_tree(char *start);
+#endif
 
 void proc_main(proc_t *proc);
 
@@ -80,16 +102,55 @@ void start_ling(void)
 {
 	//-------- init phase 1 --------
 	//
+#ifdef LING_XEN
+	memcpy(&start_info, si, sizeof(*si));
 
+	phys_to_machine_mapping = (unsigned long *)start_info.mfn_list;
+
+	HYPERVISOR_update_va_mapping((unsigned long)&shared_info,
+		__pte(start_info.shared_info | 7), UVMF_INVLPG);
+	HYPERVISOR_shared_info = &shared_info;
+#endif
+
+#ifdef LING_XEN
+	mm_init(start_info.nr_pages, start_info.pt_base, start_info.nr_pt_frames);
+#else
 	mm_init();
+#endif
 	time_init();	// sets start_of_day_wall_clock
 
 	// use the time value to seed PRNG
 	mt_seed(start_of_day_wall_clock);
 
+#ifdef LING_XEN
+#if defined(__x86_64__)
+	HYPERVISOR_set_callbacks(0, 0, 0);
+#else /* __x86_64__ */
+	HYPERVISOR_set_callbacks(0, 0, 0, 0);
+#endif
+#endif
+
 	console_init();
 	nalloc_init();
-	//lwip_init();
+
+#ifdef LING_XEN
+	events_init();
+	grants_init();
+
+	console_init(mfn_to_virt(start_info.console.domU.mfn),
+			start_info.console.domU.evtchn);
+	xenstore_init(mfn_to_virt(start_info.store_mfn),
+		start_info.store_evtchn);
+
+	xenstore_read("name", my_domain_name, sizeof(my_domain_name));
+	//print_xenstore_values();
+
+	if (disk_vbd_is_present())
+		disk_init();
+
+	lwip_init();
+	netfe_init();
+#endif
 
 	//-------- init phase 2 --------
 	//
@@ -117,8 +178,12 @@ void start_ling(void)
 
 	proc_main(0); // preliminary run
 
+#ifdef LING_XEN
+	spawn_init_start(start_info.cmd_line);
+#else
 	static char *hardcoded_command_line = "-home /";
 	spawn_init_start(hardcoded_command_line);
+#endif
 
 	//while (1)
 	//	HYPERVISOR_sched_op(SCHEDOP_block, 0);
@@ -126,25 +191,24 @@ void start_ling(void)
 	/* UNREACHABLE */
 }
 
-void domain_poweroff(void)
-{
-	while (1);
-}
-
 void printk(const char *fmt, ...)
 {
-    char buffer[BUFSIZ];
+	char buffer[BUFSIZ];
 
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, ap);
-    va_end(ap);
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
 
 	int len = strlen(buffer);
-	ser_cons_write(buffer, len);
+	if (console_is_initialized())
+		console_write(buffer, len);
+	if (ser_cons_present())
+		ser_cons_write(buffer, len);
 }
 
 extern void exit(int) __attribute__((noreturn));
+
 void fatal_error(const char *fmt, ...)
 {
 	char buffer[BUFSIZ];
@@ -154,18 +218,18 @@ void fatal_error(const char *fmt, ...)
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 		
-	ser_cons_write("*** CRASH: ", 11);
-	int len = strlen(buffer);
-	ser_cons_write(buffer, len);
-	ser_cons_write("\r\n", 2);
+	printk("*** CRASH: %s\r\n", buffer);
 
+#ifdef LING_POSIX
 	exit(42);
+#endif
 	while (1)
 	{
 #ifdef LING_DEBUG
 		// Provide for attaching the debugger to examine the crash
 		gdb_break();
 #endif
+		yield();
 	}
 }
 
@@ -243,6 +307,104 @@ void abort(void)
 {
 	fatal_error("aborted");
 }
+
+#ifdef LING_XEN
+static void print_start_info(void) {
+	printk("start_info [%s]\r\n", start_info.magic);
+	printk(".nr_pages = %lu\r\n", start_info.nr_pages);
+	printk(".shared_info = 0x%lu\r\n", start_info.shared_info);
+	printk(".flags = %d\r\n", start_info.flags);
+	printk(".store_mfn = %d\r\n", (int)start_info.store_mfn);
+	printk(".store_evtchn = %d\r\n", start_info.store_evtchn);
+	printk(".console.domU.mfn = 0x%x\r\n", (int)start_info.console.domU.mfn);
+	printk(".console.domU.evtchn = %d\r\n", start_info.console.domU.evtchn);
+	printk(".pt_base = 0x%lx\r\n", start_info.pt_base);
+	printk(".nr_pt_frames = %lu\r\n", start_info.nr_pt_frames);
+	printk(".mfn_list = 0x%lx\r\n", start_info.mfn_list);
+	printk(".mod_start = %lu\r\n", start_info.mod_start);
+	printk(".mod_len = %lu\r\n", start_info.mod_len);
+	printk(".cmd_line = [%s]\r\n", start_info.cmd_line);
+	printk(".first_p2m_pfn = %lu\r\n", start_info.first_p2m_pfn);
+	printk(".nr_p2m_frames = %lu\r\n", start_info.nr_p2m_frames);
+}
+
+static void print_xenmem_info(void) {
+	domid_t domid = DOMID_SELF;
+	printk("xenmem info:\r\n");
+	
+	int max_ram_page = HYPERVISOR_memory_op(XENMEM_maximum_ram_page, &domid);
+	printk(".max_ram_page=%d\r\n", max_ram_page);
+	int cur_res = HYPERVISOR_memory_op(XENMEM_current_reservation, &domid);
+	printk(".cur_res=%d\r\n", cur_res);
+	int max_res = HYPERVISOR_memory_op(XENMEM_maximum_reservation, &domid);
+	printk(".max_res=%d\r\n", max_res);
+}
+
+static void print_xenstore_values(void)
+{
+	const char *keys[] = { "device/vif/0/mac",
+						   "device/vif/0/handle",
+						   "device/vif/0/protocol",
+						   "device/vif/0/backend-id",
+						   "device/vif/0/state",
+						   "device/vif/0/backend",
+						   0 };
+
+	//const char *keys[] = { "domid",
+	//					   "name",
+	//					   "memory/target",
+	//					   "nonexistent",
+	//					   "cpu/0/availability",
+	//					   0 };
+	char value[256];
+
+	printk("xenstore info:\r\n");
+	const char **pkeys = keys;
+	while (*pkeys)
+	{
+		const char *key = *pkeys++;
+		int r = xenstore_read(key, value, sizeof(value));
+		if (r == 0)
+			printk(" [%s]=%s\r\n", key, value);
+		else
+			printk(" [%s] *** xenstore_read() returns %d\r\n", key, r);
+	}
+}
+
+static int print_xs(int indent, char *key)
+{
+	char buf[1024];
+	assert(indent < sizeof(buf));
+	memset(buf, ' ', indent);
+	buf[indent] = 0;
+	printk("%s%s\n", buf, key);
+
+	int st = xenstore_read_dir(key, buf, sizeof(buf));
+	if (st < 0)
+		return st;
+	char *dir = buf;
+	while (*dir != 0)
+	{
+		char path[1024];
+		strcpy(path, key);
+		strcat(path, "/");
+		strcat(path, dir);
+
+		int ret_code = print_xs(indent +4, path);
+		if (ret_code < 0)
+			return ret_code;
+		dir += strlen(dir) +1;
+	}
+	return 0;
+}
+
+static void print_xs_tree(char *start)
+{
+	int ret_code = print_xs(0, start);
+	if (ret_code < 0)
+		fatal_error("print_xs_tree failed: %d", ret_code);
+}
+#endif /* LING_XEN */
 
 /*EOF*/
 

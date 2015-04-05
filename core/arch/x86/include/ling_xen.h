@@ -31,16 +31,46 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef LIMITS_H
-#define LIMITS_H
+#ifndef LING_XEN_H
+#define LING_XEN_H
 
-#include "arch_limits.h"
+#include <stdint.h>
+#include "xen/xen.h"
+#include "xen/memory.h"
 
-#define PAGE_SHIFT	__PAGE_SHIFT
-#define PAGE_SIZE	__PAGE_SIZE
+#include "arch_mm.h"
+#include "os.h"
 
-#define MAX_ROOT_REGS	65535
+extern char stack[];
+extern shared_info_t *HYPERVISOR_shared_info;
+extern start_info_t start_info;
+extern unsigned long *phys_to_machine_mapping;
 
-#define BUFSIZ		4096
+/* from startup.S and linker script*/
+extern shared_info_t shared_info;
+extern char grant_table;
+extern char _text;
+extern char _membrk;
+void hypervisor_callback(void);
+void failsafe_callback(void);
+
+#ifdef __x86_64__
+typedef struct { unsigned long pte; } pte_t;
+#define __pte(x) ((pte_t) { (x) } )
+#else
+typedef struct { unsigned long pte_low, pte_high; } pte_t;
+#define __pte(x) ({ unsigned long long _x = (x);        \
+    ((pte_t) {(unsigned long)(_x), (unsigned long)(_x>>32)}); })
+#endif
+
+/* NB: c99 */
+#define asm __asm
+
+#if defined(__x86_64__)
+#include "hypercall-x86_64.h"
+#else /*__x86_64__*/
+#include "hypercall-x86_32.h"
+#endif
+
 #endif
 

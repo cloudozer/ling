@@ -31,16 +31,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef LIMITS_H
-#define LIMITS_H
+#ifndef GRANT_H
+#define GRANT_H
 
-#include "arch_limits.h"
+#include "ling_xen.h"
+#include "xen/grant_table.h"
 
-#define PAGE_SHIFT	__PAGE_SHIFT
-#define PAGE_SIZE	__PAGE_SIZE
+void grants_init(void);
+void grants_allow_access(grant_ref_t *ref, domid_t domid, unsigned long frame);
+void grants_end_access(grant_ref_t ref);
 
-#define MAX_ROOT_REGS	65535
-
-#define BUFSIZ		4096
 #endif
 

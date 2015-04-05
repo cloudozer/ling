@@ -31,16 +31,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef LIMITS_H
-#define LIMITS_H
+#ifndef CONSOLE_H
+#define CONSOLE_H
 
-#include "arch_limits.h"
+#include "ling_xen.h"
+#include "xen/io/console.h"
 
-#define PAGE_SHIFT	__PAGE_SHIFT
-#define PAGE_SIZE	__PAGE_SIZE
+#include "outlet.h"
 
-#define MAX_ROOT_REGS	65535
+typedef void (*console_entry_t)(char c, void *cb_data);
 
-#define BUFSIZ		4096
+void console_init(struct xencons_interface *intf, uint32_t chan);
+int console_is_initialized(void);
+void console_attach(outlet_t *ol);
+void console_detach(outlet_t *ol);
+void console_write(const char *msg, int len);
+void console_done(void);
+
 #endif
 

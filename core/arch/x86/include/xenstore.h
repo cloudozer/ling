@@ -31,16 +31,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef LIMITS_H
-#define LIMITS_H
+#ifndef xenstore_H
+#define xenstore_H
 
-#include "arch_limits.h"
+#include "ling_xen.h"
+#include "xen/io/xs_wire.h"
 
-#define PAGE_SHIFT	__PAGE_SHIFT
-#define PAGE_SIZE	__PAGE_SIZE
+void xenstore_init(struct xenstore_domain_interface *intf, uint32_t port);
 
-#define MAX_ROOT_REGS	65535
+int xenstore_write(const char *key, char *value);
+int xenstore_read(const char *key, char *value, size_t len);
+int xenstore_read_int(int *result, const char *key);
+int xenstore_read_u32(uint32_t *result, const char *key);
+int xenstore_read_u64(uint64_t *result, const char *key);
+int xenstore_read_dir(const char *key, char *value, size_t len);
+int xenstore_write_uint(const char *key, unsigned int n);
 
-#define BUFSIZ		4096
 #endif
 

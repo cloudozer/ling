@@ -74,6 +74,9 @@
 #include "decode.h"
 
 #include "monitors.h"
+#include "console.h"
+#include "netfe.h"
+#include "ser_cons.h"
 #include "timers.h"
 #include "ets.h"
 #include "counters.h"
@@ -86,7 +89,9 @@
 
 #include "disk.h"
 
+#include "lwip/ip_addr.h"
 #include "lwip/stats.h"
+#include "lwip/netif.h"
 
 #define fail(reason) do { \
 	proc->bif_excep_reason = (reason); \

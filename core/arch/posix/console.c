@@ -19,6 +19,12 @@ console_init(void)
 	fcntl(0, F_SETFL, flag);
 }
 
+int
+console_is_initialized(void)
+{
+	return attached_outlet != NULL;
+}
+
 void
 console_attach(outlet_t *ol)
 {

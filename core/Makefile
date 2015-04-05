@@ -44,6 +44,7 @@ ifeq ($(ARCH),posix)
 CPPFLAGS += -Wno-tautological-compare -Wno-typedef-redefinition -Wno-empty-body
 CPPFLAGS += -Wno-unknown-pragmas -Wno-int-conversion -Wno-self-assign
 F_NO_REORDER_BLOCKS :=
+CPPFLAGS += -DLING_POSIX
 else
 F_NO_REORDER_BLOCKS := -fno-reorder-blocks
 endif

@@ -29,6 +29,7 @@ struct time_exp_t {
     int32_t tm_gmtoff;
 };
 
+void time_init(void);
 uint64_t monotonic_clock(void);
 uint64_t wall_clock(void);
 void expand_time(struct time_exp_t *xt, uint64_t wall_clock);

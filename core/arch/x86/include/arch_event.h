@@ -31,16 +31,32 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef LIMITS_H
-#define LIMITS_H
+#ifndef EVENT_H
+#define EVENT_H
 
-#include "arch_limits.h"
+#include "ling_xen.h"
 
-#define PAGE_SHIFT	__PAGE_SHIFT
-#define PAGE_SIZE	__PAGE_SIZE
+typedef void (*event_entry_t)(uint32_t port, void *data);
 
-#define MAX_ROOT_REGS	65535
+void events_poll(uint64_t timeout);
+int events_do_pending(void);
+void events_init(void);
+void event_bind(uint32_t port, event_entry_t entry, void *data);
+uint32_t event_alloc_unbound(domid_t remote_domid);
+uint32_t event_bind_virq(uint32_t virq, event_entry_t entry, void *data);
+void event_kick(uint32_t port);
 
-#define BUFSIZ		4096
+static inline void event_clear(uint32_t port)
+{
+    shared_info_t *s = HYPERVISOR_shared_info;
+    synch_clear_bit(port, &s->evtchn_pending[0]);
+}
+
+static inline void event_mask(uint32_t port)
+{
+    shared_info_t *s = HYPERVISOR_shared_info;
+    synch_set_bit(port, &s->evtchn_mask[0]);
+}
+
 #endif
 

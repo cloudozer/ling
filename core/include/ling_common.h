@@ -151,6 +151,7 @@ extern uint32_t trace_module;	// term_t
 #endif
 
 void domain_poweroff(void); // __attribute__ ((noreturn));
+void yield(void);
 
 #ifdef LING_DEBUG
 enum sched_phase_t {
