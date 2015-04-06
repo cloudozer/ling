@@ -11,6 +11,8 @@ To build LING from sources for Raspberry Pi, the following prerequisites must be
 
    You must have a suitable bare-metal cross-compiler installed. To build your own, see [crosstool-ng](http://crosstool-ng.org). The gcc-arm-none-eabi package from Ubuntu is also known to work.
 
+   You may also want to try [GNU Tools for ARM Embedded Processors](https://launchpad.net/gcc-arm-embedded) on Launchpad (contains multiple binary releases including ones for OS X).
+
 3. Autoconf
 
    The nettle 2.7.1 library requires autoconf for bootstrapping (tested with autoconf 2.69).
