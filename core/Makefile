@@ -41,7 +41,7 @@ CFLAGS += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
 endif
 
 ifeq ($(ARCH),x86)
-CPPFLAGS += -DLING_XEN
+CPPFLAGS += -DLING_XEN -DLING_CONFIG_DISK
 CPPFLAGS += -D__XEN_INTERFACE_VERSION__=$(XEN_INTERFACE_VERSION)
 CFLAGS += -fexcess-precision=standard -frounding-math -mfpmath=sse -msse2
 CFLAGS += -Wno-nonnull -Wno-strict-aliasing
