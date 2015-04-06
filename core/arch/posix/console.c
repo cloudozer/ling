@@ -22,7 +22,7 @@ console_init(void)
 int
 console_is_initialized(void)
 {
-	return attached_outlet != NULL;
+	return 1;
 }
 
 void

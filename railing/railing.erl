@@ -233,7 +233,7 @@ main(Args) ->
 			% assumes nettle is installed elsewhere for now
 			ok = sh("ld -image_base 0x8000 -pagezero_size 0x8000 "
 					"-arch x86_64 embedfs.o vmling.o "
-					"-framework System -lnettle -o ../macling", CC)
+					"-framework System -o ../macling", CC)
 			% doesn't build domain config here
 	end.
 

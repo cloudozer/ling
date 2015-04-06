@@ -63,10 +63,9 @@ LDFLAGS += -Xlinker --build-id=none
 LDFLAGS += -Xlinker --cref -Xlinker -Map=ling.map
 LDFLAGS += -nostdlib
 LDFLAGS_FINAL := -lgcc
-LDFLAGS_FINAL += lib/nettle/libnettle.a
-else
-#LDFLAGS_FINAL := -lnettle -L/usr/local/lib
 endif
+
+LDFLAGS_FINAL += lib/nettle/libnettle.a
 
 ifeq ($(ARCH),posix)
 STARTUP_OBJ :=
