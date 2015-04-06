@@ -200,7 +200,12 @@ lib/nettle/libnettle.a: lib/nettle/config.h
 
 lib/nettle/config.h: lib/nettle.tar.gz
 	mkdir -p lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \
-	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl --disable-documentation $(NETTLE_FLAGS) CFLAGS="$(NETTLE_CFLAGS)"
+	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl --disable-documentation $(NETTLE_FLAGS) CFLAGS="$(NETTLE_CFLAGS)" LDFLAGS="$(NETTLE_LDFLAGS)"
+	rm -rf lib/nettle/{tools,examples,testsuite}
+	mkdir -p lib/nettle/{tools,examples,testsuite}
+	echo 'all:' > lib/nettle/tools/Makefile
+	echo 'all:' > lib/nettle/examples/Makefile
+	echo 'all:' > lib/nettle/testsuite/Makefile
 
 lib/nettle.tar.gz:
 	wget -O $@ --no-check-certificate -c https://ftp.gnu.org/gnu/nettle/nettle-2.7.1.tar.gz
