@@ -7,7 +7,6 @@ include Compiler.mk
 
 CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
 
-
 CPPFLAGS += -DLING_VER=$(LING_VER)
 
 ifdef LING_DEBUG
@@ -31,6 +30,8 @@ CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3
 CFLAGS += -fno-omit-frame-pointer
 
 ASFLAGS := -D__ASSEMBLY__
+
+NETTLE_CFLAGS += -fno-stack-protector -U_FORTIFY_SOURCE
 
 ifeq ($(ARCH),posix)
 CPPFLAGS += -DLING_POSIX
@@ -199,7 +200,7 @@ lib/nettle/libnettle.a: lib/nettle/config.h
 
 lib/nettle/config.h: lib/nettle.tar.gz
 	mkdir -p lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \
-	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl --disable-documentation $(NETTLE_FLAGS) CFLAGS="-fno-stack-protector -U_FORTIFY_SOURCE"
+	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl --disable-documentation $(NETTLE_FLAGS) CFLAGS="$(NETTLE_CFLAGS)"
 
 lib/nettle.tar.gz:
 	wget -O $@ --no-check-certificate -c https://ftp.gnu.org/gnu/nettle/nettle-2.7.1.tar.gz
