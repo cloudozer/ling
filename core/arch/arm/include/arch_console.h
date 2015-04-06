@@ -18,3 +18,5 @@
 #define AUX_MU_CNTL_REG 0x20215060
 #define AUX_MU_STAT_REG 0x20215064
 #define AUX_MU_BAUD_REG 0x20215068
+
+void console_init(void);
