@@ -222,21 +222,28 @@ main(Args) ->
 
 	file:close(EmbedFs),
 
+	CC = [{cd, cache_dir()}],
 	case lists:member(apple, Opts) of
 		false ->
-			ok = sh(cross_prefix() ++ "ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
-			ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
-			domain_config(CustomBucks, Config);
+			ok = embedfs_object(EmbedFsPath, cross_prefix()),
+			ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, CC),
+			ok = domain_config(CustomBucks, Config);
 		true ->
-			CC = [{cd, cache_dir()}],
-			EmbedCPath = filename:join(cache_dir(), "embedfs.c"),
-			{ok, Embed} = file:read_file(EmbedFsPath),
-			ok = bfd_objcopy:blob_to_src(EmbedCPath, "_binary_embed_fs", Embed),
-			ok = sh("cc -c embedfs.c", CC),
+			ok = embedfs_object(EmbedFsPath),
 			% assumes nettle is installed elsewhere for now
-			ok = sh("ld -image_base 0x8000 -pagezero_size 0x8000 -arch x86_64 embedfs.o vmling.o -framework System -lnettle -o ../macling", CC)
+			ok = sh("ld -image_base 0x8000 -pagezero_size 0x8000 "
+					"-arch x86_64 embedfs.o vmling.o "
+					"-framework System -lnettle -o ../macling", CC)
 			% doesn't build domain config here
 	end.
+
+embedfs_object(EmbedFsPath) -> embedfs_object(EmbedFsPath, "").
+embedfs_object(EmbedFsPath, Prefix) ->
+	EmbedCPath = filename:join(cache_dir(), "embedfs.c"),
+	EmbedCOutput = filename:join(cache_dir(), "embedfs.o"),
+	{ok, Embed} = file:read_file(EmbedFsPath),
+	ok = bfd_objcopy:blob_to_src(EmbedCPath, "_binary_embed_fs", Embed),
+	ok = sh([Prefix ++ "gcc", "-o", EmbedCOutput, "-c", EmbedCPath]).
 
 domain_config(CustomBucks, Config) ->
 	Project = project_name(Config),
@@ -283,7 +290,8 @@ domain_config(CustomBucks, Config) ->
 		_ ->
 			io:format("\tfailed: 'extra' param length exceeded 1024 bytes\n"),
 			halt(1)
-	end.
+	end,
+	ok.
 
 write_bin(Dev, Bin, Data) ->
 	Name = binary:list_to_bin(Bin),
@@ -370,7 +378,25 @@ union([Std|A], B, U) ->
 			union(A, B, [Std | U])
 	end.
 
+sh(X) -> sh(X, []).
+
+sh([Com|Args], Opts) when is_list(Com) ->
+	case os:find_executable(Com) of
+		false ->
+			io:format("Could not find command ~s~n", [Com]),
+			halt(1);
+		Executable ->
+			io:format("Run: ~s ~s~n", [Executable, string:join(Args, " ")]),
+			PortOpts = [{line,16384},
+						 use_stdio,
+						 stderr_to_stdout,
+						 {args, Args},
+						 exit_status] ++ Opts,
+			Port = open_port({spawn_executable, Executable}, PortOpts),
+			sh_loop(Port)
+	end;
 sh(Command, Opts) ->
+	io:format("Run: ~s~n", [Command]),
 	PortOpts = [{line,16384},
 				 use_stdio,
 				 stderr_to_stdout,

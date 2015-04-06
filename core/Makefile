@@ -1,4 +1,4 @@
-.PHONY: default lwip pcre
+.PHONY: default lwip nettle pcre
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.c catch_tab.inc
 default: lwip pcre nettle $(INCLUDES) vmling.o
 
@@ -61,7 +61,6 @@ LDFLAGS += -static
 LDFLAGS += -Xlinker --build-id=none
 LDFLAGS += -Xlinker --cref -Xlinker -Map=ling.map
 LDFLAGS += -nostdlib
-LDFLAGS += -L lib/nettle
 LDFLAGS_FINAL := -lgcc
 LDFLAGS_FINAL += lib/nettle/libnettle.a
 else
