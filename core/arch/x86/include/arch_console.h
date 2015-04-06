@@ -42,10 +42,6 @@
 typedef void (*console_entry_t)(char c, void *cb_data);
 
 void console_init(struct xencons_interface *intf, uint32_t chan);
-int console_is_initialized(void);
-void console_attach(outlet_t *ol);
-void console_detach(outlet_t *ol);
-void console_write(const char *msg, int len);
 void console_done(void);
 
 #endif

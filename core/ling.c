@@ -98,7 +98,12 @@ static void spawn_init_start(char *cmd_line);
 // both domain and host name
 char my_domain_name[256];
 
+#ifdef LING_XEN
+/* defined by startup.[sSc] calling conventions */
+void start_ling(start_info_t *si)
+#else
 void start_ling(void)
+#endif
 {
 	//-------- init phase 1 --------
 	//
@@ -130,15 +135,15 @@ void start_ling(void)
 #endif
 #endif
 
-	console_init();
-	nalloc_init();
-
 #ifdef LING_XEN
 	events_init();
 	grants_init();
 
 	console_init(mfn_to_virt(start_info.console.domU.mfn),
 			start_info.console.domU.evtchn);
+
+	nalloc_init();
+
 	xenstore_init(mfn_to_virt(start_info.store_mfn),
 		start_info.store_evtchn);
 
@@ -150,6 +155,9 @@ void start_ling(void)
 
 	lwip_init();
 	netfe_init();
+#else
+	console_init();
+	nalloc_init();
 #endif
 
 	//-------- init phase 2 --------
@@ -179,7 +187,7 @@ void start_ling(void)
 	proc_main(0); // preliminary run
 
 #ifdef LING_XEN
-	spawn_init_start(start_info.cmd_line);
+	spawn_init_start((char *)start_info.cmd_line);
 #else
 	static char *hardcoded_command_line = "-home /";
 	spawn_init_start(hardcoded_command_line);

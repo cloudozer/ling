@@ -24,6 +24,7 @@ static inline int a_ctz_64(uint64_t x)
 }
 
 static inline int a_ctz_l(unsigned long x)
+{
 	__asm__( "bsf %1,%0" : "=r"(x) : "r"(x) );
 	return x;
 }

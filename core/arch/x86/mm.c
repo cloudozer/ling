@@ -31,86 +31,68 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/**
+ *
+ *
+ *
+ */
+
 #include "ling_common.h"
 #include "ling_xen.h"
-#include "xen/grant_table.h"
 
-#include "mm.h"
+#define GC_RESERVE_RATIO	64
+#define GC_MAX_RESERVED		2048
 
-#define NR_GRANT_PAGES		32
+/* page allocator data */
+static void *free_pages_start = 0;
+static void *free_pages_end = 0;
+static int nr_reserved_pages = 0;
 
-#define NR_RESERVED_ENTRIES	8
+void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_frames)
+{
+	unsigned long pt_pfn = virt_to_pfn(pt_base) + nr_pt_frames;	// is it always so?
 
+	arch_mm_init(&pt_pfn, pt_base, nr_pt_frames, nr_pages);
+
+	/* Initialize page allocator */
+	free_pages_start = pfn_to_virt(pt_pfn);
+	free_pages_end = pfn_to_virt(nr_pages);
+
+	/* GC cannot run if all pages are handed to other allocators; make a reserve */
+	nr_reserved_pages = (free_pages_end - free_pages_start) /PAGE_SIZE /GC_RESERVE_RATIO;
+	if (nr_reserved_pages > GC_MAX_RESERVED)
+		nr_reserved_pages = GC_MAX_RESERVED;
+}
+
+/**
+ * Page allocator
+ *
+ * Gives away whole pages of memory; never expects them back
+ *
+ */
+
+void *mm_alloc_pages(int nr_pages)
+{
+	int size = nr_pages *PAGE_SIZE;
+	if (free_pages_start + size > free_pages_end -nr_reserved_pages *PAGE_SIZE)
+		return 0;
+	void *mem = free_pages_start;
+	free_pages_start += size;
+	return mem;
+}
+
+int mm_alloc_left(void)
+{
+	return (free_pages_end - free_pages_start) / PAGE_SIZE;
+}
+
+// The unallocated space may be used as a temporary buffer provided that no
+// allocation happen during its use. mm_alloc_left() returns the size of the
+// buffer. The garbage collection region stack is the primary use of the buffer.
 //
-// Valid refs: NR_RESERVED_ENTRIES .. NR_GRANT_ENTRIES -1
-//
-
-#define NR_GRANT_ENTRIES	(NR_GRANT_PAGES*PAGE_SIZE / sizeof(grant_entry_t))
-#define NO_GRANT_ENTRY		((grant_ref_t)-1)
-
-static grant_entry_t *grant_entries = 0;
-static grant_ref_t free_list[NR_GRANT_ENTRIES];
-static grant_ref_t free_entry = NO_GRANT_ENTRY;
-
-void grants_init(void)
+void *mm_alloc_tmp(void)
 {
-	unsigned long frames[NR_GRANT_PAGES];
-
-	gnttab_setup_table_t op;
-	op.dom = DOMID_SELF;
-	op.nr_frames = NR_GRANT_PAGES;
-	set_xen_guest_handle(op.frame_list, frames);
-	int rs = HYPERVISOR_grant_table_op(GNTTABOP_setup_table, &op, 1);
-	if (rs < 0)
-		fatal_error("grants_init: setup_table failed: %d\n", rs);
-
-	for (int i = NR_GRANT_ENTRIES-1; i >= NR_RESERVED_ENTRIES; i--)
-	{
-		free_list[i] = free_entry;
-		free_entry = i;
-	}
-
-	grant_entries = mm_alloc_pages(NR_GRANT_PAGES);
-	if (grant_entries == 0)
-		fatal_error("grants_init: grant entries page allocation failed\n");
-	for (int i = 0; i < NR_GRANT_PAGES; i++)
-	{
-		unsigned long ma_grant_table = frames[i] << PAGE_SHIFT;
-		rs = HYPERVISOR_update_va_mapping((unsigned long)grant_entries + i*PAGE_SIZE,
-			__pte(ma_grant_table | 7), UVMF_INVLPG);
-		if (rs < 0)
-			fatal_error("grants_init: update mapping failed: %d\n", rs);
-	}
+	return free_pages_start;
 }
 
-void grants_allow_access(grant_ref_t *ref, domid_t domid, unsigned long frame)
-{
-	*ref = NO_GRANT_ENTRY;
-	
-	if (free_entry == NO_GRANT_ENTRY)
-		fatal_error("grants_allow_access: all taken\n");
-	
-	*ref = free_entry;
-	free_entry = free_list[free_entry];
-	
-	grant_entry_t *entry = &grant_entries[*ref];
-	entry->domid = domid;
-	entry->frame = frame;
-	wmb();
-	entry->flags = GTF_permit_access;
-}
-
-void grants_end_access(grant_ref_t ref)
-{
-	uint16_t flags, nflags;
-	
-	nflags = grant_entries[ref].flags;
-	do {
-		if ((flags = nflags) & (GTF_reading|GTF_writing))
-			fatal_error("grants_end_access: still in use\n");
-	} while ((nflags = synch_cmpxchg(&grant_entries[ref].flags, flags, 0)) != flags);
-	
-	free_list[ref] = free_entry;
-	free_entry = ref;
-}
-
+/*EOF*/

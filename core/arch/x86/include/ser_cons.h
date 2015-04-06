@@ -34,7 +34,4 @@
 #ifndef SER_CONS_H
 #define SER_CONS_H
 
-int ser_cons_present(void);
-void ser_cons_write(const char *msg, int len);
-
 #endif

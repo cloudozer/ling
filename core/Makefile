@@ -29,22 +29,25 @@ CPPFLAGS += -iquote lib/lwip/ling
 CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3
 CFLAGS += -fno-omit-frame-pointer
 
-ifneq ($(ARCH),posix)
-CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
+ASFLAGS := -D__ASSEMBLY__
+
+ifeq ($(ARCH),posix)
+CPPFLAGS += -DLING_POSIX
+F_NO_REORDER_BLOCKS :=
+else
+F_NO_REORDER_BLOCKS := -fno-reorder-blocks
+CFLAGS += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
 endif
 
 ifeq ($(ARCH),x86)
+CPPFLAGS += -DLING_XEN
+CPPFLAGS += -D__XEN_INTERFACE_VERSION__=$(XEN_INTERFACE_VERSION)
 CFLAGS += -fexcess-precision=standard -frounding-math -mfpmath=sse -msse2
 CFLAGS += -Wno-nonnull -Wno-strict-aliasing
 endif
 
-ifeq ($(ARCH),posix)
-F_NO_REORDER_BLOCKS :=
-else
-F_NO_REORDER_BLOCKS := -fno-reorder-blocks
-endif
-
 ifeq ($(ARCH),arm)
+CPPFLAGS += -DLING_ARM
 CFLAGS  += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 ASFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 endif
@@ -80,9 +83,20 @@ ARCH_OBJS := $(patsubst %.c,%.o,$(wildcard arch/$(ARCH)/*.c))
 OBJS := $(patsubst %.c,%.o,$(wildcard *.c)) preload/literals.o
 BIGNUM_OBJS := $(patsubst %.c,%.o,$(wildcard bignum/*.c))
 
-# posix currently uses system libc
+MISC_SRCS :=
+MISC_SRCS += __cos.c __expo2.c __rem_pio2.c __rem_pio2_large.c __sin.c __tan.c
+MISC_SRCS += acos.c asin.c atan.c atan2.c atof.c cos.c cosh.c exp.c expm1.c fabs.c
+MISC_SRCS += floor.c log.c log10.c memcmp.c modf.c pow.c
+MISC_SRCS += qsort.c scalbln.c scalbn.c sin.c sinh.c stpcpy.c strcat.c strchr.c
+MISC_SRCS += strchrnul.c strcmp.c strcpy.c strlen.c strncmp.c strtod.c tan.c tanh.c
+
+ifneq ($(ARCH),x86)
+MISC_SRCS += memcpy.c memmove.c memset.c sqrt.c
+endif
+
 ifneq ($(ARCH),posix)
-MISC_OBJS := $(patsubst %.c,%.o,$(wildcard lib/misc/*.c))
+# posix currently uses system libc
+MISC_OBJS := $(patsubst %.c,%.o,$(addprefix lib/misc/,$(MISC_SRCS)))
 MISC_AS_OBJS := $(patsubst %.s,%.o,$(wildcard lib/misc/arch/$(ARCH)/*.s))
 else
 MISC_OBJS :=

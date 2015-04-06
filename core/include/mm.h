@@ -35,11 +35,19 @@
 
 #include "arch_mm.h"
 
-//void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_frames);
+#ifdef LING_XEN
+void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_frames);
+#else
 void mm_init(void);
+#endif
 
 void *mm_alloc_pages(int nr_pages);
 int mm_alloc_left(void);
 void *mm_alloc_tmp(void);
+
+static inline void *mm_alloc_page(void)
+{
+	return mm_alloc_pages(1);
+}
 
 //EOF

@@ -1,5 +1,6 @@
 #include "ling_common.h"
 #include "ling_xen.h"
+#include "arch_console.h"
 
 void domain_poweroff(void)
 {
