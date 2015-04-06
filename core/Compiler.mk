@@ -1,11 +1,14 @@
 
 ifeq ($(ARCH),arm)
-CC := arm-unknown-eabi-gcc
+HOST_TOOLCHAIN ?= arm-unknown-eabi
+#HOST_TOOLCHAIN ?= arm-none-eabi
+CC := $(HOST_TOOLCHAIN)-gcc
 CPPFLAGS += -DLING_ARM
 
-NETTLE_FLAGS := --host=arm-none-eabi
+NETTLE_FLAGS := --host=$(HOST_TOOLCHAIN)
 # newlib doesn't support assert very well, so set NDEBUG to elide asserts and prevent undefined ref errors at link time.
-NETTLE_CFLAGS := -DNDEBUG --specs=nosys.specs -mfloat-abi=hard -mfpu=vfp
+NETTLE_CFLAGS := -DNDEBUG -mfloat-abi=hard -mfpu=vfp
+NETTLE_LDFLAGS := -specs=nosys.specs
 endif
 
 ifeq ($(ARCH),posix)
