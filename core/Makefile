@@ -5,7 +5,8 @@ default: lwip pcre nettle $(INCLUDES) vmling.o
 include ../Config.mk
 include Compiler.mk
 
-CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
+CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
+
 
 CPPFLAGS += -DLING_VER=$(LING_VER)
 
