@@ -24,12 +24,12 @@ gold(Prog) -> [Prog, "-T", "ling.lds", "-nostdlib"].
 
 ld() -> ld(?ARCH).
 ld(arm) -> gold("arm-none-eabi-ld");
-ld(x86) ->
+ld(xen_x86) ->
 	case os:type() of
 		{unix, darwin} -> ["x86_64-pc-linux-ld"];
 		_ -> gold()
 	end;
-ld(posix) ->
+ld(posix_x86) ->
 	case os:type() of
 		{unix, darwin} -> [
 			"ld",
@@ -69,10 +69,7 @@ project_name(Config) ->
 		Name.
 
 image_name(Config) ->
-	case ?ARCH of
-		posix -> project_name(Config) ++ "-bin";
-		_ -> project_name(Config) ++ ".img"
-	end.
+	project_name(Config) ++ ".img".
 
 main(Args) ->
 	case erlang:system_info(otp_release) of
@@ -250,7 +247,7 @@ main(Args) ->
 	sh(ld() ++ ["vmling.o", EmbedFsObject, "-o", "../" ++ ImgName], CC),
 
 	case ?ARCH of
-		posix -> nevermind;
+		posix_x86 -> nevermind;
 		_ -> ok = domain_config(CustomBucks, Config)
 	end.
 
