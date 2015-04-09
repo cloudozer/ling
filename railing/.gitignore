@@ -1,3 +1,4 @@
 railing
-railing.beam
-railing.img
+*.beam
+*.img
+*.elf

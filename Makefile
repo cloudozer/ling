@@ -30,3 +30,10 @@ install: bc core apps railing
 
 test.img: railing
 	$(MAKE) -C test test.img
+
+build-arm:
+	$(MAKE) -B ARCH=arm \
+		&& cd railing \
+		&& ./railing image -n kernel \
+		&& mv kernel.img kernel.elf \
+		&& arm-none-eabi-objcopy -O binary kernel.elf kernel.img
