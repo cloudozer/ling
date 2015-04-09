@@ -10,20 +10,37 @@ opt_spec() -> [
 	{domain,  $d, "domain",  string,    "set domain config file name (default: 'domain_config')"},
 	{memory,  $m, "memory",  integer,   "set domain memory size (megabytes)"},
 	{extra,   $e, "extra",   string,    "append to kernel command line"},
-	{version, $v, "version", undefined, "print version info"},
-	{apple,   $a, "apple",   undefined, "generate native binaries for Apple OS X (experimental)"}
+	{version, $v, "version", undefined, "print version info"}
 	% debug
 	% clean
 ].
 
-cross_prefix() ->
-	case os:getenv("CROSS_COMPILE") of
-		false -> case os:type() of
-					{unix, darwin} -> "x86_64-pc-linux-";
-					_ -> ""
-				end;
-		X -> X
-	end.
+cc() -> cc(?ARCH).
+cc(arm) -> ["arm-none-eabi-gcc", "-mfpu=vfp", "-mfloat-abi=hard"];
+cc(_) -> ["cc"].
+
+gold() -> gold("ld").
+gold(Prog) -> [Prog, "-T", "ling.lds", "-nostdlib"].
+
+ld() -> ld(?ARCH).
+ld(arm) -> gold("arm-none-eabi-ld");
+ld(x86) ->
+	case os:type() of
+		{unix, darwin} -> ["x86_64-pc-linux-ld"];
+		_ -> gold()
+	end;
+ld(posix) ->
+	case os:type() of
+		{unix, darwin} -> [
+			"ld",
+			"-image_base", "0x8000",
+			"-pagezero_size", "0x8000",
+			"-arch", "x86_64",
+			"-framework", "System"
+		];
+		_ -> gold()
+	end;
+ld(_) -> gold().
 
 cache_dir() -> ".railing".
 
@@ -52,7 +69,10 @@ project_name(Config) ->
 		Name.
 
 image_name(Config) ->
-	project_name(Config) ++ ".img".
+	case ?ARCH of
+		posix -> project_name(Config) ++ "-bin";
+		_ -> project_name(Config) ++ ".img"
+	end.
 
 main(Args) ->
 	case erlang:system_info(otp_release) of
@@ -74,11 +94,13 @@ main(Args) ->
 
 	case lists:member(version, Opts) of
 		true ->
-			io:format("LING v~s\n", [?LING_VER]),
+			io:format("LING v~s (railing build for ~p)\n", [?LING_VER, ?ARCH]),
 			halt();
 		_ ->
 			ok
 	end,
+
+	io:format("railing build arch: ~p\n", [?ARCH]),
 
 	case lists:member(help, Opts) orelse length(Cmds) == 0 of
 		true ->
@@ -223,27 +245,22 @@ main(Args) ->
 	file:close(EmbedFs),
 
 	CC = [{cd, cache_dir()}],
-	case lists:member(apple, Opts) of
-		false ->
-			ok = embedfs_object(EmbedFsPath, cross_prefix()),
-			ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, CC),
-			ok = domain_config(CustomBucks, Config);
-		true ->
-			ok = embedfs_object(EmbedFsPath),
-			% assumes nettle is installed elsewhere for now
-			ok = sh("ld -image_base 0x8000 -pagezero_size 0x8000 "
-					"-arch x86_64 embedfs.o vmling.o "
-					"-framework System -o ../macling", CC)
-			% doesn't build domain config here
+
+	{ok, EmbedFsObject} = embedfs_object(EmbedFsPath),
+	sh(ld() ++ ["vmling.o", EmbedFsObject, "-o", "../" ++ ImgName], CC),
+
+	case ?ARCH of
+		posix -> nevermind;
+		_ -> ok = domain_config(CustomBucks, Config)
 	end.
 
-embedfs_object(EmbedFsPath) -> embedfs_object(EmbedFsPath, "").
-embedfs_object(EmbedFsPath, Prefix) ->
-	EmbedCPath = filename:join(cache_dir(), "embedfs.c"),
-	EmbedCOutput = filename:join(cache_dir(), "embedfs.o"),
+embedfs_object(EmbedFsPath) ->
+	EmbedCPath = filename:join(filename:absname(cache_dir()), "embedfs.c"),
+	OutPath = filename:join(filename:absname(cache_dir()), "embedfs.o"),
 	{ok, Embed} = file:read_file(EmbedFsPath),
 	ok = bfd_objcopy:blob_to_src(EmbedCPath, "_binary_embed_fs", Embed),
-	ok = sh([Prefix ++ "gcc", "-o", EmbedCOutput, "-c", EmbedCPath]).
+	ok = sh(cc() ++ ["-o", OutPath, "-c", EmbedCPath]),
+	{ok, OutPath}.
 
 domain_config(CustomBucks, Config) ->
 	Project = project_name(Config),

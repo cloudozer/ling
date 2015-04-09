@@ -6,6 +6,8 @@
 
 #include <string.h>
 
+static int console_initialized = 0;
+
 static void store(uint32_t addr, uint32_t val)
 {
 	asm volatile("str %1, [%0]" : : "r" (addr), "r" (val));
@@ -45,6 +47,13 @@ void console_init(void)
     store(GPPUDCLK0,0);
 
     store(AUX_MU_CNTL_REG,3);
+
+    console_initialized = 1;
+}
+
+int console_is_initialized(void)
+{
+	return console_initialized;
 }
 
 #define SEND_BUF_SIZE		1024

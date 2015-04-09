@@ -9,4 +9,4 @@ clean:
 	rm -f *.beam railing
 
 %.beam: %.erl
-	erlc -DLING_VER=\"$(LING_VER)\" -DOTP_VER=\"$(OTP_VER)\" $<
+	erlc -DLING_VER=\"$(LING_VER)\" -DARCH=\'$(ARCH)\' -DOTP_VER=\"$(OTP_VER)\" $<

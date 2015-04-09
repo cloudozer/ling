@@ -2,10 +2,15 @@
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.c catch_tab.inc
 default: lwip pcre nettle $(INCLUDES) vmling.o
 
+# relocatable (partial linking)
+LDFLAGS  := -Xlinker -r
+ASFLAGS  := -D__ASSEMBLY__
+CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
+CFLAGS   := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3
+CFLAGS   += -fno-omit-frame-pointer
+
 include ../Config.mk
 include Compiler.mk
-
-CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
 
 CPPFLAGS += -DLING_VER=$(LING_VER)
 
@@ -25,11 +30,6 @@ CPPFLAGS += -iquote lib/lwip/src/include
 CPPFLAGS += -iquote lib/lwip/src/include/ipv4
 CPPFLAGS += -iquote lib/lwip/src/include/ipv6
 CPPFLAGS += -iquote lib/lwip/ling
-
-CFLAGS := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3
-CFLAGS += -fno-omit-frame-pointer
-
-ASFLAGS := -D__ASSEMBLY__
 
 NETTLE_CFLAGS += -fno-stack-protector -U_FORTIFY_SOURCE
 
@@ -51,11 +51,9 @@ endif
 ifeq ($(ARCH),arm)
 CPPFLAGS += -DLING_ARM
 CFLAGS  += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+LDFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 ASFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 endif
-
-# relocatable (partial linking)
-LDFLAGS := -Xlinker -r
 
 ifneq ($(ARCH),posix)
 LDFLAGS += -T arch/$(ARCH)/ling.lds
