@@ -3,6 +3,6 @@ OTP_VER := 17
 
 LING_DEBUG := 1
 
-ARCH ?= posix
-#ARCH ?= x86
+#ARCH ?= posix
+ARCH ?= x86
 #ARCH ?= arm

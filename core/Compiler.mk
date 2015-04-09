@@ -1,7 +1,7 @@
 
 ifeq ($(ARCH),arm)
-HOST_TOOLCHAIN ?= arm-unknown-eabi
-#HOST_TOOLCHAIN ?= arm-none-eabi
+#HOST_TOOLCHAIN ?= arm-unknown-eabi
+HOST_TOOLCHAIN ?= arm-none-eabi
 CC := $(HOST_TOOLCHAIN)-gcc
 CPPFLAGS += -DLING_ARM
 

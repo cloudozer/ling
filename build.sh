@@ -11,7 +11,7 @@ erlang() {
 	wget -c http://packages.erlang-solutions.com/debian/erlang_solutions.asc
 	sudo apt-key add erlang_solutions.asc
 	sudo apt-get update
-	sudo apt-get install -y --force-yes erlang git autoconf gcc-arm-none-eabi make
+	sudo apt-get install -y --force-yes erlang git autoconf gcc-arm-none-eabi make build-essential
 }
 
 clone() {
@@ -20,7 +20,7 @@ clone() {
 }
 
 ling() {
-	make CROSS_COMPILE=arm-none-eabi-
+	make ARCH=arm
 	cd railing
 	CROSS_COMPILE=arm-none-eabi- ./railing image -n kernel
 	mv kernel.img kernel.elf
