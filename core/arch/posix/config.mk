@@ -2,8 +2,6 @@ NO_USE_LIBMISC      := 1
 F_NO_REORDER_BLOCKS :=
 
 CC            := clang
-NETTLE_FLAGS  += 
-NETTLE_CFLAGS += 
 CPPFLAGS      += -DLING_POSIX
 STARTUP_OBJ   := 
 

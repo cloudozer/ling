@@ -2,6 +2,8 @@
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.c catch_tab.inc
 default: lwip pcre nettle $(INCLUDES) vmling.o
 
+include ../Config.mk
+
 CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
 CPPFLAGS += -DLING_VER=$(LING_VER)
 CPPFLAGS += -isystem lib/nettle
@@ -34,7 +36,6 @@ NETTLE_FLAGS   :=
 NETTLE_LDFLAGS :=
 NETTLE_CFLAGS  := -fno-stack-protector -U_FORTIFY_SOURCE
 
-include ../Config.mk
 include arch/$(ARCH)/config.mk
 
 ARCH_OBJS := $(patsubst %.c,%.o,$(wildcard arch/$(ARCH)/*.c))
