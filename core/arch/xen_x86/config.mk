@@ -5,6 +5,8 @@ else
 CC           := gcc
 endif
 
+LIBMISC_ARCH := x86
+
 XEN_INTERFACE_VERSION := 0x00030205
 
 CPPFLAGS += -DLING_XEN -DLING_CONFIG_DISK

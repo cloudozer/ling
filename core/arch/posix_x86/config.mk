@@ -1,5 +1,7 @@
-NO_USE_LIBMISC      := 1
 F_NO_REORDER_BLOCKS :=
+
+# posix currently uses system libc
+#LIBMISC_ARCH := x86
 
 CC            := clang
 CPPFLAGS      += -DLING_POSIX

@@ -2,6 +2,7 @@
 HOST_TOOLCHAIN ?= arm-none-eabi
 CC             := $(HOST_TOOLCHAIN)-gcc
 CPPFLAGS       += -DLING_ARM
+LIBMISC_ARCH   := arm
 
 F_NO_REORDER_BLOCKS := -fno-reorder-blocks
 
