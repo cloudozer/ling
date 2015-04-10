@@ -249,7 +249,7 @@ main(Args) ->
 	CC = [{cd, cache_dir()}],
 
 	{ok, EmbedFsObject} = embedfs_object(EmbedFsPath),
-	sh(ld() ++ ["vmling.o", EmbedFsObject, "-o", "../" ++ ImgName], CC),
+	ok = sh(ld() ++ ["vmling.o", EmbedFsObject, "-o", "../" ++ ImgName], CC),
 
 	case ?ARCH of
 		posix_x86 -> nevermind;
