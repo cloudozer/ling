@@ -17,6 +17,11 @@ opt_spec() -> [
 
 cc() -> cc(?ARCH).
 cc(arm) -> ["arm-none-eabi-gcc", "-mfpu=vfp", "-mfloat-abi=hard"];
+cc(xen_x86) ->
+	case os:type() of
+		{unix, darwin} -> ["x86_64-pc-linux-gcc"];
+		_ -> ["cc"]
+	end;
 cc(_) -> ["cc"].
 
 gold() -> gold("ld").
