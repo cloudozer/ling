@@ -6,7 +6,7 @@
 .railing/
 domain_config
 ling.img
-.vagrant/
+/.vagrant/
 macling
 .DS_Store
 tags
