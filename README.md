@@ -21,9 +21,9 @@ The easy way is to use pre-built railing utility:
         xl create -c domain_config
 
 
-### How to build LING from sources?
+### How to build/hack LING?
 
-See [INSTALL.md](INSTALL.md).
+See [HACKING.md](HACKING.md).
 
 ### How to use railing?
 
