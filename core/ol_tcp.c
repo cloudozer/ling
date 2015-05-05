@@ -805,8 +805,8 @@ static err_t recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t er
 		ol->recv_buf_off += len;
 
 		// A more natural place to acknowledge the data when complete packets
-		// are baked.
-		//tcp_recved(ol->tcp, len);
+		// are baked. No.
+		tcp_recved(ol->tcp, len);
 
 		pbuf_free(data);
 		int x = recv_bake_packets(ol, cont_proc);
@@ -980,7 +980,7 @@ more_packets:
 
 				// Is it safe to acknowledge the data here, outside of the
 				// receive callback?
-				tcp_recved(ol->tcp, consumed);
+				//tcp_recved(ol->tcp, consumed);
 
 				if (ol->packet == TCP_PB_HTTP || ol->packet == TCP_PB_HTTP_BIN)
 					active_tag = A_HTTP;
