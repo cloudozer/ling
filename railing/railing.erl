@@ -15,16 +15,66 @@ opt_spec() -> [
 	% clean
 ].
 
-cross_prefix() ->
-    case os:getenv("CROSS_COMPILE") of
-        false -> case os:type() of
-                    {unix, darwin} -> "x86_64-pc-linux-";
-                    _ -> ""
-                 end;
-        X -> X
-    end.
+cc() -> cc(?ARCH).
+cc(arm) -> ["arm-none-eabi-gcc", "-mfpu=vfp", "-mfloat-abi=hard"];
+cc(xen_x86) ->
+	case os:type() of
+		{unix, darwin} -> ["x86_64-pc-linux-gcc"];
+		_ -> ["cc"]
+	end;
+cc(_) -> ["cc"].
+
+gold() -> gold("ld").
+gold(Prog) -> [Prog, "-T", "ling.lds", "-nostdlib"].
+
+ld() -> ld(?ARCH).
+ld(arm) -> gold("arm-none-eabi-ld");
+ld(xen_x86) ->
+	case os:type() of
+		{unix, darwin} -> ["x86_64-pc-linux-ld"];
+		_ -> gold()
+	end;
+ld(posix_x86) ->
+	case os:type() of
+		{unix, darwin} -> [
+			"ld",
+			"-image_base", "0x8000",
+			"-pagezero_size", "0x8000",
+			"-arch", "x86_64",
+			"-framework", "System"
+		];
+		_ -> gold()
+	end;
+ld(_) -> gold().
 
 cache_dir() -> ".railing".
+
+project_name(Config) ->
+	DefPrjName =
+		case file:get_cwd() of
+			{ok,"/"} ->
+				"himmel";
+			{ok,Cwd} ->
+				filename:basename(Cwd)
+		end,
+
+	Name =
+		lists:foldl(
+			fun
+				({name, undefined}, Res) ->
+					Res;
+				({name, N}, _) ->
+					N;
+				(_, Res) ->
+					Res
+			end,
+			DefPrjName,
+			Config
+		),
+		Name.
+
+image_name(Config) ->
+	project_name(Config) ++ ".img".
 
 main(Args) ->
 	case erlang:system_info(otp_release) of
@@ -46,11 +96,13 @@ main(Args) ->
 
 	case lists:member(version, Opts) of
 		true ->
-			io:format("LING v~s\n", [?LING_VER]),
+			io:format("LING v~s (railing build for ~p)\n", [?LING_VER, ?ARCH]),
 			halt();
 		_ ->
 			ok
 	end,
+
+	io:format("railing build arch: ~p\n", [?ARCH]),
 
 	case lists:member(help, Opts) orelse length(Cmds) == 0 of
 		true ->
@@ -126,43 +178,8 @@ main(Args) ->
 	zip:unzip(Archive, [keep_old_files]),
 	file:set_cwd(".."),
 
-	DefPrjName =
-		case file:get_cwd() of
-			{ok,"/"} ->
-				"himmel";
-			{ok,Cwd} ->
-				filename:basename(Cwd)
-		end,
-
-	PrjName =
-		lists:foldl(
-			fun
-				({name, undefined}, Res) ->
-					Res;
-				({name, N}, _) ->
-					N;
-				(_, Res) ->
-					Res
-			end,
-			DefPrjName,
-			Config
-		),
-
-	DomName =
-		lists:foldl(
-			fun
-				({domain, undefined}, Res) ->
-					Res;
-				({domain, D}, _) ->
-					D;
-				(_, Res) ->
-					Res
-			end,
-			"domain_config",
-			Config
-		),
-
-	ImgName = PrjName ++ ".img",
+	PrjName = project_name(Config),
+	ImgName = image_name(Config),
 
 	DFs = [{filename:dirname(F),F} || F <- lists:usort(Files)],
 	CustomBucks = [
@@ -189,7 +206,8 @@ main(Args) ->
 			Bucks
 		),
 
-	{ok, EmbedFs} = file:open(filename:join(cache_dir(),"embed.fs"), [write]),
+    EmbedFsPath = filename:join(cache_dir(),"embed.fs"),
+	{ok, EmbedFs} = file:open(EmbedFsPath, [write]),
 
 	BuckCount = erlang:length(Bucks),
 	BinCount =
@@ -228,8 +246,40 @@ main(Args) ->
 
 	file:close(EmbedFs),
 
-	ok = sh(cross_prefix() ++ "ld -r -b binary -o embed.fs.o embed.fs", [{cd, cache_dir()}]),
-	ok = sh(cross_prefix() ++ "ld -T ling.lds -nostdlib vmling.o embed.fs.o -o ../" ++ ImgName, [{cd, cache_dir()}]),
+	CC = [{cd, cache_dir()}],
+
+	{ok, EmbedFsObject} = embedfs_object(EmbedFsPath),
+	ok = sh(ld() ++ ["vmling.o", EmbedFsObject, "-o", "../" ++ ImgName], CC),
+
+	case ?ARCH of
+		posix_x86 -> nevermind;
+		_ -> ok = domain_config(CustomBucks, Config)
+	end.
+
+embedfs_object(EmbedFsPath) ->
+	EmbedCPath = filename:join(filename:absname(cache_dir()), "embedfs.c"),
+	OutPath = filename:join(filename:absname(cache_dir()), "embedfs.o"),
+	{ok, Embed} = file:read_file(EmbedFsPath),
+	ok = bfd_objcopy:blob_to_src(EmbedCPath, "_binary_embed_fs", Embed),
+	ok = sh(cc() ++ ["-o", OutPath, "-c", EmbedCPath]),
+	{ok, OutPath}.
+
+domain_config(CustomBucks, Config) ->
+	Project = project_name(Config),
+	Image = image_name(Config),
+	DomName =
+		lists:foldl(
+			fun
+				({domain, undefined}, Res) ->
+					Res;
+				({domain, D}, _) ->
+					D;
+				(_, Res) ->
+					Res
+			end,
+			"domain_config",
+			Config
+		),
 
 	io:format("Generate: ~s\n", [DomName]),
 
@@ -243,15 +293,15 @@ main(Args) ->
 
 	Vif = "vif = " ++ lists:flatten(io_lib:format("~p", [[Vif || {vif, Vif} <- Config]])),
 	Pz = " -pz" ++ lists:flatten([" " ++ Dir || {_, Dir, _} <- CustomBucks]),
-	Home = "-home /" ++ PrjName,
+	Home = "-home /" ++ Project,
 	Extra = [E ++ " " || {extra, E} <- Config] ++ [Home] ++ [Pz],
 
 	%% Xen guest maximum command line length is 1024
 	case length(lists:flatten(Extra)) < 1024 of
 		true ->
 			ok = file:write_file(DomName,
-				"name = \"" ++ PrjName ++ "\"\n" ++
-				"kernel = \"" ++ ImgName ++ "\"\n" ++
+				"name = \"" ++ Project ++ "\"\n" ++
+				"kernel = \"" ++ Image ++ "\"\n" ++
 				"extra = \"" ++ Extra ++ "\"\n" ++
 				Memory ++
 				Vif ++ "\n"
@@ -259,7 +309,8 @@ main(Args) ->
 		_ ->
 			io:format("\tfailed: 'extra' param length exceeded 1024 bytes\n"),
 			halt(1)
-	end.
+	end,
+	ok.
 
 write_bin(Dev, Bin, Data) ->
 	Name = binary:list_to_bin(Bin),
@@ -346,7 +397,25 @@ union([Std|A], B, U) ->
 			union(A, B, [Std | U])
 	end.
 
+sh(X) -> sh(X, []).
+
+sh([Com|Args], Opts) when is_list(Com) ->
+	case os:find_executable(Com) of
+		false ->
+			io:format("Could not find command ~s~n", [Com]),
+			halt(1);
+		Executable ->
+			io:format("Run: ~s ~s~n", [Executable, string:join(Args, " ")]),
+			PortOpts = [{line,16384},
+						 use_stdio,
+						 stderr_to_stdout,
+						 {args, Args},
+						 exit_status] ++ Opts,
+			Port = open_port({spawn_executable, Executable}, PortOpts),
+			sh_loop(Port)
+	end;
 sh(Command, Opts) ->
+	io:format("Run: ~s~n", [Command]),
 	PortOpts = [{line,16384},
 				 use_stdio,
 				 stderr_to_stdout,
@@ -376,4 +445,7 @@ avoid_ebin_stem(Dir) ->
 		Stem -> list_to_atom(Stem)
 	end.
 
+
+
+%% vim: noet ts=4 sw=4 sts=4
 %%EOF

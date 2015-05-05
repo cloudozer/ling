@@ -67,6 +67,8 @@ static uint32_t digest(const unsigned char *key, int klen);
 hash_t *hash_make(void)
 {
 	memnode_t *node = nalloc(HASH_NODE_SIZE - sizeof(memnode_t));
+	if (node == 0)
+		return 0;
 
 	// Initial node layout:
 	//

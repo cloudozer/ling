@@ -13,6 +13,10 @@ extern char _membrk;
 
 static void *free_page = &_membrk;
 
+void mm_init(void)
+{
+}
+
 void *mm_alloc_pages(int nr_pages)
 {
 	if (free_page + nr_pages *PAGE_SIZE > MEMORY_END -GC_RESERVE)

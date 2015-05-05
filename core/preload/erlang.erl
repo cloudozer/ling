@@ -49,6 +49,7 @@
 -export([disconnect_node/1]).
 -export([get_cookie/0]).
 -export([min/2,max/2]).
+-export([binary_to_integer/1,binary_to_integer/2]).
 -export([integer_to_binary/1,integer_to_binary/2]).
 -export([integer_to_list/2]).
 -export([list_to_integer/1,list_to_integer/2,list_to_integer/3]).
@@ -204,6 +205,9 @@ min(_, B) -> B.
 
 max(A, B) when A > B -> A;
 max(_, B) -> B.
+
+binary_to_integer(Bin) -> erlang:list_to_integer(binary_to_list(Bin)).
+binary_to_integer(Bin, Base) -> erlang:list_to_integer(binary_to_list(Bin), Base). 
 
 integer_to_binary(I) -> list_to_binary(integer_to_list(I)).
 integer_to_binary(I, Base) -> list_to_binary(erlang:integer_to_list(I, Base)).
