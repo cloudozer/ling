@@ -59,6 +59,8 @@
 #include "outlet.h"
 #include "ol_inet.h"
 
+#include "netmap.h"
+
 #ifdef EXP_LINC_LATENCY
 void linc_incoming(int index);
 void linc_output(int index);
@@ -77,6 +79,7 @@ void linc_out_drop(int ifidx, int tx_len);
 #define NO_TX_BUFFER	-1
 
 #define NM_MAX_RINGS	16
+#define NM_MAX_BUFS		1024
 
 // The total size of the response data chained using NETRXF_more_data flag
 #define CHAINED_DATA_SIZE	8192
@@ -121,12 +124,22 @@ struct netfe_netmap_t {
 	int nr_rx_ring_refs;
 	grant_ref_t rx_ring_refs[NM_MAX_RINGS];
 
-	//TODO
+	struct netmap_ring *tx_rings;
+	struct netmap_ring *rx_rings;
+
+	int nr_tx_buf_refs;
+	uint32_t tx_buf_refs[NM_MAX_BUFS];
+	int nr_rx_buf_refs;
+	uint32_t rx_buf_refs[NM_MAX_BUFS];
+
+	uint8_t *tx_buf_base;
+	uint8_t *rx_buf_base;
 
 	uint32_t evtchn_tx;
 	uint32_t evtchn_rx;
 
-	//TODO
+	uint16_t txhead;
+	int		 txkick;	
 };
 
 struct netfe_t {
@@ -145,11 +158,13 @@ struct netfe_t {
 
 static netfe_t *init_generic_vif(domid_t backend_id, int index);
 static netfe_t *init_netmap_vif(domid_t backend_id, int index, const char *backend);
+static void netfe_netmap_connect(netfe_t *fe);
 static void netfe_generic_output(netfe_t *fe, uint8_t *packet, int pack_len);
 static void netfe_netmap_output(netfe_t *fe, uint8_t *packet, int pack_len);
 static void netfe_generic_int(uint32_t port, void *data);
 static void netfe_netmap_tx_int(uint32_t port, void *data);
 static void netfe_netmap_rx_int(uint32_t port, void *data);
+static void netfe_netmap_rx(netfe_t *fe);
 static void netfe_incoming(netfe_t *fe, uint8_t *packet, int pack_len);
 static int netfe_tx_buf_gc(netfe_generic_t *priv);
 static struct pbuf *packet_to_pbuf(unsigned char *packet, int pack_len);
@@ -199,6 +214,19 @@ void netfe_init(void)
 		rs = xenstore_write(xs_key, "4");	// XenbusStateConnected
 		assert(rs == 0);
 
+		if (fe->netmap)
+		{
+			printk("\rnetmap: waiting for eth%d... ", index);
+			do {
+				snprintf(xs_key, sizeof(xs_key), "%s/state", backend);
+				rs = xenstore_read_int(&n, xs_key);
+				assert(rs == 0);
+			} while (n != 4); // XenbusStateConnected
+			printk("connected\r\n");
+
+			netfe_netmap_connect(fe);
+		}
+
 		// read MAC address
 		char buf[64];
 		snprintf(xs_key, sizeof(xs_key), "device/vif/%d/mac", index);
@@ -233,6 +261,8 @@ static netfe_t *init_generic_vif(domid_t backend_id, int index)
 	memset(fe, 0, sizeof(*fe));
 	netfe_generic_t *priv = (netfe_generic_t *)(fe+1);
 	fe->priv = priv;
+
+	//fe->netmap = 0;
 	
 	// setup shared rings
 	priv->rxs = (netif_rx_sring_t *)mm_alloc_page();
@@ -315,11 +345,15 @@ static netfe_t *init_generic_vif(domid_t backend_id, int index)
 
 static netfe_t *init_netmap_vif(domid_t backend_id, int index, const char *backend)
 {
+	int j;
+
 	int np = PSIZE(sizeof(netfe_t) + sizeof(netfe_netmap_t));
 	netfe_t *fe = (netfe_t *)mm_alloc_pages(np);
 	memset(fe, 0, sizeof(*fe));
 	netfe_netmap_t *priv = (netfe_netmap_t *)(fe+1);
 	fe->priv = priv;
+
+	fe->netmap = 1;
 
 	char xs_key[256];
 	int n;
@@ -340,6 +374,7 @@ static netfe_t *init_netmap_vif(domid_t backend_id, int index, const char *backe
 	snprintf(xs_key, sizeof(xs_key), "device/vif/%d/tx-ring-refs", index);
 	rs = xenstore_read_int(&priv->nr_tx_ring_refs, xs_key);
 	assert(rs == 0);
+	assert(priv->nr_tx_ring_refs <= NM_MAX_RINGS);
 	for (int i = 0; i < priv->nr_tx_ring_refs; i++)
 	{
 		snprintf(xs_key, sizeof(xs_key), "device/vif/%d/tx-ring-ref%d", index, i);
@@ -350,6 +385,7 @@ static netfe_t *init_netmap_vif(domid_t backend_id, int index, const char *backe
 	snprintf(xs_key, sizeof(xs_key), "device/vif/%d/rx-ring-refs", index);
 	rs = xenstore_read_int(&priv->nr_rx_ring_refs, xs_key);
 	assert(rs == 0);
+	assert(priv->nr_rx_ring_refs <= NM_MAX_RINGS);
 	for (int i = 0; i < priv->nr_rx_ring_refs; i++)
 	{
 		snprintf(xs_key, sizeof(xs_key), "device/vif/%d/rx-ring-ref%d", index, i);
@@ -358,17 +394,149 @@ static netfe_t *init_netmap_vif(domid_t backend_id, int index, const char *backe
 		priv->rx_ring_refs[i] = n;
 	}
 
-	//TODO map rings
-	//TODO map buffers
+	assert(NM_MAX_BUFS >= NM_MAX_RINGS);
+	struct gnttab_map_grant_ref op[NM_MAX_BUFS];
+	//struct gnttab_map_entry pte[NM_MAX_BUFS];
 
-	snprintf(xs_key, sizeof(xs_key), "device/vif/%d/event_channel-tx", index);
+	//printk("\rnetmap: mapping TX rings\r\n");
+	unsigned long tx_addr = (unsigned long)mm_alloc_pages(priv->nr_tx_ring_refs);
+	assert(tx_addr != 0);
+
+	for (int i = 0; i < priv->nr_tx_ring_refs -1; i++)	//NB: -1
+	{
+		op[i].ref = priv->tx_ring_refs[i];
+		op[i].dom = (domid_t) 0;	// Dom0 only
+		op[i].flags = GNTMAP_host_map;
+		op[i].host_addr = tx_addr + PAGE_SIZE*i;
+	}
+
+	rs = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, &op, priv->nr_tx_ring_refs -1); //NB: -1
+	assert(rs == 0);
+		
+	for (int i = 0; i < priv->nr_tx_ring_refs -1; i++)	//NB: -1
+	{
+		assert(op[i].status == GNTST_okay);
+		//pte[i].host_addr = op[i].host_addr;
+		//pte[i].handle = op[i].handle;
+		rmb();
+	}
+
+	priv->tx_rings = (struct netmap_ring *)op[0].host_addr;
+	while (priv->tx_rings->num_slots != priv->nr_tx_desc)
+		rmb();
+
+	//printk("\rnetmap: mapping RX rings\r\n");
+	unsigned long rx_addr = (unsigned long)mm_alloc_pages(priv->nr_rx_ring_refs);
+	assert(rx_addr != 0);
+
+	for (int i = 0; i < priv->nr_rx_ring_refs -1; i++)	//NB: -1
+	{
+		op[i].ref = priv->rx_ring_refs[i];
+		op[i].dom = (domid_t) 0;	// Dom0 only
+		op[i].flags = GNTMAP_host_map;
+		op[i].host_addr = rx_addr + PAGE_SIZE*i;
+	}
+
+	rs = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, &op, priv->nr_rx_ring_refs -1); //NB: -1
+	assert(rs == 0);
+		
+	for (int i = 0; i < priv->nr_rx_ring_refs -1; i++)	//NB: -1
+	{
+		assert(op[i].status == GNTST_okay);
+		//pte[i].host_addr = op[i].host_addr;
+		//pte[i].handle = op[i].handle;
+		rmb();
+	}
+
+	priv->rx_rings = (struct netmap_ring *)op[0].host_addr;
+	while (priv->rx_rings->num_slots != priv->nr_rx_desc)
+		rmb();
+
+	priv->nr_tx_buf_refs = priv->tx_rings->num_slots/2;
+	j = 0;
+	for (int i = 0; i < priv->tx_rings->num_slots; i++)
+	{
+		if (priv->tx_rings->slot[i].ptr != 0)
+			priv->tx_buf_refs[j++] = priv->tx_rings->slot[i].ptr;
+	}
+	priv->nr_tx_buf_refs = j;
+	assert(priv->nr_tx_buf_refs <= NM_MAX_BUFS);
+
+	//printk("\rnetmap: mapping TX buffers\r\n");
+	unsigned long tx_buf_addr = (unsigned long)mm_alloc_pages(priv->nr_tx_buf_refs);
+
+	for (int i = 0; i < priv->nr_tx_buf_refs; i++)
+	{
+		op[i].ref = (grant_ref_t) priv->tx_buf_refs[i];
+		op[i].dom = (domid_t) 0;	// Dom0 only
+		op[i].flags = GNTMAP_host_map;
+		op[i].host_addr = tx_buf_addr + PAGE_SIZE*i;
+	}
+
+	rs = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, &op, priv->nr_tx_buf_refs);
+	assert(rs == 0);
+		
+	for (int i = 0; i < priv->nr_tx_buf_refs; i++)
+	{
+		assert(op[i].status == GNTST_okay);
+		//pte[i].host_addr = op[i].host_addr;
+		//pte[i].handle = op[i].handle;
+		rmb();
+	}
+	priv->tx_buf_base = (uint8_t *)op[0].host_addr;
+
+	priv->nr_rx_buf_refs = priv->rx_rings->num_slots/2;
+	j = 0;
+	for (int i = 0; i < priv->rx_rings->num_slots; i++)
+	{
+		if (priv->rx_rings->slot[i].ptr != 0)
+			priv->rx_buf_refs[j++] = priv->rx_rings->slot[i].ptr;
+	}
+	priv->nr_rx_buf_refs = j;
+	assert(priv->nr_rx_buf_refs <= NM_MAX_BUFS);
+
+	//printk("\rnetmap: mapping RX buffers\r\n");
+	unsigned long rx_buf_addr = (unsigned long)mm_alloc_pages(priv->nr_rx_buf_refs);
+
+	for (int i = 0; i < priv->nr_rx_buf_refs; i++)
+	{
+		op[i].ref = (grant_ref_t) priv->rx_buf_refs[i];
+		op[i].dom = (domid_t) 0;	// Dom0 only
+		op[i].flags = GNTMAP_host_map;
+		op[i].host_addr = rx_buf_addr + PAGE_SIZE*i;
+	}
+
+	rs = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, &op, priv->nr_rx_buf_refs);
+	assert(rs == 0);
+		
+	for (int i = 0; i < priv->nr_rx_buf_refs; i++)
+	{
+		assert(op[i].status == GNTST_okay);
+		//pte[i].host_addr = op[i].host_addr;
+		//pte[i].handle = op[i].handle;
+		rmb();
+	}
+	priv->rx_buf_base = (uint8_t *)op[0].host_addr;
+
+	snprintf(xs_key, sizeof(xs_key), "device/vif/%d/event-channel-tx", index);
 	rs = xenstore_write_uint(xs_key, priv->evtchn_tx);
 	assert(rs == 0);
-	snprintf(xs_key, sizeof(xs_key), "device/vif/%d/event_channel-rx", index);
+	snprintf(xs_key, sizeof(xs_key), "device/vif/%d/event-channel-rx", index);
 	rs = xenstore_write_uint(xs_key, priv->evtchn_rx);
 	assert(rs == 0);
 
+	priv->txhead = priv->tx_rings->head;
+	priv->txkick = 1;
+
 	return fe;
+}
+
+// complete the netmap initialisation
+static void netfe_netmap_connect(netfe_t *fe)
+{
+	netfe_netmap_t *priv = (netfe_netmap_t *)fe->priv;
+	event_kick(priv->evtchn_tx);
+	event_kick(priv->evtchn_rx);
 }
 
 void netfe_get_mac(netfe_t *fe, uint8_t *mac, int mac_len)
@@ -524,12 +692,56 @@ static void netfe_incoming(netfe_t *fe, uint8_t *packet, int pack_len)
 
 static void netfe_netmap_tx_int(uint32_t port, void *data)
 {
-	//TODO
+	netfe_t *fe = (netfe_t *)data;
+	assert(fe->netmap);
+	netfe_netmap_t *priv = (netfe_netmap_t *)fe->priv;
+	struct netmap_ring *ring = priv->tx_rings;
+
+	priv->txkick = 1;
+
+	if (priv->txhead != ring->head)
+	{
+		rmb();
+		ring->head = ring->cur = priv->txhead;
+		priv->txkick = 0;
+		event_kick(priv->evtchn_tx);
+	}
 }
 
 static void netfe_netmap_rx_int(uint32_t port, void *data)
+{	
+	netfe_t *fe = (netfe_t *)data;
+	netfe_netmap_rx(fe);
+}
+
+static void netfe_netmap_rx(netfe_t *fe)
 {
-	//TODO
+	assert(fe->netmap);
+	netfe_netmap_t *priv = (netfe_netmap_t *)fe->priv;
+	struct netmap_ring *ring = priv->rx_rings;
+
+	if (nm_ring_empty(ring))
+		return;
+
+	uint32_t cur = ring->cur;
+	uint32_t space = nm_ring_space(ring);
+	uint32_t limit = ring->num_slots;
+	if (space < limit)
+		limit = space;
+
+	for (uint32_t rx = 0; rx < limit; rx++)
+	{
+		struct netmap_slot *slot = &ring->slot[cur];
+		if (slot->len == 0)
+			continue;
+		//uint8_t *p = priv->rx_buf_base + (cur+1) * NETMAP_BUF_SIZE;	// why +1?
+		uint8_t *p = priv->rx_buf_base + cur * NETMAP_BUF_SIZE;
+		netfe_incoming(fe, p, slot->len);
+		cur = NETMAP_RING_NEXT(ring, cur);
+	}
+
+	ring->head = ring->cur = cur;
+	event_kick(priv->evtchn_rx);
 }
 
 void netfe_output(netfe_t *fe, uint8_t *packet, int pack_len)
@@ -553,8 +765,6 @@ static void netfe_generic_output(netfe_t *fe, uint8_t *packet, int pack_len)
 {
 	assert(fe->netmap == 0);
 	netfe_generic_t *priv = (netfe_generic_t *)fe->priv;
-	
-	
 
 	if (priv->free_tx_head == NO_TX_BUFFER)
 	{
@@ -626,7 +836,31 @@ static int netfe_tx_buf_gc(netfe_generic_t *priv)
 
 static void netfe_netmap_output(netfe_t *fe, uint8_t *packet, int pack_len)
 {
-	//TODO
+	assert(fe->netmap);
+	netfe_netmap_t *priv = (netfe_netmap_t *)fe->priv;
+	struct netmap_ring *ring = priv->tx_rings;
+
+	if (priv->txhead == ring->tail)
+	{
+		printk("netmap: packet dropped, len %d\n", pack_len);
+		return;
+	}
+
+	uint16_t head = priv->txhead;
+	struct netmap_slot *slot = &ring->slot[head];
+	//uint8_t *p = priv->tx_buf_base + (head+1) * NETMAP_BUF_SIZE;	// why +1
+	uint8_t *p = priv->tx_buf_base + head * NETMAP_BUF_SIZE;
+	memcpy(p, packet, pack_len);
+	slot->len = pack_len;
+	priv->txhead = NETMAP_RING_NEXT(ring, head);
+
+	if (priv->txkick)
+	{
+		ring->head = ring->cur = priv->txhead;
+		priv->txkick = 0;
+		wmb();
+		event_kick(priv->evtchn_tx);
+	}
 }
 
 static struct pbuf *packet_to_pbuf(unsigned char *packet, int pack_len)
