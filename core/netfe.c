@@ -734,8 +734,8 @@ static void netfe_netmap_rx(netfe_t *fe)
 		struct netmap_slot *slot = &ring->slot[cur];
 		if (slot->len == 0)
 			continue;
-		//uint8_t *p = priv->rx_buf_base + (cur+1) * NETMAP_BUF_SIZE;	// why +1?
-		uint8_t *p = priv->rx_buf_base + cur * NETMAP_BUF_SIZE;
+		uint8_t *p = priv->rx_buf_base + (cur+1) * NETMAP_BUF_SIZE;	// why +1?
+		//uint8_t *p = priv->rx_buf_base + cur * NETMAP_BUF_SIZE;
 		netfe_incoming(fe, p, slot->len);
 		cur = NETMAP_RING_NEXT(ring, cur);
 	}
@@ -848,8 +848,8 @@ static void netfe_netmap_output(netfe_t *fe, uint8_t *packet, int pack_len)
 
 	uint16_t head = priv->txhead;
 	struct netmap_slot *slot = &ring->slot[head];
-	//uint8_t *p = priv->tx_buf_base + (head+1) * NETMAP_BUF_SIZE;	// why +1
-	uint8_t *p = priv->tx_buf_base + head * NETMAP_BUF_SIZE;
+	uint8_t *p = priv->tx_buf_base + (head+1) * NETMAP_BUF_SIZE;	// why +1
+	//uint8_t *p = priv->tx_buf_base + head * NETMAP_BUF_SIZE;
 	memcpy(p, packet, pack_len);
 	slot->len = pack_len;
 	priv->txhead = NETMAP_RING_NEXT(ring, head);
