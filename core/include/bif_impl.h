@@ -74,17 +74,20 @@
 #include "decode.h"
 
 #include "monitors.h"
-#include "timers.h"
 #include "console.h"
 #include "netfe.h"
-#include "netif.h"
-#include "disk.h"
 #include "ser_cons.h"
+#include "timers.h"
 #include "ets.h"
 #include "counters.h"
 #include "embed.h"
 #include "mtwist.h"
 #include "prof.h"
+
+#include "outlet.h"
+#include "netif.h"
+
+#include "disk.h"
 
 #include "lwip/ip_addr.h"
 #include "lwip/stats.h"

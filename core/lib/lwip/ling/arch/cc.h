@@ -1,6 +1,8 @@
 #ifndef CC_H
 #define CC_H
 
+#include <stdint.h>
+
 #if defined(__x86_64__)
 typedef char	s8_t;
 typedef short	s16_t;
@@ -41,7 +43,7 @@ typedef unsigned int	mem_ptr_t;
 void printk(const char *fmt, ...);
 void fatal_error(const char *fmt, ...);
 
-u32_t mt_lrand(void);
+uint32_t mt_lrand(void);
 
 #define LWIP_PLATFORM_DIAG(x)		printk x
 #define LWIP_PLATFORM_ASSERT(x)		fatal_error(x)

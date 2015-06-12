@@ -282,15 +282,15 @@ fix_select_val_atoms_lists(Ls) ->
 	end, Ls).
 
 write_literals_blob(Lings, LitBlobFile) -> %% {M,Off,Num}
-	{ok,Blob} = file:open(LitBlobFile, [raw,write]),
-	{Tab,_} = lists:foldl(fun(Ling, {Tab,Off}) ->
+	{{Tab, Iolist},_} = lists:foldl(fun(Ling, {{Tab, Iolist},Off}) ->
 		Bs = [term_to_binary(Q) || Q <- Ling#m.literals],
 		Bin = list_to_binary([<<(size(B)):32,B/binary>> || B <- Bs]),
-		ok = file:write(Blob, Bin),
 		Rec = {Ling#m.mod_name,Off,length(Bs)},
-		{[Rec|Tab],Off + size(Bin)}
-	end, {[],0}, Lings),
-	file:close(Blob),
+		{{[Rec|Tab], [Iolist, Bin]},Off + size(Bin)}
+	end, {{[], []}, 0}, Lings),
+
+	ok = bfd_objcopy:blob_to_src(LitBlobFile,
+			"literals_blob", iolist_to_binary(Iolist)),
 	Tab.
 
 write_catch_table(Lings, CatchTabFile) -> %% [{M,CatchOffset}]
@@ -419,4 +419,5 @@ bif_type("gc_bif_" ++_, 3) -> "BIF_TYPE_GC_3";
 bif_type(Impl, Arity) ->
 	erlang:error({no_bif_type,Impl,Arity}).
 
+%% vim: noet ts=4 sts=4 sw=4
 %%EOF

@@ -483,7 +483,7 @@ term_t cbif_pid_to_list1(proc_t *proc, term_t *regs)
 	term_t Pid = regs[0];
 	if (is_short_pid(Pid))
 	{
-		snprintf(buf, sizeof(buf), "<0.%d.0>", short_pid_id(Pid));
+		snprintf(buf, sizeof(buf), "<0.%d.0>", (int)short_pid_id(Pid));
 		return heap_strz(&proc->hp, buf);
 	}
 	else if (is_boxed(Pid))
@@ -493,8 +493,8 @@ term_t cbif_pid_to_list1(proc_t *proc, term_t *regs)
 		{
 			t_long_pid_t *p = (t_long_pid_t *)pdata;
 			snprintf(buf, sizeof(buf), "<%pt.%d.%d.%d>",
-					T(p->node), opr_hdr_id(pdata),
-				   	p->serial, opr_hdr_creat(pdata));
+					T(p->node), (int)opr_hdr_id(pdata),
+				   	(int)p->serial, (int)opr_hdr_creat(pdata));
 			return heap_strz(&proc->hp, buf);
 		}
 	}

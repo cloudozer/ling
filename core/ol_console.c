@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "outlet.h"
 
 #include "ling_common.h"
@@ -83,7 +79,7 @@ static uint8_t *ol_console_get_send_buffer(outlet_t *ol, int len)
 	if (len > ol->max_send_bufsize)
 	{
 		printk("*** Too much data sent to console:\n");
-		printk("*** %d byte(s) sent - bufsize %d byte(s)\n", len, ol->max_send_bufsize);
+		printk("*** %d byte(s) sent - bufsize %d byte(s)\n", len, (int)ol->max_send_bufsize);
 		printk("*** console will now close\n");
 		return 0;	// do not resize
 	}
@@ -180,4 +176,3 @@ static void ol_console_detach(outlet_t *ol)
 	console_detach(ol);
 }
 
-//EOF

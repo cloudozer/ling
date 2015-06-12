@@ -31,73 +31,51 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/**
- *
- *
- *
- */
+#pragma once
 
-#include "ling_common.h"
-#include "ling_xen.h"
+#define isalpha(a) ((((unsigned)(a)|32)-'a') < 26)
+#define isdigit(a) (((unsigned)(a)-'0') < 10)
+#define islower(a) (((unsigned)(a)-'a') < 26)
+#define isupper(a) (((unsigned)(a)-'A') < 26)
+#define isprint(a) (((unsigned)(a)-' ') < 95)
+#define isgraph(a) (((unsigned)(a)-0x21) < 0x5e)
 
-#define GC_RESERVE_RATIO	64
-#define GC_MAX_RESERVED		2048
-
-/* page allocator data */
-static void *free_pages_start = 0;
-static void *free_pages_end = 0;
-static int nr_reserved_pages = 0;
-
-void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_frames)
+static __inline int tolower(int c)
 {
-	unsigned long pt_pfn = virt_to_pfn(pt_base) + nr_pt_frames;	// is it always so?
-
-	arch_mm_init(&pt_pfn, pt_base, nr_pt_frames, nr_pages);
-
-	/* Initialize page allocator */
-	free_pages_start = pfn_to_virt(pt_pfn);
-	free_pages_end = pfn_to_virt(nr_pages);
-
-	/* GC cannot run if all pages are handed to other allocators; make a reserve */
-	nr_reserved_pages = (free_pages_end - free_pages_start) /PAGE_SIZE /GC_RESERVE_RATIO;
-	if (nr_reserved_pages > GC_MAX_RESERVED)
-		nr_reserved_pages = GC_MAX_RESERVED;
+	if (isupper(c))
+		return c | 32;
+	return c;
 }
 
-/**
- * Page allocator
- *
- * Gives away whole pages of memory; never expects them back
- *
- */
-
-void *mm_alloc_pages(int nr_pages)
+static __inline int toupper(int c)
 {
-	int size = nr_pages *PAGE_SIZE;
-	if (free_pages_start + size > free_pages_end -nr_reserved_pages *PAGE_SIZE)
-		return 0;
-	void *mem = free_pages_start;
-	free_pages_start += size;
-	return mem;
+	if (islower(c))
+		return c & 0x5f;
+	return c;
 }
 
-void *mm_alloc_page(void)
+static __inline int isspace(int c)
 {
-	return mm_alloc_pages(1);
+	return c == ' ' || (unsigned)c-'\t' < 5;
 }
 
-int mm_alloc_left(void)
+static __inline int isalnum(int c)
 {
-	return (free_pages_end - free_pages_start) / PAGE_SIZE;
+        return isalpha(c) || isdigit(c);
 }
 
-// The unallocated space may be used as a temporary buffer provided that no
-// allocation happen during its use. mm_alloc_left() returns the size of the
-// buffer. The garbage collection region stack is the primary use of the buffer.
-//
-void *mm_alloc_tmp(void)
+static __inline int isxdigit(int c)
 {
-	return free_pages_start;
+	return isdigit(c) || ((unsigned)c|32)-'a' < 6;
 }
 
-/*EOF*/
+static __inline int ispunct(int c)
+{
+	return isgraph(c) && !isalnum(c);
+}
+
+static __inline int iscntrl(int c)
+{
+	return (unsigned)c < 0x20 || c == 0x7f;
+}
+

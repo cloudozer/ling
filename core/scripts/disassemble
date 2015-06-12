@@ -1,0 +1,50 @@
+#!/usr/bin/env escript
+%%! -pa mod ../bc
+
+%%TODO
+%%TODO works from core dir only
+%%TODO
+
+-include_lib("bc/ling_code.hrl").
+
+main(["-b",BeamFile]) ->
+	
+	{ok,Mod} = ling_disasm:beam(BeamFile),
+
+	lists:foreach(fun(X) ->
+		io:format("~w~n", [X])
+	end, Mod#m.code);
+
+main([BeamFile]) ->
+
+	{ok,Mod} = ling_code:beam_to_ling(BeamFile),
+
+	lists:foreach(fun(X) ->
+		io:format("~w~n", [X])
+	end, Mod#m.code);
+
+main(["-s",BeamFile]) ->
+
+	{ok,Mod} = ling_code:beam_to_ling(BeamFile),
+	{ok,S} = ling_code:ling_to_specs(Mod),
+
+	FuncInfoOpCode = ling_iopvars:var_index(func_info, 0),
+
+	lists:foldl(fun([{opcode,OpCode}|_] =X, _Off)
+			when OpCode =:= FuncInfoOpCode ->
+		io:format("----: ~w~n", [X]),
+		length(X);
+	(X, Off) ->
+		io:format("~4w: ~w~n", [Off,X]),
+		Off +length(X)
+	end, 0, S#m.code);
+
+main(["-x",BeamFile]) ->
+
+	{ok,Mod} = ling_code:beam_to_ling(BeamFile),
+	{ok,S} = ling_code:ling_to_specs(Mod),
+
+	NoCode = S#m{code =suppressed},
+	io:format("~p~n", [NoCode]).
+
+%%EOF

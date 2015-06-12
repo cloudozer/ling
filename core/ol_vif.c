@@ -91,7 +91,7 @@ static term_t ol_vif_control(outlet_t *ol,
 	char rbuf[64];
 	char *reply = rbuf;
 
-	printk("vif: op %d dlen %d\n", op, dlen);
+	printk("vif: op %d dlen %d\n", (int)op, dlen);
 	switch (op)
 	{
 	case VIF_REQ_OPEN:

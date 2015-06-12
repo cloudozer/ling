@@ -397,7 +397,7 @@ nomem:
 
 term_t lwip_err_to_term(err_t err)
 {
-	switch (err)
+	switch ((int)err)
 	{
 	case ERR_OK:			return A_OK;
 	case ERR_MEM:			return A_LWIP_MEM;

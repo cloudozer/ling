@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "bif_impl.h"
 
 #include <pcre.h>
@@ -698,4 +694,3 @@ term_t cbif_re_run3(proc_t *proc, term_t *regs)
 	return result;
 }
 
-//EOF

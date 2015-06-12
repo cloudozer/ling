@@ -32,6 +32,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "time.h"
+#include "arch_time.h"
 
 #include "ling_common.h"
 #include "ling_xen.h"

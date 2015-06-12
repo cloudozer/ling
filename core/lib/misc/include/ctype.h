@@ -30,6 +30,7 @@
 // ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #pragma once
 
 #define isalpha(a) ((((unsigned)(a)|32)-'a') < 26)
@@ -78,4 +79,3 @@ static __inline int iscntrl(int c)
 	return (unsigned)c < 0x20 || c == 0x7f;
 }
 
-//EOF

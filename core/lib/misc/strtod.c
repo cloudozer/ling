@@ -29,6 +29,7 @@
  * next character after the last one that was part of the
  * floating-point number.
  */
+
 #include <stdlib.h>
 #include <ctype.h>
 
@@ -91,7 +92,7 @@ double strtod(const char *string, char **endPtr)
 	decPt = -1;
 	for (mantSize=0; ; ++mantSize) {
 		c = *p;
-		if (! isdigit (c)) {
+		if (! isdigit ((int)c)) {
 			if (c != '.' || decPt >= 0)
 				break;
 			decPt = mantSize;
@@ -149,7 +150,7 @@ double strtod(const char *string, char **endPtr)
 			++p;
 		} else if (*p == '+')
 			++p;
-		while (isdigit (*p))
+		while (isdigit ((int)*p))
 			exp = exp * 10 + (*p++ - '0');
 	}
 	if (expSign)

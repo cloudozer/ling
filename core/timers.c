@@ -31,12 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-//
-//
-
 #include "timers.h"
 
 #include "ling_common.h"
@@ -316,4 +310,3 @@ void etimer_fill_root_regs(proc_t *sender, region_t *regs, int nr_expected)
 	assert(nr_found == nr_expected);
 }
 
-//EOF

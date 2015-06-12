@@ -177,7 +177,8 @@ void console_detach(outlet_t *ol)
 		console.attached = 0;
 }
 
-void console_write(const char *msg, int len) {
+int console_write(char *msg, int len)
+{
 	static int was_cr = 0;
 
 	int sent = 0;
@@ -215,6 +216,9 @@ void console_write(const char *msg, int len) {
 		event_kick(console.chan);
 	}
 	ssa(SYS_STATS_IO_OUTPUT, len);
+
+	// XXX: 0 is probably not the desired value
+	return 0;
 }
 
 void console_done(void)
