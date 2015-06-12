@@ -246,23 +246,26 @@ main(Args) ->
 
 	file:close(EmbedFs),
 
-	CC = [{cd, cache_dir()}],
-
-	{ok, EmbedFsObject} = embedfs_object(EmbedFsPath),
-	ok = sh(ld() ++ ["vmling.o", EmbedFsObject, "-o", "../" ++ ImgName], CC),
+	ok = embedfs_object(EmbedFsPath, ImgName),
 
 	case ?ARCH of
 		posix_x86 -> nevermind;
 		_ -> ok = domain_config(CustomBucks, Config)
 	end.
 
-embedfs_object(EmbedFsPath) ->
-	EmbedCPath = filename:join(filename:absname(cache_dir()), "embedfs.c"),
+embedfs_object(EmbedFsPath, ImgName) ->
+	CC = [{cd, cache_dir()}],
 	OutPath = filename:join(filename:absname(cache_dir()), "embedfs.o"),
-	{ok, Embed} = file:read_file(EmbedFsPath),
-	ok = bfd_objcopy:blob_to_src(EmbedCPath, "_binary_embed_fs", Embed),
-	ok = sh(cc() ++ ["-o", OutPath, "-c", EmbedCPath]),
-	{ok, OutPath}.
+	case ?ARCH of
+		xen_x86 ->
+			ok = sh("ld -r -b binary -o " ++ OutPath ++ " embed.fs", CC);
+		_ ->
+			EmbedCPath = filename:join(filename:absname(cache_dir()), "embedfs.c"),
+			{ok, Embed} = file:read_file(EmbedFsPath),
+			ok = bfd_objcopy:blob_to_src(EmbedCPath, "_binary_embed_fs", Embed),
+			ok = sh(cc() ++ ["-o", OutPath, "-c", EmbedCPath])
+	end,
+	ok = sh(ld() ++ ["vmling.o", OutPath, "-o", "../" ++ ImgName], CC).
 
 domain_config(CustomBucks, Config) ->
 	Project = project_name(Config),
@@ -291,7 +294,7 @@ domain_config(CustomBucks, Config) ->
 				"memory = " ++ integer_to_list(M) ++ "\n"
 		end,
 
-	Vif = "vif = " ++ lists:flatten(io_lib:print([Vif || {vif, Vif} <- Config],1,4096,-1)),
+	Vif = "vif = " ++ lists:flatten(io_lib:format("~p", [[Vif || {vif, Vif} <- Config]])),
 	Pz = " -pz" ++ lists:flatten([" " ++ Dir || {_, Dir, _} <- CustomBucks]),
 	Home = "-home /" ++ Project,
 	Extra = [E ++ " " || {extra, E} <- Config] ++ [Home] ++ [Pz],

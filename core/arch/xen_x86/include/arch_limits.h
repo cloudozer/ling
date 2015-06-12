@@ -14,7 +14,7 @@
 #endif
 #endif /* ASSEMBLY */
 
-#define __STACK_SIZE_PAGE_ORDER  4
+#define __STACK_SIZE_PAGE_ORDER  10
 #define __STACK_SIZE             (__PAGE_SIZE * (1 << __STACK_SIZE_PAGE_ORDER))
 
 #define STACK_SIZE        __STACK_SIZE

@@ -9,7 +9,8 @@ LIBMISC_ARCH := x86
 
 XEN_INTERFACE_VERSION := 0x00030205
 
-CPPFLAGS += -DLING_XEN -DLING_CONFIG_DISK
+CPPFLAGS += -DLING_XEN
+#CPPFLAGS += -DLING_CONFIG_DISK
 CPPFLAGS += -D__XEN_INTERFACE_VERSION__=$(XEN_INTERFACE_VERSION)
 
 CFLAGS   += -std=gnu99
@@ -23,7 +24,6 @@ LDFLAGS  += -static
 LDFLAGS  += -Xlinker --build-id=none
 LDFLAGS  += -Xlinker --cref -Xlinker -Map=ling.map
 LDFLAGS  += -nostdlib
-LDFLAGS  += -flto
 LDFLAGS_FINAL += -lgcc
 
 STARTUP_OBJ     := arch/$(ARCH)/startup.o
