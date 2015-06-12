@@ -84,6 +84,9 @@ extern char my_domain_name[];
 
 #define UNUSED __attribute__((unused))
 
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
 // hot/cold attributes on labels need gcc >= 4.8
 #if __GNUC__ >= 4 && __GNUC_MINOR__ >= 8
 #define ATTRIBUTE_HOT __attribute((__hot__))
@@ -148,6 +151,7 @@ extern uint32_t trace_module;	// term_t
 #endif
 
 void domain_poweroff(void); // __attribute__ ((noreturn));
+void yield(void);
 
 #ifdef LING_DEBUG
 enum sched_phase_t {

@@ -3,7 +3,10 @@
 *.ling
 *.la
 *.lo
-/.railing/
+.railing/
 domain_config
 ling.img
 /.vagrant/
+macling
+.DS_Store
+tags

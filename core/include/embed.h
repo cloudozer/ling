@@ -34,6 +34,7 @@
 #pragma once
 
 #include "term.h"
+#include "heap.h"
 
 int embed_init(void);
 term_t embed_all_buckets(heap_t *hp);

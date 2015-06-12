@@ -1,10 +1,12 @@
-## LING: Erlang on Xen
+## LING
 
 [![Build Status](https://api.travis-ci.org/cloudozer/ling.svg)](https://travis-ci.org/cloudozer/ling)
 
 Wikipedia: -ling, an English diminutive suffix
 
-### How to get started?
+### Erlang on Xen
+
+#### Quick Start
 
 The easy way is to use pre-built railing utility:
 
@@ -20,21 +22,19 @@ The easy way is to use pre-built railing utility:
 
         xl create -c domain_config
 
-
 ### How to build/hack LING?
 
 See [HACKING.md](HACKING.md).
 
-### How to use railing?
+### Using `railing`
 
 Run `railing` without options to get help.
 
 To generate the image and the domain configuration file use the `image`
 subcommand:
-```
-./railing image
-```
+
+    ./railing image
+
 This instructs railing to scan all subdirectories for `*.beam` files. All files
 found are embedded into the Xen image and become accessible during runtime.
 Certain subdirectories can be excluded from the search using `-x` option.
-

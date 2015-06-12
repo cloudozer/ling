@@ -175,6 +175,18 @@ static term_t invoke_bif(export_t *exp, proc_t *proc, term_t *rs, int live);
 
 static int send_to_outlet(outlet_t *outlet, term_t what, proc_t *proc);
 
+//static void dump_info(uint32_t *ip, uint32_t *cp, uint32_t *sp, term_t r0, term_t *rs)
+//{
+//	opcode_info_t *op = opcode_lookup((void *)ip[0]);
+//	printk("ip = 0x%08x [%s]\n", ip, op->var_name);
+//	printk("cp = 0x%08x\n", cp);
+//	for (int i = 3; i >= 0; i--)
+//		printk("sp[%d] = 0x%08x %pt\n", i, sp[i], T(sp[i]));
+//	printk("r0 = %pt\n", T(r0));
+//	for (int i = 1; i < 4; i++)
+//		printk("r%d = %pt\n", i, T(rs[i]));
+//}
+
 void proc_main(proc_t *proc)
 {
 	// current instruction pointer

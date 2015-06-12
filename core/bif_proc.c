@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "bif_impl.h"
 
 term_t cbif_process_flag2(proc_t *proc, term_t *regs)
@@ -739,4 +735,3 @@ term_t cbif_set_dictionary1(proc_t *proc, term_t *regs)
 	return A_OK;
 }
 
-//EOF

@@ -1055,7 +1055,7 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 				{
 					// We may return -NO_MEMORY here; a more conservative
 					// approach is to ignore the option and continue
-					printk("ol_tcp_set_opts: cannot expand recv_buffer to %d byte(s)\n", val);
+					printk("ol_tcp_set_opts: cannot expand recv_buffer to %d byte(s)\n", (int)val);
 					continue;
 				}
 				ol->recv_bufsize = val;

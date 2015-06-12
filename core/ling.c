@@ -32,7 +32,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ling_common.h"
-#include "ling_xen.h"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -41,18 +40,14 @@
 
 #include "string.h"
 #include "snprintf.h"
-#include "ser_cons.h"
-#include "console.h"
 
 #include "mm.h"
 #include "nalloc.h"
-#include "event.h"
-#include "grant.h"
 
-#include "xenstore.h"
-#include "disk.h"
-#include "netfe.h"
+#include "console.h"
 #include "netif.h"
+#include "netfe.h"
+#include "disk.h"
 
 #include "bignum.h"
 #include "atoms.h"
@@ -65,37 +60,54 @@
 #include "ets.h"
 #include "list_util.h"
 
+#ifdef LING_XEN
+#include "ling_xen.h"
+#include "xenstore.h"
+#include "event.h"
+#include "grant.h"
+#endif
+
 // PRNG
 #include "mtwist.h"
 
 #define quote(x) #x
 #define quote_and_expand(x) quote(x)
 
+#ifdef LING_XEN
 char stack[2*STACK_SIZE];
 start_info_t start_info;
 unsigned long *phys_to_machine_mapping;
 shared_info_t *HYPERVISOR_shared_info;
 
-void proc_main(proc_t *proc);
-
-void lwip_init(void);
-void pcre_init(void);
-void counters_init(void);
-
 UNUSED static void print_start_info(void);
 UNUSED static void print_xenmem_info(void);
 UNUSED static void print_xenstore_values(void);
 UNUSED static void print_xs_tree(char *start);
+#endif
 
-static void spawn_init_start(int8_t *cmd_line);
+void proc_main(proc_t *proc);
+
+void time_init(void);
+
+UNUSED void lwip_init(void);
+void pcre_init(void);
+void counters_init(void);
+
+static void spawn_init_start(char *cmd_line);
 
 // both domain and host name
 char my_domain_name[256];
 
+#ifdef LING_XEN
+/* defined by startup.[sSc] calling conventions */
 void start_ling(start_info_t *si)
+#else
+void start_ling(void)
+#endif
 {
 	//-------- init phase 1 --------
 	//
+#ifdef LING_XEN
 	memcpy(&start_info, si, sizeof(*si));
 
 	phys_to_machine_mapping = (unsigned long *)start_info.mfn_list;
@@ -103,26 +115,35 @@ void start_ling(start_info_t *si)
 	HYPERVISOR_update_va_mapping((unsigned long)&shared_info,
 		__pte(start_info.shared_info | 7), UVMF_INVLPG);
 	HYPERVISOR_shared_info = &shared_info;
+#endif
 
+#ifdef LING_XEN
+	mm_init(start_info.nr_pages, start_info.pt_base, start_info.nr_pt_frames);
+#else
+	mm_init();
+#endif
 	time_init();	// sets start_of_day_wall_clock
 
 	// use the time value to seed PRNG
 	mt_seed(start_of_day_wall_clock);
-	
+
+#ifdef LING_XEN
 #if defined(__x86_64__)
 	HYPERVISOR_set_callbacks(0, 0, 0);
 #else /* __x86_64__ */
 	HYPERVISOR_set_callbacks(0, 0, 0, 0);
 #endif
+#endif
 
-	mm_init(start_info.nr_pages, start_info.pt_base, start_info.nr_pt_frames);
-	nalloc_init();
-
+#ifdef LING_XEN
 	events_init();
 	grants_init();
 
 	console_init(mfn_to_virt(start_info.console.domU.mfn),
 			start_info.console.domU.evtchn);
+
+	nalloc_init();
+
 	xenstore_init(mfn_to_virt(start_info.store_mfn),
 		start_info.store_evtchn);
 
@@ -134,6 +155,10 @@ void start_ling(start_info_t *si)
 
 	lwip_init();
 	netfe_init();
+#else
+	console_init();
+	nalloc_init();
+#endif
 
 	//-------- init phase 2 --------
 	//
@@ -161,7 +186,12 @@ void start_ling(start_info_t *si)
 
 	proc_main(0); // preliminary run
 
-	spawn_init_start(start_info.cmd_line);
+#ifdef LING_XEN
+	spawn_init_start((char *)start_info.cmd_line);
+#else
+	static char *hardcoded_command_line = "-home /";
+	spawn_init_start(hardcoded_command_line);
+#endif
 
 	//while (1)
 	//	HYPERVISOR_sched_op(SCHEDOP_block, 0);
@@ -171,20 +201,21 @@ void start_ling(start_info_t *si)
 
 void printk(const char *fmt, ...)
 {
-    char buffer[BUFSIZ];
+	char buffer[BUFSIZ];
 
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, ap);
-    va_end(ap);
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
 
 	int len = strlen(buffer);
-
 	if (console_is_initialized())
 		console_write(buffer, len);
 	if (ser_cons_present())
 		ser_cons_write(buffer, len);
 }
+
+extern void exit(int) __attribute__((noreturn));
 
 void fatal_error(const char *fmt, ...)
 {
@@ -197,14 +228,16 @@ void fatal_error(const char *fmt, ...)
 		
 	printk("*** CRASH: %s\r\n", buffer);
 
+#ifdef LING_POSIX
+	exit(42);
+#endif
 	while (1)
 	{
 #ifdef LING_DEBUG
 		// Provide for attaching the debugger to examine the crash
 		gdb_break();
 #endif
-
-		HYPERVISOR_sched_op(SCHEDOP_yield, 0);
+		yield();
 	}
 }
 
@@ -214,25 +247,15 @@ void __assert_fail(const char *assertion,
 	fatal_error("assertion %s failed at %s:%d (%s)", assertion, file, line, function);
 }
 
-void domain_poweroff(void)
-{
-	printk("\nBye\n");
-	console_done();	// flushes and restores terminal mode
-
-	struct sched_shutdown op;
-	op.reason = SHUTDOWN_poweroff;
-	HYPERVISOR_sched_op(SCHEDOP_shutdown, &op);
-}
-
-static term_t parse_cmd_line(heap_t *hp, int8_t *cmd_line)
+static term_t parse_cmd_line(heap_t *hp, char *cmd_line)
 {
 	term_t args = nil;
-	int8_t *p = cmd_line;
+	char *p = cmd_line;
 	while (*p != 0)
 	{
 		while (*p == ' ')
 			p++;
-		int8_t *token1, *token2;
+		char *token1, *token2;
 		if (*p == '\'' || *p == '"')
 		{
 			int8_t quote = *p++;
@@ -259,7 +282,7 @@ static term_t parse_cmd_line(heap_t *hp, int8_t *cmd_line)
 	return list_rev(args, hp);
 }
 
-static void spawn_init_start(int8_t *cmd_line)
+static void spawn_init_start(char *cmd_line)
 {
 	proc_t *init_proc = proc_make(noval);	// group leader set later
 	assert(init_proc != 0);
@@ -288,6 +311,12 @@ static void spawn_init_start(int8_t *cmd_line)
 	/* UNREACHANBLE */
 }
 
+void abort(void)
+{
+	fatal_error("aborted");
+}
+
+#ifdef LING_XEN
 static void print_start_info(void) {
 	printk("start_info [%s]\r\n", start_info.magic);
 	printk(".nr_pages = %lu\r\n", start_info.nr_pages);
@@ -383,11 +412,7 @@ static void print_xs_tree(char *start)
 	if (ret_code < 0)
 		fatal_error("print_xs_tree failed: %d", ret_code);
 }
-
-void abort(void)
-{
-	fatal_error("aborted");
-}
+#endif /* LING_XEN */
 
 /*EOF*/
 

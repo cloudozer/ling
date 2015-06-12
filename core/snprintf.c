@@ -250,7 +250,7 @@ static char *gcvt(double number, int ndigit, char *buf, boolean_e altform)
 
 #define STR_TO_DEC(str, num)                        \
     num = NUM(*str++);                              \
-    while (isdigit(*str))                       \
+    while (isdigit((int)*str))                      \
     {                                               \
         num *= 10 ;                                 \
         num += NUM(*str++);                         \
@@ -434,7 +434,7 @@ static char *conv_fp(register char format, register double num,
     /*
      * Check for Infinity and NaN
      */
-    if (isalpha(*p)) {
+    if (isalpha((int)*p)) {
         *len = strlen(p);
         memcpy(buf, p, *len + 1);
         *is_negative = FALSE;
@@ -634,7 +634,7 @@ int vformatter(int (*flush_func)(vformatter_buff_t *),
             /*
              * Try to avoid checking for flags, width or precision
              */
-            if (!islower(*fmt)) {
+            if (!islower((int)*fmt)) {
                 /*
                  * Recognize flags: -, #, BLANK, +
                  */
@@ -656,7 +656,7 @@ int vformatter(int (*flush_func)(vformatter_buff_t *),
                 /*
                  * Check if a width was specified
                  */
-                if (isdigit(*fmt)) {
+                if (isdigit((int)*fmt)) {
                     STR_TO_DEC(fmt, min_width);
                     adjust_width = YES;
                 }
@@ -680,7 +680,7 @@ int vformatter(int (*flush_func)(vformatter_buff_t *),
                 if (*fmt == '.') {
                     adjust_precision = YES;
                     fmt++;
-                    if (isdigit(*fmt)) {
+                    if (isdigit((int)*fmt)) {
                         STR_TO_DEC(fmt, precision);
                     }
                     else if (*fmt == '*') {

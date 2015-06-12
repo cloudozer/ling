@@ -31,21 +31,23 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef MM_H
-#define MM_H
+#pragma once
 
 #include "arch_mm.h"
 
+#ifdef LING_XEN
 void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_frames);
-
-/* allocate a few pages */
-void *mm_alloc_pages(int nr_pages);
-/* allocate a single page */
-void *mm_alloc_page(void);
-/* how many free *pages* left */
-int mm_alloc_left(void);
-/* a temporary buffer */
-void *mm_alloc_tmp(void);
-
+#else
+void mm_init(void);
 #endif
 
+void *mm_alloc_pages(int nr_pages);
+int mm_alloc_left(void);
+void *mm_alloc_tmp(void);
+
+static inline void *mm_alloc_page(void)
+{
+	return mm_alloc_pages(1);
+}
+
+//EOF

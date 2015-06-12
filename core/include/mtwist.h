@@ -40,6 +40,6 @@
 #include <stdint.h>
 
 void mt_seed(uint32_t seed);
-uint32_t mt_lrand();
+uint32_t mt_lrand(void);
 
 //EOF

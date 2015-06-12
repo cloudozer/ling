@@ -1102,7 +1102,7 @@ case DHH_STATE_FIELD_0:
 		bookmark = ptr -1;
 		fptr = fbuf;
 		assert(uppercase);
-		*fptr++ = toupper(ch);
+		*fptr++ = toupper((int)ch);
 		uppercase = 0;
 		state = DHH_STATE_FIELD;
 	}
@@ -1146,9 +1146,9 @@ colon:
 		if (fptr -fbuf >= sizeof(fbuf))
 			state = DHH_STATE_ERROR;
 		else if (uppercase)
-			*fptr++ = toupper(ch);
+			*fptr++ = toupper((int)ch);
 		else
-			*fptr++ = tolower(ch);
+			*fptr++ = tolower((int)ch);
 
 		uppercase = (ch == '-');	// capitalize after hyphen
 	}

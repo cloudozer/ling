@@ -1,7 +1,8 @@
 LING_VER := 0.3.2
 OTP_VER := 17
-ifeq ($(shell uname),Darwin)
-CROSS := 1
-else
-CROSS := 0
-endif
+
+LING_DEBUG := 1
+
+ARCH ?= xen_x86
+#ARCH ?= posix_x86
+#ARCH ?= arm

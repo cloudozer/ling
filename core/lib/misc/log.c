@@ -74,6 +74,8 @@ Lg5 = 1.818357216161805012e-01,  /* 3FC74664 96CB03DE */
 Lg6 = 1.531383769920937332e-01,  /* 3FC39A09 D078C69F */
 Lg7 = 1.479819860511658591e-01;  /* 3FC2F112 DF3E5244 */
 
+//DBG
+#include "ling_common.h"
 double log(double x)
 {
 	union {double f; uint64_t i;} u = {x};

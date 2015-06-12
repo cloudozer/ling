@@ -45,7 +45,7 @@
 -spec start() -> pid().
 
 start() ->					%Default line editing shell
-    spawn(user_drv, server, ['tty_sl -c -e',{shell,start,[init]}]).
+    spawn(user_drv, server, [console,{shell,start,[init]}]).
 
 start([Pname]) ->
     spawn(user_drv, server, [Pname,{shell,start,[init]}]);
