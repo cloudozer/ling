@@ -39,10 +39,10 @@ CPPFLAGS += -DLING_VER=$(LING_VER)
 #CPPFLAGS += -DDEBUG_UNUSED_MEM
 #CPPFLAGS += -DTRACE_HARNESS
 
-COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer -flto
+COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer
 
 CFLAGS := \
-	-Wall -Werror -std=gnu99 -O3 \
+	-Wall -Werror -std=gnu99 -O0 -ggdb \
 	-fexcess-precision=standard -frounding-math -mfpmath=sse -msse2 \
 	-Wno-nonnull -Wno-strict-aliasing \
 	$(COMMON_CFLAGS)

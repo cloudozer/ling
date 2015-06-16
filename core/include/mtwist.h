@@ -42,4 +42,3 @@
 void mt_seed(uint32_t seed);
 uint32_t mt_lrand();
 
-//EOF

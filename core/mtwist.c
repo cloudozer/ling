@@ -520,4 +520,3 @@ uint32_t mt_lrand()
     return MT_FINAL_TEMPER(random_value);
     }
 
-//EOF

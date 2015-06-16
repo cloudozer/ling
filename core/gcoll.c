@@ -131,6 +131,7 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 		if (!is_init_node)
 	   	{
 			*ref = gc_node->next;
+			hp->total_alloc_pages -= gc_node->index;
 			nfree(gc_node);
 		}
 		else
@@ -273,7 +274,10 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	if (nodes_merging || new_node == 0)
 	{
 		if (!is_init_node)
+		{
+			hp->total_alloc_pages -= gc_node->index;
 			*ref = gc_node->next;
+		}
 	}
 	else
 	{
@@ -281,6 +285,7 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 		new_node->next = (!is_init_node)
 			? gc_node->next
 			: gc_node;
+		hp->total_alloc_pages += new_node->index;
 	}
 
 	if (is_init_node)
@@ -420,6 +425,7 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	hp->nodes = sweep_node;
 
 	hp->total_size = sweep_size;
+	hp->total_alloc_pages = sweep_node->index;
 
 	hp->gc_spot = 0;
 	hp->sweep_after_count = 0;

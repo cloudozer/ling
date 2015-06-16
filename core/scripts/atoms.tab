@@ -385,5 +385,8 @@ llstat
 stop
 help
 cloudozer
+adapt_gc
+random
+epsilon
+q_table
 
-#EOF

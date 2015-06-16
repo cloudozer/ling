@@ -49,6 +49,7 @@ struct heap_t {
 	int total_size;					// the size of the heap
 	memnode_t *gc_spot;				// the last gc node
 	t_proc_bin_t *proc_bins;		// the list of refc binaries
+	int total_alloc_pages;			// the sum of sizes of all allocated nodes (in pages)
 	int total_pb_size;				// the sum of sizes of referenced proc_bins
 	int suppress_gc;				// do not collect garbage
 	int full_sweep_after;			// the fullsweep_after option value
@@ -59,6 +60,13 @@ struct heap_t {
 	// the expected value of the next heap_set_top()
 	uint32_t *expected_top;
 #endif
+	// adaptive GC
+	int gc1_count;
+	int gc2_count;
+	int gc3_count;
+	uint64_t ts_last_gc;
+	uint32_t last_reclaimed;
+	uint32_t last_recl_pages;
 };
 
 typedef struct region_t region_t;
@@ -79,6 +87,8 @@ int estimate_max_gc_runs(uint64_t duration_ns);
 //
 // Returns the heap top or 0 if there is not enough memory
 //
+
+#define heap_ensure		heap_ensure_adaptive
 uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs);
 uint32_t *heap_alloc(heap_t *hp, int needed);
 uint32_t *heap_alloc_N(heap_t *hp, int needed);
