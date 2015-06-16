@@ -264,7 +264,7 @@ static int s_root_count(region_t *root_regs, int nr_regs)
 
 void dump_q_table(void)
 {
-	printk("free_pages|since_last|reclaimed|recl_pages|roots|cnt1|cnt2|cnt3|skip|gc0|gc1|gc2|gc3|visits\n");
+	printk("free_pages|since_last|reclaimed|recl_pages|cnt1|cnt2|cnt3|roots|skip|gc0|gc1|gc2|gc3|visits\n");
 	for (int i = 0; i < QTAB_SIZE; i++)
 	{
 		int i0 = i & 1;
