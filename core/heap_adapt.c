@@ -40,7 +40,7 @@
 #include "stack.h"
 #include "assert.h"
 
-#define QTAB_SIZE	4096
+#define QTAB_SIZE	16384
 #define ACTIONS		5
 
 #define GC_ALPHA	0.2
@@ -56,7 +56,7 @@ static struct q_table_t {
 	int visits;
 } q_table[QTAB_SIZE] = { { { 0.0 }, 0 } };
 
-static int state_index(uint64_t now, int free_pages, heap_t *hp);
+static int state_index(uint64_t now, int free_pages, region_t *root_regs, int nr_regs, heap_t *hp);
 static double calc_reward(int no_memory, uint32_t free_pages,
 		uint32_t reclaimed, uint32_t recl_pages, uint64_t elapsed_ns);
 static int s_free_pages(int free_pages);
@@ -64,6 +64,7 @@ static int s_since_last_gc(uint64_t now, heap_t *hp);
 static int s_last_reclaimed(heap_t *hp);
 static int s_last_recl_pages(heap_t *hp);
 static int s_gc_count(int cnt);
+static int s_root_count(region_t *root_regs, int nr_regs);
 
 int adapt_gc_random = 0;
 
@@ -72,7 +73,7 @@ uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int 
 	uint64_t now = monotonic_clock();
 	int free_pages = mm_alloc_left() + nalloc_freed_pages();
 
-	int index0 = state_index(now, free_pages, hp);
+	int index0 = state_index(now, free_pages, root_regs, nr_regs, hp);
 	assert(index0 < QTAB_SIZE);
 
 	q_table[index0].visits++;
@@ -150,7 +151,7 @@ uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int 
 	}
 
 	int free_pages1 = mm_alloc_left() + nalloc_freed_pages();
-	int index1 = state_index(hp->ts_last_gc, free_pages1, hp);
+	int index1 = state_index(hp->ts_last_gc, free_pages1, root_regs, nr_regs, hp);
 	assert(index1 < QTAB_SIZE);
 
 	double maxq = q_table[index1].a[0];
@@ -164,23 +165,24 @@ uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int 
 	return heap_alloc(hp, needed);
 }
 
-static int state_index(uint64_t now, int free_pages, heap_t *hp)
+static int state_index(uint64_t now, int free_pages, region_t *root_regs, int nr_regs, heap_t *hp)
 {
-	int s0_2 = s_free_pages(free_pages);
+	int s0_1 = s_free_pages(free_pages);
 	int s1_2 = s_since_last_gc(now, hp);
-	int s2_1 = s_last_reclaimed(hp);
+	int s2_2 = s_last_reclaimed(hp);
 	int s3_1 = s_last_recl_pages(hp);
 	int s4_2 = s_gc_count(hp->gc1_count);
 	int s5_2 = s_gc_count(hp->gc2_count);
 	int s6_2 = s_gc_count(hp->gc3_count);
+	int s7_2 = s_root_count(root_regs, nr_regs);
 
-	return (s6_2 << 10) | (s5_2 << 8) | (s4_2 << 6) |
-		   (s3_1 <<  5) | (s2_1 << 4) | (s1_2 << 2) | s0_2;
+	return (s7_2 << 12) | (s6_2 << 10) | (s5_2 << 8) | (s4_2 << 6) |
+		   (s3_1 <<  5) | (s2_2 <<  3) | (s1_2 << 1) | s0_1;
 }
 
-#define K1	(8e7)
-#define K2	(1e-5)
-#define K3	(2e4)
+#define K1	(1e5)
+#define K2	(2.5e-9)
+#define K3	(50)
 
 static double calc_reward(int no_memory, uint32_t free_pages,
 		uint32_t reclaimed, uint32_t recl_pages, uint64_t elapsed_ns)
@@ -188,20 +190,16 @@ static double calc_reward(int no_memory, uint32_t free_pages,
 	if (no_memory)
 		return -100.0;
 
-	elapsed_ns += 5000;	// avoid overflow in exp()
-
 	if (recl_pages > 0)
-		return K1 * recl_pages / (free_pages * elapsed_ns) - K2 * elapsed_ns;
+		return K1 * recl_pages / (elapsed_ns + 5000) - K2 * elapsed_ns * free_pages;
 	
-	return K3 * reclaimed / (free_pages * elapsed_ns) - K2 * elapsed_ns;
+	return K3 * reclaimed / (elapsed_ns + 5000) - K2 * elapsed_ns * free_pages;
 }
 
 static int s_free_pages(int free_pages)
 {
-	if (free_pages >= 512*256) return 0;
-	if (free_pages >= 256*256) return 1;
-	if (free_pages >= 128*256) return 2;
-	return 3;
+	if (free_pages >= 256*256) return 0;
+	return 1;
 }
 
 static int s_since_last_gc(uint64_t now, heap_t *hp)
@@ -215,8 +213,10 @@ static int s_since_last_gc(uint64_t now, heap_t *hp)
 
 static int s_last_reclaimed(heap_t *hp)
 {
-	if (hp->last_reclaimed < 1024) return 0;
-	return 1;
+	if (hp->last_reclaimed >= 4096) return 3;
+	if (hp->last_reclaimed >= 1024) return 2;
+	if (hp->last_reclaimed >= 256) return 1;
+	return 0;
 }
 
 static int s_gc_count(int cnt)
@@ -230,6 +230,18 @@ static int s_gc_count(int cnt)
 static int s_last_recl_pages(heap_t *hp)
 {
 	if (hp->last_recl_pages > 0) return 1;
+	return 0;
+}
+
+static int s_root_count(region_t *root_regs, int nr_regs)
+{
+	int count = 0;
+	for (int i = 0; i < nr_regs; i++)
+		count += (root_regs[i].ends - root_regs[i].starts);
+
+	if (count >= 1024) return 3;
+	if (count >= 256) return 2;
+	if (count >= 64) return 1;
 	return 0;
 }
 
