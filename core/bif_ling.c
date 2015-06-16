@@ -62,6 +62,8 @@ void cloudozer2(void);
 extern uint32_t trace_mask;
 #endif
 
+void dump_netmap_state(int what);
+
 term_t cbif_domain_name0(proc_t *proc, term_t *regs)
 {
 	return heap_strz(&proc->hp, my_domain_name);
@@ -194,6 +196,12 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 		else
 			llstat_display();
 #endif // EXP_LINC_LLSTAT
+		break;
+	case A_NETMAP:
+		if (Arg == A_TX)
+			dump_netmap_state(0);
+		else if (Arg == A_RX)
+			dump_netmap_state(1);
 		break;
 	default:
 		badarg(What);

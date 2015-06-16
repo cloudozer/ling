@@ -164,7 +164,7 @@ static void netfe_netmap_output(netfe_t *fe, uint8_t *packet, int pack_len);
 static void netfe_generic_int(uint32_t port, void *data);
 static void netfe_netmap_tx_int(uint32_t port, void *data);
 static void netfe_netmap_rx_int(uint32_t port, void *data);
-static void netfe_netmap_rx(netfe_t *fe);
+static int netfe_netmap_rx(netfe_t *fe);
 static void netfe_incoming(netfe_t *fe, uint8_t *packet, int pack_len);
 static int netfe_tx_buf_gc(netfe_generic_t *priv);
 static struct pbuf *packet_to_pbuf(unsigned char *packet, int pack_len);
@@ -710,21 +710,36 @@ static void netfe_netmap_tx_int(uint32_t port, void *data)
 
 static void netfe_netmap_rx_int(uint32_t port, void *data)
 {	
-	netfe_t *fe = (netfe_t *)data;
-	netfe_netmap_rx(fe);
+	//netfe_t *fe = (netfe_t *)data;
+	//netfe_netmap_rx(fe);
 }
 
-static void netfe_netmap_rx(netfe_t *fe)
+int netmap_do_pending(void)
+{
+	netfe_t *fe = net_front_ends;
+	int nr_fired = 0;
+	while (fe != 0)
+	{
+		if (fe->netmap)
+			nr_fired += netfe_netmap_rx(fe);
+		fe = fe->next;
+	}
+	return nr_fired;
+}
+
+static int netfe_netmap_rx(netfe_t *fe)
 {
 	assert(fe->netmap);
 	netfe_netmap_t *priv = (netfe_netmap_t *)fe->priv;
 	struct netmap_ring *ring = priv->rx_rings;
 
-	if (nm_ring_empty(ring))
-		return;
-
 	uint32_t limit = ring->tail;
+	rmb();
 	uint32_t cur = ring->cur;
+
+	if (cur == limit)
+		return 0;
+
 	do {
 		struct netmap_slot *slot = &ring->slot[cur];
 		if (slot->len != 0)
@@ -738,6 +753,7 @@ static void netfe_netmap_rx(netfe_t *fe)
 
 	ring->head = ring->cur = cur;
 	event_kick(priv->evtchn_rx);
+	return 1;
 }
 
 void netfe_output(netfe_t *fe, uint8_t *packet, int pack_len)
@@ -856,6 +872,28 @@ static void netfe_netmap_output(netfe_t *fe, uint8_t *packet, int pack_len)
 		priv->txkick = 0;
 		wmb();
 		event_kick(priv->evtchn_tx);
+	}
+}
+
+void dump_netmap_state(int what)
+{
+	netfe_t *fe = net_front_ends;
+	assert(fe->netmap);
+	netfe_netmap_t *priv = (netfe_netmap_t *)fe->priv;
+
+	if (what == 0)
+	{
+		// TX
+		struct netmap_ring *ring = priv->tx_rings;
+		printk("netmap: tx: head %d cur %d tail %d num_slots %d flags %d\n",
+			ring->head, ring->cur, ring->tail, ring->num_slots, ring->flags);
+	}
+	else if (what == 1)
+	{
+		// RX
+		struct netmap_ring *ring = priv->rx_rings;
+		printk("netmap: rx: head %d cur %d tail %d num_slots %d flags %d\n",
+			ring->head, ring->cur, ring->tail, ring->num_slots, ring->flags);
 	}
 }
 
@@ -1045,4 +1083,3 @@ int build_getifaddrs_reply(char *buf, int sz)
 	return p -buf;
 }
 
-//EOF

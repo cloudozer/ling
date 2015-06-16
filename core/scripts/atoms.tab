@@ -385,4 +385,7 @@ llstat
 stop
 help
 cloudozer
+netmap
+tx
+rx
 
