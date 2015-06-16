@@ -37,10 +37,6 @@
 
 #include "nalloc.h"
 
-//
-// Heap allocations
-//
-
 typedef struct heap_t heap_t;
 struct heap_t {
 	memnode_t init_node;			// a fake memory node for the initial buffer

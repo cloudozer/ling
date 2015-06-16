@@ -60,7 +60,7 @@
 #define HEAP_MIN_GC_SIZE			4096
 
 #define HEAP_NEW_SIZE_RATIO			16
-#define HEAP_NEW_SIZE_CAP			16384
+#define HEAP_NEW_SIZE_CAP			(16384 - WSIZE(memnode_t))
 
 static int copy_terms(int depth, heap_t *hp, term_t *terms, int num);
 

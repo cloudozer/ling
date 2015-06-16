@@ -40,11 +40,13 @@
 #include "stack.h"
 #include "assert.h"
 
-#define QTAB_SIZE	16384
+#define QTAB_SIZE	(2 << 14)
 #define ACTIONS		5
 
 #define GC_ALPHA	0.2
 #define GC_GAMMA	0.95
+
+#define GC_YINDEX	16
 
 static struct q_table_t {
 	// 0: skip
@@ -135,6 +137,10 @@ uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int 
 		hp->gc_spot = hp->nodes;
 		while (pos-- > 0 && hp->gc_spot != 0)
 			hp->gc_spot = hp->gc_spot->next;
+
+		// action prohibited
+		if (hp->gc_spot == 0 || hp->gc_spot->index > GC_YINDEX)
+			break;	// skip
 		
 		uint32_t saved_size = hp->total_size;
 		uint32_t saved_alloc_pages = hp->total_alloc_pages;
