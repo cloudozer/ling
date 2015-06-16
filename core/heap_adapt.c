@@ -247,19 +247,20 @@ static int s_root_count(region_t *root_regs, int nr_regs)
 
 void dump_q_table(void)
 {
-	printk("free_pages|since_last|reclaimed|recl_pages|cnt1|cnt2|cnt3|skip|gc0|gc1|gc2|gc3|visits\n");
+	printk("free_pages|since_last|reclaimed|recl_pages|roots|cnt1|cnt2|cnt3|skip|gc0|gc1|gc2|gc3|visits\n");
 	for (int i = 0; i < QTAB_SIZE; i++)
 	{
-		int i0 = i & 3;
-		int i1 = (i >> 2) & 3;
-		int i2 = (i >> 4) & 1;
+		int i0 = i & 1;
+		int i1 = (i >> 1) & 3;
+		int i2 = (i >> 3) & 3;
 		int i3 = (i >> 5) & 1;
 		int i4 = (i >> 6) & 3;
 		int i5 = (i >> 8) & 3;
 		int i6 = (i >> 10) & 3;
+		int i7 = (i >> 12) & 3;
 
-		printk("%d|%d|%d|%d|%d|%d|%d|%f|%f|%f|%f|%f|%d\n",
-				i0, i1, i2, i3, i4, i5, i6,
+		printk("%d|%d|%d|%d|%d|%d|%d|%d|%f|%f|%f|%f|%f|%d\n",
+				i0, i1, i2, i3, i4, i5, i6, i7,
 				q_table[i].a[0],
 				q_table[i].a[1],
 				q_table[i].a[2],
