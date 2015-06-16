@@ -70,6 +70,17 @@ int adapt_gc_random = 0;
 
 uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int nr_regs)
 {
+	// full sweep?
+	if (hp->sweep_after_count >= hp->full_sweep_after)
+	{
+		if (heap_gc_full_sweep_N(hp, root_regs, nr_regs) < 0)
+		{
+			printk("heap_ensure: no memory while doing full-sweep GC, ignored\n");
+		}
+
+		return heap_alloc(hp, needed);
+	}
+
 	uint64_t now = monotonic_clock();
 	int free_pages = mm_alloc_left() + nalloc_freed_pages();
 

@@ -46,7 +46,7 @@
 
 #include "mm.h"
 
-#define DEFAULT_FULL_SWEEP_AFTER	65535
+#define DEFAULT_FULL_SWEEP_AFTER	4096
 
 #define GC_MODEL_INIT_CREDIT		1000
 #define GC_MODEL_GAMMA				800

@@ -310,7 +310,7 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 {
 	// copies all live terms to a single node
 	ssi(SYS_STATS_GC_RUNS);
-	//printk("GC:full-sweep: heap %pp total_size %d", hp, hp->total_size);
+	printk("GC:full-sweep: heap %pp total_size %d", hp, hp->total_size);
 
 	// Potentially, we can use init_node here if total_size is very low;
 	// this happens rarely and will complicate logic too much though.
@@ -430,7 +430,7 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	hp->gc_spot = 0;
 	hp->sweep_after_count = 0;
 
-	//printk(" done, sweep_size %d\n", sweep_size);
+	printk(" done, sweep_size %d\n", sweep_size);
 	return 0;
 }
 
