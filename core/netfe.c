@@ -723,22 +723,18 @@ static void netfe_netmap_rx(netfe_t *fe)
 	if (nm_ring_empty(ring))
 		return;
 
+	uint32_t limit = ring->tail;
 	uint32_t cur = ring->cur;
-	uint32_t space = nm_ring_space(ring);
-	uint32_t limit = ring->num_slots;
-	if (space < limit)
-		limit = space;
-
-	for (uint32_t rx = 0; rx < limit; rx++)
-	{
+	do {
 		struct netmap_slot *slot = &ring->slot[cur];
-		if (slot->len == 0)
-			continue;
-		uint8_t *p = priv->rx_buf_base + (cur+1) * NETMAP_BUF_SIZE;	// why +1?
-		//uint8_t *p = priv->rx_buf_base + cur * NETMAP_BUF_SIZE;
-		netfe_incoming(fe, p, slot->len);
+		if (slot->len != 0)
+		{
+			uint8_t *p = priv->rx_buf_base + (cur+1) * NETMAP_BUF_SIZE;	// why +1?
+			//uint8_t *p = priv->rx_buf_base + cur * NETMAP_BUF_SIZE;
+			netfe_incoming(fe, p, slot->len);
+		}
 		cur = NETMAP_RING_NEXT(ring, cur);
-	}
+	} while (cur != limit);
 
 	ring->head = ring->cur = cur;
 	event_kick(priv->evtchn_rx);
