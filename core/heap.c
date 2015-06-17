@@ -102,98 +102,98 @@ int estimate_max_gc_runs(uint64_t duration_ns)
 	return (duration_ns -GC_MODEL_DUR0) /GC_MODEL_DURN;
 }
 
-uint32_t *heap_ensure(heap_t *hp, int needed,
-	  		 	region_t *root_regs, int nr_regs)
-{
-	//
-	// The are going to add yet another node to the heap chain. Should we
-	// collect garbage first? The decision is based on the following empirical
-	// parameters:
-	//
-	// 82% - the probability that a random gc on the newest node will be
-	// successful - will reclaim more than 256 words;
-	//
-	// 40% - the probability that a gc run on the subsequent node will be
-	// successful too;
-	//
-	// 2000 - the average number of words reclaimed by a successful run;
-	//
-	// 10us - the time the first gc run takes;
-	//
-	// Runs operating on nodes other than the first take a longer time:
-	//
-	// duration(N) = 10us + 20us * N
-	//
-	// The model matches the time it takes to reclaim the memory with the cost
-	// of the reclaimed memory. The memory get gradually more expensive as it
-	// gets exhausted:
-	//
-	//	cost(memory) = memory * C / free_memory
-	//
-	// All above constants and formulas boil down to one main constant - GC_MODEL_GAMMA
-	// There is also ancilliary constant - GC_MODEL_BETA - that govern the
-	// probability that gc continues to the next chunk after success (streak).
-	//
-
-	static int gc_model_credit = GC_MODEL_INIT_CREDIT;
-	gc_model_credit -= GC_MODEL_GAMMA;
-
-	if (gc_model_credit < 0 && hp->total_size >= HEAP_MIN_GC_SIZE)
-	{
-		int free_pages = mm_alloc_left() + nalloc_freed_pages();
-		gc_model_credit += free_pages;
-
-		// full sweep?
-		if (hp->sweep_after_count >= hp->full_sweep_after)
-		{
-			if (heap_gc_full_sweep_N(hp, root_regs, nr_regs) < 0)
-			{
-				printk("heap_ensure: no memory while doing full-sweep GC, ignored\n");
-			}
-		}
-		else
-		{
-			// go generational
-
-			// Collect nodes starting from the newest until the first stale node
-			hp->gc_spot = 0;
-
-			uint32_t recl, recl_pb;
-			int gc_runs = 0;
-			do {
-				uint32_t saved_size = hp->total_size;
-				uint32_t saved_pb_size = hp->total_pb_size;
-
-				if (heap_gc_non_recursive_N(hp, root_regs, nr_regs) < 0)
-				{
-					//printk("heap_ensure: no memory while collecting garbage, ignored\n");
-					break;
-				}
-
-				recl = saved_size - hp->total_size;
-				recl_pb = saved_pb_size - hp->total_pb_size;
-
-				//printk("%d|%d|%d|%d\n",
-				//	saved_size,
-				//	gc_runs,
-				//	recl,
-				//	recl_pb);
-
-				if (hp->gc_spot == 0 && gc_runs != 0)
-					break; // break the streak
-
-				// hp->total_size is our random number
-				if ((hp->total_size & 255) >= GC_MODEL_BETA)
-					break;	// 50% chance
-
-				gc_runs++;
-			} while (recl >= HEAP_GC_LAST_RECLAIMED ||
-					  recl_pb >= HEAP_GC_LAST_PB_RECLAIMED);
-		}
-	}
-
-	return heap_alloc(hp, needed);
-}
+//uint32_t *heap_ensure(heap_t *hp, int needed,
+//	  		 	region_t *root_regs, int nr_regs)
+//{
+//	//
+//	// The are going to add yet another node to the heap chain. Should we
+//	// collect garbage first? The decision is based on the following empirical
+//	// parameters:
+//	//
+//	// 82% - the probability that a random gc on the newest node will be
+//	// successful - will reclaim more than 256 words;
+//	//
+//	// 40% - the probability that a gc run on the subsequent node will be
+//	// successful too;
+//	//
+//	// 2000 - the average number of words reclaimed by a successful run;
+//	//
+//	// 10us - the time the first gc run takes;
+//	//
+//	// Runs operating on nodes other than the first take a longer time:
+//	//
+//	// duration(N) = 10us + 20us * N
+//	//
+//	// The model matches the time it takes to reclaim the memory with the cost
+//	// of the reclaimed memory. The memory get gradually more expensive as it
+//	// gets exhausted:
+//	//
+//	//	cost(memory) = memory * C / free_memory
+//	//
+//	// All above constants and formulas boil down to one main constant - GC_MODEL_GAMMA
+//	// There is also ancilliary constant - GC_MODEL_BETA - that govern the
+//	// probability that gc continues to the next chunk after success (streak).
+//	//
+//
+//	static int gc_model_credit = GC_MODEL_INIT_CREDIT;
+//	gc_model_credit -= GC_MODEL_GAMMA;
+//
+//	if (gc_model_credit < 0 && hp->total_size >= HEAP_MIN_GC_SIZE)
+//	{
+//		int free_pages = mm_alloc_left() + nalloc_freed_pages();
+//		gc_model_credit += free_pages;
+//
+//		// full sweep?
+//		if (hp->sweep_after_count >= hp->full_sweep_after)
+//		{
+//			if (heap_gc_full_sweep_N(hp, root_regs, nr_regs) < 0)
+//			{
+//				printk("heap_ensure: no memory while doing full-sweep GC, ignored\n");
+//			}
+//		}
+//		else
+//		{
+//			// go generational
+//
+//			// Collect nodes starting from the newest until the first stale node
+//			hp->gc_spot = 0;
+//
+//			uint32_t recl, recl_pb;
+//			int gc_runs = 0;
+//			do {
+//				uint32_t saved_size = hp->total_size;
+//				uint32_t saved_pb_size = hp->total_pb_size;
+//
+//				if (heap_gc_non_recursive_N(hp, root_regs, nr_regs) < 0)
+//				{
+//					//printk("heap_ensure: no memory while collecting garbage, ignored\n");
+//					break;
+//				}
+//
+//				recl = saved_size - hp->total_size;
+//				recl_pb = saved_pb_size - hp->total_pb_size;
+//
+//				//printk("%d|%d|%d|%d\n",
+//				//	saved_size,
+//				//	gc_runs,
+//				//	recl,
+//				//	recl_pb);
+//
+//				if (hp->gc_spot == 0 && gc_runs != 0)
+//					break; // break the streak
+//
+//				// hp->total_size is our random number
+//				if ((hp->total_size & 255) >= GC_MODEL_BETA)
+//					break;	// 50% chance
+//
+//				gc_runs++;
+//			} while (recl >= HEAP_GC_LAST_RECLAIMED ||
+//					  recl_pb >= HEAP_GC_LAST_PB_RECLAIMED);
+//		}
+//	}
+//
+//	return heap_alloc(hp, needed);
+//}
 
 inline static int chunk_size(int needed, int total_size)
 {

@@ -57,12 +57,12 @@ struct heap_t {
 	uint32_t *expected_top;
 #endif
 	// adaptive GC
+	int last_roots;
 	int gc1_count;
-	int gc2_count;
-	int gc3_count;
 	uint64_t ts_last_gc;
-	uint32_t last_reclaimed;
-	uint32_t last_recl_pages;
+	int last_reclaimed;
+	int last_recl_pages;
+	int last_recl_bins;
 };
 
 typedef struct region_t region_t;
@@ -84,7 +84,7 @@ int estimate_max_gc_runs(uint64_t duration_ns);
 // Returns the heap top or 0 if there is not enough memory
 //
 
-//#define heap_ensure		heap_ensure_adaptive
+#define heap_ensure		heap_ensure_adaptive
 uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs);
 uint32_t *heap_alloc(heap_t *hp, int needed);
 uint32_t *heap_alloc_N(heap_t *hp, int needed);

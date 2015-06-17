@@ -64,7 +64,6 @@ extern uint32_t trace_mask;
 
 // adapt GC
 void dump_q_table(void);
-extern int adapt_gc_random;
 
 term_t cbif_domain_name0(proc_t *proc, term_t *regs)
 {
@@ -202,16 +201,6 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 	case A_ADAPT_GC:
 		if (Arg == A_Q_TABLE)
 			dump_q_table();
-		else if (Arg == A_RANDOM)
-		{
-			adapt_gc_random = 1;
-			printk("Adaptive GC switched to random\n");
-		}
-		else if (Arg == A_EPSILON)
-		{
-			adapt_gc_random = 0;
-			printk("Adaptive GC switched to epsilon-greedy (10%)\n");
-		}
 		break;
 	default:
 		badarg(What);
