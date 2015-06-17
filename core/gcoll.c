@@ -131,8 +131,11 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 		if (!is_init_node)
 	   	{
 			*ref = gc_node->next;
-			assert(hp->total_alloc_pages >= gc_node->index);
-			hp->total_alloc_pages -= gc_node->index;
+			//assert(hp->total_alloc_pages >= gc_node->index);
+			if (hp->total_alloc_pages >= gc_node->index)
+				hp->total_alloc_pages -= gc_node->index;
+			else
+				hp->total_alloc_pages = 0;
 			nfree(gc_node);
 		}
 		else
@@ -276,8 +279,11 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	{
 		if (!is_init_node)
 		{
-			assert(hp->total_alloc_pages >= gc_node->index);
-			hp->total_alloc_pages -= gc_node->index;
+			//assert(hp->total_alloc_pages >= gc_node->index);
+			if (hp->total_alloc_pages >= gc_node->index)
+				hp->total_alloc_pages -= gc_node->index;
+			else
+				hp->total_alloc_pages = 0;
 			*ref = gc_node->next;
 		}
 	}
