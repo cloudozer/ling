@@ -177,7 +177,9 @@ uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int 
 			maxq = q_table[index1].a[i];
 
 	// learning
-	q_table[index0].a[action] += GC_ALPHA * (reward + GC_GAMMA * maxq - q_table[index0].a[action]);
+	double change = GC_ALPHA * (reward + GC_GAMMA * maxq - q_table[index0].a[action]);
+	assert(change <= 100.0);
+	q_table[index0].a[action] += change;
 
 	return heap_alloc(hp, needed);
 }
