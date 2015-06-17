@@ -198,7 +198,13 @@ static int state_index(uint64_t now, int free_pages, region_t *root_regs, int nr
 		   (s3_1 <<  5) | (s2_2 <<  3) | (s1_2 << 1) | s0_1;
 }
 
-#define K1	(1e6)
+//a1
+//#define K1	(1e6)
+//#define K2	(2.5e-9)
+//#define K3	(6e-1)
+
+//a2
+#define K1	(250000)
 #define K2	(2.5e-9)
 #define K3	(6e-1)
 
