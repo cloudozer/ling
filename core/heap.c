@@ -78,7 +78,7 @@ void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends)
 	//hp->total_size = 0;
 	//hp->gc_spot = 0;
 	//hp->proc_bins = 0;
-	//hp->total_alloc_pages = 0;
+	hp->total_alloc_pages = 1;	// init_node is quasi-allocated
 	//hp->total_pb_size = 0;
 	//hp->suppress_gc = 0;
 	hp->full_sweep_after = DEFAULT_FULL_SWEEP_AFTER;
