@@ -443,4 +443,3 @@ uint32_t proc_estimate_used_memory(proc_t *proc)
 	return mem_size;
 }
 
-//EOF

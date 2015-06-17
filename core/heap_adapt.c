@@ -209,9 +209,14 @@ static int state_index(uint64_t now, int free_pages, region_t *root_regs, int nr
 //#define K3	(6e-1)
 
 //a3
+//#define K1	(1e6)
+//#define K2	(1.25e-9)
+//#define K3	(6e-1)
+
+//a4
 #define K1	(1e6)
-#define K2	(1.25e-9)
-#define K3	(6e-1)
+#define K2	(2.5e-9)
+#define K3	(0.15)
 
 static double calc_reward(int no_memory, uint32_t free_pages,
 		uint32_t reclaimed, uint32_t recl_pages, uint64_t elapsed_ns)
