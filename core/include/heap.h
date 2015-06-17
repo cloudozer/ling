@@ -132,4 +132,3 @@ term_t heap_make_ref(heap_t *heap);
 int ref_is_local(term_t t);
 uint64_t local_ref_id(term_t t);
 
-//EOF
