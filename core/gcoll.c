@@ -86,11 +86,8 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 
 	// select the GC node
 	memnode_t *gc_node = (hp->gc_spot != 0)
-		? hp->gc_spot->next
+		? hp->gc_spot
 		: hp->nodes;
-
-	if (gc_node == 0)
-		gc_node = hp->nodes;
 
 	assert(gc_node != 0);
 	int is_init_node = gc_node == &hp->init_node;
@@ -301,13 +298,13 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	else
 		nfree(gc_node);
 
-	// save the last gc node
-	if (is_init_node)
-		hp->gc_spot = 0;
+	// select the next gc node (likely to be ignored)
+	if (new_node != 0)
+		hp->gc_spot = new_node->next;
+	else if (prev_node != 0)
+		hp->gc_spot = prev_node->next;
 	else
-		hp->gc_spot = (new_node != 0)
-			? new_node
-			: prev_node;
+		hp->gc_spot = 0;
 
 	//printk("reclaimed %d done\n", copy_size - new_size);
 	hp->sweep_after_count++;
