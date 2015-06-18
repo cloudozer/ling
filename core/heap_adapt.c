@@ -417,44 +417,44 @@ prohibited:
 static double calc_reward(int no_memory, uint32_t free_pages,
 		uint32_t reclaimed, uint32_t recl_pages, uint64_t elapsed_ns)
 {
-	static int nr_calls = 0;
-	static double min_free_pages, avg_free_pages, max_free_pages;
-	static double min_reclaimed, avg_reclaimed, max_reclaimed;
-	static double min_recl_pages, avg_recl_pages, max_recl_pages;
-	static double min_elapsed_ns, avg_elapsed_ns, max_elapsed_ns;
-
-	if (nr_calls == 0)
-	{
-		min_free_pages = max_free_pages = avg_free_pages = (double) free_pages;
-		min_reclaimed = max_reclaimed = avg_reclaimed = (double) reclaimed;
-		min_recl_pages = max_recl_pages = avg_recl_pages = (double) recl_pages;
-		min_elapsed_ns = max_elapsed_ns = avg_elapsed_ns = (double) elapsed_ns;
-	}
-	else
-	{
-		if ((double) free_pages < min_free_pages) min_free_pages = (double) free_pages;
-		if ((double) free_pages > max_free_pages) max_free_pages = (double) free_pages;
-		if ((double) reclaimed < min_reclaimed) min_reclaimed = (double) reclaimed;
-		if ((double) reclaimed > max_reclaimed) max_reclaimed = (double) reclaimed;
-		if ((double) recl_pages < min_recl_pages) min_recl_pages = (double) recl_pages;
-		if ((double) recl_pages > max_recl_pages) max_recl_pages = (double) recl_pages;
-		if ((double) elapsed_ns < min_elapsed_ns) min_elapsed_ns = (double) elapsed_ns;
-		if ((double) elapsed_ns > max_elapsed_ns) max_elapsed_ns = (double) elapsed_ns;
-		avg_free_pages += (double) free_pages;
-		avg_reclaimed += (double) reclaimed;
-		avg_recl_pages += (double) recl_pages;
-		avg_elapsed_ns += (double) elapsed_ns;
-	}
-
-	nr_calls++;
-
-	if (nr_calls % 1000 == 0)
-	{
-		printk("free_pages: %f-%f-%f\n", min_free_pages, avg_free_pages /nr_calls, max_free_pages);
-		printk("reclaimed: %f-%f-%f\n", min_reclaimed, avg_reclaimed /nr_calls, max_reclaimed);
-		printk("recl_pages: %f-%f-%f\n", min_recl_pages, avg_recl_pages /nr_calls, max_recl_pages);
-		printk("elapsed_ns: %f-%f-%f\n", min_elapsed_ns, avg_elapsed_ns /nr_calls, max_elapsed_ns);
-	}
+//	static int nr_calls = 0;
+//	static double min_free_pages, avg_free_pages, max_free_pages;
+//	static double min_reclaimed, avg_reclaimed, max_reclaimed;
+//	static double min_recl_pages, avg_recl_pages, max_recl_pages;
+//	static double min_elapsed_ns, avg_elapsed_ns, max_elapsed_ns;
+//
+//	if (nr_calls == 0)
+//	{
+//		min_free_pages = max_free_pages = avg_free_pages = (double) free_pages;
+//		min_reclaimed = max_reclaimed = avg_reclaimed = (double) reclaimed;
+//		min_recl_pages = max_recl_pages = avg_recl_pages = (double) recl_pages;
+//		min_elapsed_ns = max_elapsed_ns = avg_elapsed_ns = (double) elapsed_ns;
+//	}
+//	else
+//	{
+//		if ((double) free_pages < min_free_pages) min_free_pages = (double) free_pages;
+//		if ((double) free_pages > max_free_pages) max_free_pages = (double) free_pages;
+//		if ((double) reclaimed < min_reclaimed) min_reclaimed = (double) reclaimed;
+//		if ((double) reclaimed > max_reclaimed) max_reclaimed = (double) reclaimed;
+//		if ((double) recl_pages < min_recl_pages) min_recl_pages = (double) recl_pages;
+//		if ((double) recl_pages > max_recl_pages) max_recl_pages = (double) recl_pages;
+//		if ((double) elapsed_ns < min_elapsed_ns) min_elapsed_ns = (double) elapsed_ns;
+//		if ((double) elapsed_ns > max_elapsed_ns) max_elapsed_ns = (double) elapsed_ns;
+//		avg_free_pages += (double) free_pages;
+//		avg_reclaimed += (double) reclaimed;
+//		avg_recl_pages += (double) recl_pages;
+//		avg_elapsed_ns += (double) elapsed_ns;
+//	}
+//
+//	nr_calls++;
+//
+//	if (nr_calls % 1000 == 0)
+//	{
+//		printk("free_pages: %f-%f-%f\n", min_free_pages, avg_free_pages /nr_calls, max_free_pages);
+//		printk("reclaimed: %f-%f-%f\n", min_reclaimed, avg_reclaimed /nr_calls, max_reclaimed);
+//		printk("recl_pages: %f-%f-%f\n", min_recl_pages, avg_recl_pages /nr_calls, max_recl_pages);
+//		printk("elapsed_ns: %f-%f-%f\n", min_elapsed_ns, avg_elapsed_ns /nr_calls, max_elapsed_ns);
+//	}
 
 	if (no_memory)
 		return -100.0;
