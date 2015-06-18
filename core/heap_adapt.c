@@ -42,22 +42,22 @@
 
 // Space
 #define AGC_P_LESS_ROOTS		0
-#define AGC_N_LESS_ROOTS		1
-#define AGC_P_RECLAIMED			1
+#define AGC_N_LESS_ROOTS		2
+#define AGC_P_RECLAIMED			2
 #define AGC_N_RECLAIMED			2
-#define AGC_P_RECL_PAGES		3
+#define AGC_P_RECL_PAGES		4
 #define AGC_N_RECL_PAGES		1
-#define AGC_P_RECL_BINS			4
+#define AGC_P_RECL_BINS			5
 #define AGC_N_RECL_BINS			1
-#define AGC_P_GC1_COUNT			5
+#define AGC_P_GC1_COUNT			6
 #define AGC_N_GC1_COUNT			2
-#define	AGC_P_FS_COUNT			7
+#define	AGC_P_FS_COUNT			8
 #define AGC_N_FS_COUNT			2
-#define AGC_P_FREE_PAGES		9
+#define AGC_P_FREE_PAGES		10
 #define AGC_N_FREE_PAGES		1
-#define AGC_P_SINCE_LAST		10
+#define AGC_P_SINCE_LAST		11
 #define AGC_N_SINCE_LAST		2
-#define AGC_INDEX_SIZE			12
+#define AGC_INDEX_SIZE			13
 
 #define AGC_Q_TABLE_SIZE		(2 << AGC_INDEX_SIZE)
 
@@ -123,7 +123,9 @@ static int state_index(int new_roots, int free_pages, uint64_t now, heap_t *hp)
 
 static int s_less_roots(int new_roots, int old_roots)
 {
-	if (new_roots < old_roots - 64) return 1;
+	if (new_roots < old_roots - 64) return 3;
+	if (new_roots < old_roots - 32) return 2;
+	if (new_roots < old_roots - 16) return 1;
 	return 0;
 }
 
@@ -243,7 +245,7 @@ toss:
 	if (action == 0)
 	{
 		// do nothing
-		reward = -0.01;	// avoid too many skips
+		reward = -0.1;	// avoid too many skips
 	}
 	else
 	{
