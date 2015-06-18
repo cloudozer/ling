@@ -84,7 +84,7 @@ int estimate_max_gc_runs(uint64_t duration_ns);
 // Returns the heap top or 0 if there is not enough memory
 //
 
-#define heap_ensure		heap_ensure_adaptive
+//#define heap_ensure		heap_ensure_adaptive
 uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs);
 uint32_t *heap_alloc(heap_t *hp, int needed);
 uint32_t *heap_alloc_N(heap_t *hp, int needed);
