@@ -192,12 +192,38 @@ uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int 
 
 	q_table[index0].visits++;
 
-	uint32_t roll = mt_lrand();
-	int action;
-	if (roll < (0x100000000l / 100))	// 1%
+	int action = 0;
+#if 0
+	double intervals[AGC_ACTIONS];
+	double total = 0;
+	for (int i = 0; i < AGC_ACTIONS; i++)
+	{
+		intervals[i] = exp(q_table[index0].a[i]);
+		//XXX: fp overflow
+		total += intervals[i];
+	}
+
+	double roll = (double) mt_lrand() * total / 0x100000000l;
+	while (1)
+	{
+		assert(action < AGC_ACTIONS);
+		roll -= intervals[action];
+		if (roll < 0)
+			break;
+		action++;
+	}
+#else
+	int nr_action3 = 0;
+	uint32_t roll;
+toss:
+	roll = mt_lrand();
+	if (roll < (0x100000000l / 10))	// 10%
 	{
 		// pick random
 		action = roll % AGC_ACTIONS;
+		if (action == 3)
+			if(++nr_action3 < 3)
+				goto toss;
 	}
 	else
 	{
@@ -208,6 +234,7 @@ uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int 
 			if (qq[i] > qq[action])
 				action = i;
 	}
+#endif
 
 	hp->gc1_count++;
 
@@ -216,6 +243,7 @@ uint32_t *heap_ensure_adaptive(heap_t *hp, int needed, region_t *root_regs, int 
 	if (action == 0)
 	{
 		// do nothing
+		reward = -0.01;	// avoid too many skips
 	}
 	else
 	{
