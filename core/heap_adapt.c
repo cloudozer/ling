@@ -159,9 +159,9 @@ static int s_gc1_count(int count)
 
 static int s_fs_count(int count)
 {
-	if (count >= 16384) return 3;
-	if (count >= 4096) return 2;
-	if (count >= 1024) return 1;
+	if (count >= 65536) return 3;
+	if (count >= 32768) return 2;
+	if (count >= 16384) return 1;
 	return 0;
 }
 

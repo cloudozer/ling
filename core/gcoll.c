@@ -320,6 +320,9 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	// Potentially, we can use init_node here if total_size is very low;
 	// this happens rarely and will complicate logic too much though.
 
+	if (hp->total_size == 0)
+		return 0;
+
 	memnode_t *sweep_node = nalloc_N(hp->total_size *sizeof(uint32_t));
 	if (sweep_node == 0)
 		return -NO_MEMORY;
