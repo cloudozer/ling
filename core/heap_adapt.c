@@ -242,46 +242,43 @@ toss:
 
 	double reward = 0.0;
 
-	if (action == 0)
+	if (action == 1)	// GC0
 	{
-		// do nothing
-		reward = -0.1;	// avoid too many skips
+		hp->gc_spot = hp->nodes;
 	}
-	else
+	else if (action == 2)	// GC1
 	{
-		if (action == 1)	// GC0
-		{
-			hp->gc_spot = hp->nodes;
-		}
-		else if (action == 2)	// GC1
-		{
-			hp->gc_spot = hp->nodes;
-			if (hp->gc_spot->next == 0)
-				goto prohibited;
-
-			// choose a node other than the first
-			do {
-				hp->gc_spot = hp->gc_spot->next;
-				uint32_t rand = mt_lrand();
-				if (rand < (0x100000000l / 4))	// 25%
-					break;
-			} while (hp->gc_spot->next != 0);
-		}
-
-		// action prohibited, node too large
-		if ((action == 1 || action == 2) && hp->gc_spot->index > AGC_YINDEX)
+		hp->gc_spot = hp->nodes;
+		if (hp->gc_spot->next == 0)
 			goto prohibited;
-		
-		int saved_size = hp->total_size;
-		int saved_alloc_pages = hp->total_alloc_pages;
-		int saved_pb_size = hp->total_pb_size;
 
-		int ok;
-		if (action == 3)
-			ok = heap_gc_full_sweep_N(hp, root_regs, nr_regs);
-		else
-			ok = heap_gc_non_recursive_N(hp, root_regs, nr_regs);
+		// choose a node other than the first
+		do {
+			hp->gc_spot = hp->gc_spot->next;
+			uint32_t rand = mt_lrand();
+			if (rand < (0x100000000l / 4))	// 25%
+				break;
+		} while (hp->gc_spot->next != 0);
+	}
 
+	// action prohibited, node too large
+	if ((action == 1 || action == 2) && hp->gc_spot->index > AGC_YINDEX)
+		goto prohibited;
+	
+	int saved_size = hp->total_size;
+	int saved_alloc_pages = hp->total_alloc_pages;
+	int saved_pb_size = hp->total_pb_size;
+
+	int ok;
+	if (action == 3)
+		ok = heap_gc_full_sweep_N(hp, root_regs, nr_regs);
+	else if (action == 2 || action == 1)
+		ok = heap_gc_non_recursive_N(hp, root_regs, nr_regs);
+	else
+		hp->sweep_after_count++;	// skip
+
+	if (action != 0)
+	{
 		hp->last_recl_bins = saved_pb_size - hp->total_pb_size;
 		// possible, due to 'init_node'
 		if (saved_alloc_pages >= hp->total_alloc_pages)
@@ -296,24 +293,27 @@ toss:
 		int no_memory = (ok < 0);
 		reward = calc_reward(no_memory,
 			free_pages, hp->last_reclaimed, hp->last_recl_pages, elapsed_ns);
+	}
+	else
+		reward = -0.1;	// skip
 
-		if (action == 2) hp->gc1_count = 0;
+	if (action == 2) hp->gc1_count = 0;
 
-		int free_pages1 = mm_alloc_left() + nalloc_freed_pages();
-		int index1 = state_index(new_roots, free_pages1, hp->ts_last_gc, hp);
-		assert(index1 < AGC_Q_TABLE_SIZE);
-
+	int free_pages1 = mm_alloc_left() + nalloc_freed_pages();
+	int index1 = state_index(new_roots, free_pages1, hp->ts_last_gc, hp);
+	assert(index1 < AGC_Q_TABLE_SIZE);
+	
+	if (action != 0)
 		hp->last_roots = new_roots;
 
-		double maxq = q_table[index1].a[0];
-		for (int i = 1; i < AGC_ACTIONS; i++)
-			if (q_table[index1].a[i] > maxq)
-				maxq = q_table[index1].a[i];
+	double maxq = q_table[index1].a[0];
+	for (int i = 1; i < AGC_ACTIONS; i++)
+		if (q_table[index1].a[i] > maxq)
+			maxq = q_table[index1].a[i];
 
-		// learning
-		double change = AGC_ALPHA * (reward + AGC_GAMMA * maxq - q_table[index0].a[action]);
-		q_table[index0].a[action] += change;
-	}
+	// learning
+	double change = AGC_ALPHA * (reward + AGC_GAMMA * maxq - q_table[index0].a[action]);
+	q_table[index0].a[action] += change;
 
 prohibited:
 	return heap_alloc(hp, needed);
