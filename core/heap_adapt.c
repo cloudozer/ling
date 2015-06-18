@@ -244,8 +244,48 @@ static int state_index(uint64_t now, int free_pages, region_t *root_regs, int nr
 //#define K3	(0.6)
 
 //b2
+//#define K1	(10000)
+//#define K2	(1.25e-9)
+//#define K3	(0.6)
+
+//b3
+//#define K1	(2000)
+//#define K2	(1.25e-9)
+//#define K3	(0.6)
+
+//c0 (b2 copy)
+//#define K1	(10000)
+//#define K2	(1.25e-9)
+//#define K3	(0.6)
+
+//c1
+//#define K1	(10000)
+//#define K2	(4.17e-10)
+//#define K3	(0.6)
+
+//c2
+//#define K1	(10000)
+//#define K2	(1.25e-9)
+//#define K3	(0.2)
+
+//c3
+//#define K1	(10000)
+//#define K2	(3.75e-9)
+//#define K3	(0.6)
+
+//c4
+//#define K1	(10000)
+//#define K2	(1.25e-9)
+//#define K3	(1.8)
+
+//d1 (c0 copy)
+//#define K1	(10000)
+//#define K2	(2e-9)
+//#define K3	(0.6)
+
+//d2
 #define K1	(10000)
-#define K2	(1.25e-9)
+#define K2	(2.5e-9)
 #define K3	(0.6)
 
 static double calc_reward(int no_memory, uint32_t free_pages,
