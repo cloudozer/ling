@@ -405,9 +405,14 @@ prohibited:
 //#define K3	(0.6)
 
 //d2
-#define K1	(10000)
+//#define K1	(10000)
+//#define K2	(2.5e-9)
+//#define K3	(0.6)
+
+//x1
+#define K1	(5e4)
 #define K2	(2.5e-9)
-#define K3	(0.6)
+#define K3	(6e2)
 
 static double calc_reward(int no_memory, uint32_t free_pages,
 		uint32_t reclaimed, uint32_t recl_pages, uint64_t elapsed_ns)
@@ -455,9 +460,9 @@ static double calc_reward(int no_memory, uint32_t free_pages,
 		return -100.0;
 
 	if (recl_pages > 0)
-		return K1 * recl_pages * recl_pages / (elapsed_ns + 5000) - K2 * elapsed_ns * free_pages;
+		return K1 * recl_pages / (elapsed_ns + 5000) - K2 * elapsed_ns * free_pages;
 	
-	return K3 * reclaimed * reclaimed / (elapsed_ns + 5000) - K2 * elapsed_ns * free_pages;
+	return K3 * reclaimed / (elapsed_ns + 5000) - K2 * elapsed_ns * free_pages;
 }
 
 void dump_q_table(void)
