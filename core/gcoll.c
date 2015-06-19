@@ -79,21 +79,13 @@ static region_t *containing_region(region_t *regions, int n, void *addr);
 	(ss)->top->ends = (ends__); \
 } while (0)
 
-int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
+int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, int nr_regs)
 {
 	ssi(SYS_STATS_GC_RUNS);
 	hp->minor_gcs++;
 
-	// select the GC node
-	memnode_t *gc_node = (hp->gc_spot != 0)
-		? hp->gc_spot->next
-		: hp->nodes;
-
-	if (gc_node == 0)
-		gc_node = hp->nodes;
-
 	assert(gc_node != 0);
-	int is_init_node = gc_node == &hp->init_node;
+	int is_init_node = (gc_node == &hp->init_node);
 
 	region_t gc_region = {
 		.starts = (is_init_node)
@@ -133,8 +125,6 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 			*ref = gc_node->next;
 			nfree(gc_node);
 		}
-		else
-			hp->gc_spot = 0;
 
 		return 0;
 	}
@@ -288,14 +278,6 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	else
 		nfree(gc_node);
 
-	// save the last gc node
-	if (is_init_node)
-		hp->gc_spot = 0;
-	else
-		hp->gc_spot = (new_node != 0)
-			? new_node
-			: prev_node;
-
 	//printk("reclaimed %d done\n", copy_size - new_size);
 	hp->sweep_after_count++;
 	return 0;
@@ -303,16 +285,22 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 
 int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 {
+	hp->sweep_after_count = 0;
+
 	// copies all live terms to a single node
 	ssi(SYS_STATS_GC_RUNS);
-	//printk("GC:full-sweep: heap %pp total_size %d", hp, hp->total_size);
+	printk("GC:full-sweep: heap %pp total_size %d", hp, hp->total_size);
 
 	// Potentially, we can use init_node here if total_size is very low;
 	// this happens rarely and will complicate logic too much though.
 
+	assert(hp->total_size > 0);
 	memnode_t *sweep_node = nalloc_N(hp->total_size *sizeof(uint32_t));
 	if (sweep_node == 0)
+	{
+		printk("GC: cannot allocate sweep node: total_size %u\n", hp->total_size);
 		return -NO_MEMORY;
+	}
 	
 	// The estimate of the upper bound of regions needed to the process to
 	// complete - keep in sync with the formula in heap_gc_non_recursive()
@@ -324,6 +312,8 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	int stack_size = mm_alloc_left() *PAGE_SIZE;
 	if (upper_bound *sizeof(region_t) > stack_size)
 	{
+		printk("GC: stack too small: stack_size %d needed %d\n",
+				stack_size, upper_bound *sizeof(region_t));
 		//printk("heap_gc_full_sweep(): not enough memory for regions stack: upper %d\n", upper_bound);
 		nfree(sweep_node);
 		return -NO_MEMORY;
@@ -419,12 +409,12 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	sweep_node->next = &hp->init_node;
 	hp->nodes = sweep_node;
 
+	hp->gc_tail = sweep_node;
+	hp->gc_old = hp->gc_tail;
+
 	hp->total_size = sweep_size;
 
-	hp->gc_spot = 0;
-	hp->sweep_after_count = 0;
-
-	//printk(" done, sweep_size %d\n", sweep_size);
+	printk(" done, sweep_size %d\n", sweep_size);
 	return 0;
 }
 

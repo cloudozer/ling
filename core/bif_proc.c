@@ -348,6 +348,9 @@ term_t cbif_is_process_alive1(proc_t *proc, term_t *rs)
 
 term_t cbif_garbage_collect0(proc_t *proc, term_t *rs)
 {
+	if (proc->hp.total_size == 0)
+		return A_TRUE;	// avoid crash in heap_gc_full_sweep_N()
+
 	//NB: no live registers
 	//NB: supress_gc flag ignored
 

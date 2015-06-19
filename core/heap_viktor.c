@@ -31,67 +31,91 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "heap.h"
+
 #include "ling_common.h"
-#include "ling_xen.h"
 
-#define GC_RESERVE_RATIO	64
-#define GC_MAX_RESERVED		4096
+#define VGC_DEEP_FACTOR		(0xc0000000)
+#define VGC_RETIRE_AFTER	256
 
-/* page allocator data */
-static void *free_pages_start = 0;
-static void *free_pages_end = 0;
-static int nr_reserved_pages = 0;
+static uint32_t fast_rand(void);
 
-void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_frames)
+uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs)
 {
-	unsigned long pt_pfn = virt_to_pfn(pt_base) + nr_pt_frames;	// is it always so?
+	if (hp->nodes == hp->gc_old)
+		return heap_alloc(hp, needed);	// no young nodes
+	
+	// select a node between nodes and gc_old-1
+	memnode_t *gc_node = hp->nodes;
+	while (gc_node->next != hp->gc_old)
+	{
+		if (fast_rand() < VGC_DEEP_FACTOR)
+			break;
+		gc_node = gc_node->next;
+	}
 
-	arch_mm_init(&pt_pfn, pt_base, nr_pt_frames, nr_pages);
+	int ok = heap_gc_generational_N(hp, gc_node, root_regs, nr_regs);
+	if (ok < 0)
+		printk("GC:generational: not enough memory for GC run, ignored\n");
 
-	/* Initialize page allocator */
-	free_pages_start = pfn_to_virt(pt_pfn);
-	free_pages_end = pfn_to_virt(nr_pages);
+	if (++hp->retire_count >= VGC_RETIRE_AFTER)
+	{
+		hp->retire_count = 0;
+		if (heap_retire(hp, root_regs, nr_regs) < 0)
+			printk("GC:generational: not enough memory to retire, ignored\n");
+	}
 
-	/* GC cannot run if all pages are handed to other allocators; make a reserve */
-	nr_reserved_pages = (free_pages_end - free_pages_start) /PAGE_SIZE /GC_RESERVE_RATIO;
-	if (nr_reserved_pages > GC_MAX_RESERVED)
-		nr_reserved_pages = GC_MAX_RESERVED;
+	return heap_alloc(hp, needed);	// no young nodes
 }
 
-/**
- * Page allocator
- *
- * Gives away whole pages of memory; never expects them back
- *
- */
-
-void *mm_alloc_pages(int nr_pages)
+int heap_retire(heap_t *hp, region_t *root_regs, int nr_regs)
 {
-	int size = nr_pages *PAGE_SIZE;
-	if (free_pages_start + size > free_pages_end -nr_reserved_pages *PAGE_SIZE)
+	if (hp->full_sweep_after != 0 && hp->sweep_after_count >= hp->full_sweep_after)
+		return heap_gc_full_sweep_N(hp, root_regs, nr_regs);
+
+	if (hp->nodes == hp->gc_old)		// no young nodes
+		hp->gc_old = hp->gc_tail;		// (re)start from the bottom
+
+	if (hp->nodes == hp->gc_old)		// no young nodes, still
 		return 0;
-	void *mem = free_pages_start;
-	free_pages_start += size;
-	return mem;
+
+	memnode_t *gc_node = hp->nodes;
+	while (gc_node->next != hp->gc_old)
+		gc_node = gc_node->next;
+
+	// gc may destroy gc_node; save its predecessor
+	memnode_t *pred = hp->nodes;
+	if (pred != gc_node)
+		while (pred->next != gc_node)
+			pred = pred->next;
+	else
+		pred = 0;
+
+	//printk("GC:retire: heap 0x%08x node 0x%08x pages %d\n", hp, gc_node, gc_node->index);
+
+	int ok = heap_gc_generational_N(hp, gc_node, root_regs, nr_regs);
+	if (ok == 0)
+		hp->gc_old = (pred == 0) ?hp->nodes
+								 :pred->next;
+
+	return ok;
 }
 
-void *mm_alloc_page(void)
+static uint32_t fast_rand(void)
 {
-	return mm_alloc_pages(1);
+	static uint32_t x = 123456789;
+	static uint32_t y = 362436069;
+	static uint32_t z = 521288629;
+
+	x ^= x << 16;
+	x ^= x >> 5;
+	x ^= x << 1;
+
+	uint32_t t = x;
+	x = y;
+	y = z;
+	z = t ^ x ^ y;
+
+	return z;
 }
 
-int mm_alloc_left(void)
-{
-	return (free_pages_end - free_pages_start) / PAGE_SIZE;
-}
-
-// The unallocated space may be used as a temporary buffer provided that no
-// allocation happen during its use. mm_alloc_left() returns the size of the
-// buffer. The garbage collection region stack is the primary use of the buffer.
-//
-void *mm_alloc_tmp(void)
-{
-	return free_pages_start;
-}
-
-/*EOF*/
