@@ -179,7 +179,7 @@ static void garbage_collect_waiting_processes(uint64_t alloted_ns)
 		heap_t *hp = &fatty->hp;
 
 		int nr_regs = proc_count_root_regs(fatty);
-		if (nr_regs <= MAX_ROOT_REGS && !hp->suppress_gc)
+		if (nr_regs <= MAX_ROOT_REGS && !hp->suppress_gc && hp->gc_old != hp->nodes)
 		{
 			region_t root_regs[nr_regs];
 			proc_fill_root_regs(fatty, root_regs, fatty->cap.regs, fatty->cap.live);
