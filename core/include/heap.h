@@ -58,8 +58,7 @@ struct heap_t {
 	uint32_t *expected_top;
 #endif
 	// Viktor's GC
-	memnode_t *gc_old;
-	memnode_t *gc_tail;			// 0 or sweep_node
+	memnode_t *gc_scythe;
 	int retire_count;			// the counter for heap_retire() inside heap_ensure()
 };
 
@@ -71,6 +70,19 @@ struct region_t {
 
 #define HEAP_COPY_TERMS_MAX_DEPTH	1000
 
+#define HEAP_NEW_SIZE_RATIO			16
+#define HEAP_NEW_SIZE_CAP			(16384 - WSIZE(memnode_t))
+
+inline static int heap_chunk_size(int needed, int total_size)
+{
+	int csize = total_size / HEAP_NEW_SIZE_RATIO;
+	if (csize > HEAP_NEW_SIZE_CAP)
+		csize = HEAP_NEW_SIZE_CAP;
+	if (csize < needed)
+		csize = needed;
+	return csize;
+}
+
 void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends);
 
 void heap_reset_init_node_end(heap_t *hp, uint32_t *ends);
@@ -80,7 +92,12 @@ void heap_reset_init_node_end(heap_t *hp, uint32_t *ends);
 // Returns the heap top or 0 if there is not enough memory
 //
 uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs);
-int heap_retire(heap_t *hp, region_t *root_regs, int nr_regs);
+void heap_retire(heap_t *hp, region_t *root_regs, int nr_regs);
+
+void gc_hook0(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by proc_burn_fat0()
+int  gc_hook1(heap_t *hp, int needed, region_t *root_regs, int nr_regs); // called by heap_ensure()
+void gc_hook2(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by heap_retire()
+
 uint32_t *heap_alloc(heap_t *hp, int needed);
 uint32_t *heap_alloc_N(heap_t *hp, int needed);
 

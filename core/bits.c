@@ -469,10 +469,46 @@ void bits_put_bignum(bits_t *bs, bignum_t *bn, uint32_t bcount, int is_le)
 
 //-----------------------------------------------------------------------------
 
+//#define BINNODE_TATS
+#ifdef BINNODE_STATS
+#include "time.h"
+
+uint64_t bn_ts_ns;
+int bn_nr_pages_in;
+int bn_nr_nodes_in;
+int bn_nr_pages_out;
+int bn_nr_nodes_out;
+
+static void dump_binnode_stats(void)
+{
+	uint64_t now = monotonic_clock();
+	uint64_t elapsed_ns = now - bn_ts_ns;
+	double page_in_rate = (double) bn_nr_pages_in * 1e9 / elapsed_ns;
+	double node_in_rate = (double) bn_nr_nodes_in * 1e9 / elapsed_ns;
+	double page_out_rate = (double) bn_nr_pages_out * 1e9 / elapsed_ns;
+	double node_out_rate = (double) bn_nr_nodes_out * 1e9 / elapsed_ns;
+
+	printk("binnode: ts %lu ms: IN: %.1f nd/s %.1f pg/s OUT: %.1f nd/s %.1f pg/s\n",
+			now / 1000 / 1000, node_in_rate, page_in_rate, node_out_rate, page_out_rate);
+
+	bn_ts_ns = now;
+	bn_nr_nodes_in = 0;
+	bn_nr_pages_in = 0;
+	bn_nr_nodes_out = 0;
+	bn_nr_pages_out = 0;
+}
+#endif
+
 uint32_t total_binary_size = 0;
 
 binnode_t *binnode_make(uint32_t size)
 {
+#ifdef BINNODE_STATS
+	bn_nr_pages_out += (size + PAGE_SIZE -1) / PAGE_SIZE;
+	if (++bn_nr_nodes_out >= 20)
+		dump_binnode_stats();
+#endif
+
 	// binnode_t is the extended version of memnode_t; its size by coincidence
 	// is the same
 	assert(sizeof(binnode_t) == sizeof(memnode_t));
@@ -490,6 +526,12 @@ binnode_t *binnode_make(uint32_t size)
 
 binnode_t *binnode_make_N(uint32_t size)
 {
+#ifdef BINNODE_STATS
+	bn_nr_pages_out += (size + PAGE_SIZE -1) / PAGE_SIZE;
+	if (++bn_nr_nodes_out >= 20)
+		dump_binnode_stats();
+#endif
+
 	// binnode_t is the extended version of memnode_t; its size by coincidence
 	// is the same
 	assert(sizeof(binnode_t) == sizeof(memnode_t));
@@ -505,6 +547,11 @@ binnode_t *binnode_make_N(uint32_t size)
 
 void binnode_destroy(binnode_t *bnode)
 {
+#ifdef BINNODE_STATS
+	bn_nr_pages_in += bnode->index;
+	bn_nr_nodes_in++;
+#endif
+
 	total_binary_size -= bnode->index *PAGE_SIZE;
 	nfree((memnode_t *)bnode);
 }

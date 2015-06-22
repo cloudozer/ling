@@ -76,7 +76,8 @@ term_t cbif_reverse2(proc_t *proc, term_t *regs)
 	if (len < 0)
 		badarg(List);	// the first list can not be odd
 
-	uint32_t *htop = proc_burn_fat(proc, len*2, regs, 2);
+	//uint32_t *htop = proc_burn_fat(proc, len*2, regs, 2);
+	uint32_t *htop = heap_alloc(&proc->hp, len*2);
 
 	// reload after gc
 	List = regs[0];

@@ -179,13 +179,12 @@ static void garbage_collect_waiting_processes(uint64_t alloted_ns)
 		heap_t *hp = &fatty->hp;
 
 		int nr_regs = proc_count_root_regs(fatty);
-		if (nr_regs <= MAX_ROOT_REGS && !hp->suppress_gc && hp->gc_old != hp->nodes)
+		if (nr_regs <= MAX_ROOT_REGS && !hp->suppress_gc && hp->gc_scythe != 0)
 		{
 			region_t root_regs[nr_regs];
 			proc_fill_root_regs(fatty, root_regs, fatty->cap.regs, fatty->cap.live);
 			uint64_t gc_started_ns = monotonic_clock();
-			if (heap_retire(hp, root_regs, nr_regs) < 0)
-				break;	// not enough memory
+			heap_retire(hp, root_regs, nr_regs);
 			uint64_t consumed_ns = (monotonic_clock() -gc_started_ns);
 			if (consumed_ns > alloted_ns)
 				break;

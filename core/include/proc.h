@@ -197,6 +197,7 @@ void inter_links_notify(inter_links_t *links, term_t src, term_t reason);
 void inter_links_done(inter_links_t *links);
 int proc_count_root_regs(proc_t *proc);
 void proc_fill_root_regs(proc_t *proc, region_t *root_regs, term_t *rs, int live);
+void proc_burn_fat0(proc_t *proc, term_t *rs, int live);
 uint32_t *proc_burn_fat(proc_t *proc, int needed, term_t *rs, int live);
 void proc_destroy(proc_t *proc);
 

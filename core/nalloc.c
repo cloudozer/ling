@@ -41,6 +41,36 @@
 
 #include "mm.h"
 
+//#define NALLOC_STATS
+#ifdef NALLOC_STATS
+#include "time.h"
+
+uint64_t na_ts_ns;
+int na_nr_pages_in;
+int na_nr_nodes_in;
+int na_nr_pages_out;
+int na_nr_nodes_out;
+
+static void dump_nalloc_stats(void)
+{
+	uint64_t now = monotonic_clock();
+	uint64_t elapsed_ns = now - na_ts_ns;
+	double page_in_rate = (double) na_nr_pages_in * 1e9 / elapsed_ns;
+	double node_in_rate = (double) na_nr_nodes_in * 1e9 / elapsed_ns;
+	double page_out_rate = (double) na_nr_pages_out * 1e9 / elapsed_ns;
+	double node_out_rate = (double) na_nr_nodes_out * 1e9 / elapsed_ns;
+
+	printk("nalloc: ts %lu ms: IN: %.1f nd/s %.1f pg/s OUT: %.1f nd/s %.1f pg/s\n",
+			now / 1000 / 1000, node_in_rate, page_in_rate, node_out_rate, page_out_rate);
+
+	na_ts_ns = now;
+	na_nr_nodes_in = 0;
+	na_nr_pages_in = 0;
+	na_nr_nodes_out = 0;
+	na_nr_pages_out = 0;
+}
+#endif
+
 #define NBOUND	4096
 #define NINDEX	12
 
@@ -61,6 +91,14 @@ void nalloc_init(void)
 		node_allocator.free[i] = 0;
 
 	node_allocator.nr_freed_pages = 0;
+
+#ifdef NALLOC_STATS
+	na_ts_ns = monotonic_clock();
+	na_nr_pages_in = 0;
+	na_nr_nodes_in = 0;
+	na_nr_pages_out = 0;
+	na_nr_nodes_out = 0;
+#endif
 }
 
 static memnode_t *nalloc_internal(int size);
@@ -101,8 +139,14 @@ static memnode_t *nalloc_internal(int size)
 	// ext_size accomodates both the client memory and the memnode_t structure
 	// itself aligned to NBOUND
 	int ext_size = (sizeof(memnode_t) + size + (NBOUND-1)) & ~(NBOUND-1);
-
 	int index = ext_size >> NINDEX;
+
+#ifdef NALLOC_STATS
+	na_nr_pages_out += index;
+	if (++na_nr_nodes_out >= 1000)
+		dump_nalloc_stats();
+#endif
+
 	if (index >= MAX_INDEX)
 	{
 		// The large size is large -
@@ -251,6 +295,11 @@ void nfree(memnode_t *node)
 {
 	if (node == 0)
 		return;
+
+#ifdef NALLOC_STATS
+	na_nr_pages_in += node->index;
+	na_nr_nodes_in++;
+#endif
 
 	// reset starts; the caller cannot touch .ends
 	node->starts = NODE_THRESHOLD(node);

@@ -330,7 +330,7 @@ schedule:
 	memcpy(proc->cap.fr, fr, NUM_FREGS*sizeof(double));
 
 	if (proc->result.what == SLICE_RESULT_YIELD)
-		proc_burn_fat(proc, 0, proc->cap.regs, proc->cap.live);
+		proc_burn_fat0(proc, proc->cap.regs, proc->cap.live);
 
 	proc = scheduler_next(proc, reds_left);
 
@@ -3287,7 +3287,7 @@ swap_out();
 int live = <% arg(Live) %>;
 rs[live] = tmp_arg1;
 rs[live+1] = tmp_arg2;
-proc_burn_fat(proc, 0, rs, live +2);
+proc_burn_fat0(proc, rs, live +2);
 tmp_arg2 = rs[live +1];
 tmp_arg1 = rs[live];
 
@@ -3359,7 +3359,7 @@ if (x < 0)
 if (osz >= BS_INIT_FAIL_GC_THRESH)
 {
 	swap_out();
-	proc_burn_fat(proc, 0, rs, <% arg(Live) %>);
+	proc_burn_fat0(proc, rs, <% arg(Live) %>);
 	swap_in();
 }
 
@@ -4119,7 +4119,7 @@ if (r0 == noval)
 		//
 		
 		swap_out();
-		proc_burn_fat(proc, 0, rs, 3);
+		proc_burn_fat0(proc, rs, 3);
 
 		// Both error and exit exceptions are converted to {'EXIT',Reason}
 	

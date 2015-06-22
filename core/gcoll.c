@@ -44,6 +44,8 @@
 #include "string.h"
 #include "mm.h"
 
+#define HEAP_GC_MAX_INDEX	16
+
 typedef struct regions_t regions_t;
 struct regions_t {
 	region_t *top;
@@ -85,6 +87,9 @@ int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, 
 	hp->minor_gcs++;
 
 	assert(gc_node != 0);
+	if (gc_node->index > HEAP_GC_MAX_INDEX)
+		return 0;
+
 	int is_init_node = (gc_node == &hp->init_node);
 
 	region_t gc_region = {
@@ -164,7 +169,9 @@ int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, 
 		new_node = gc_node->next;
 	else
 	{
-		new_node = nalloc_N(copy_size*sizeof(uint32_t));
+		// always allocate standard size chunks
+		int csize = heap_chunk_size(copy_size, hp->total_size);
+		new_node = nalloc_N(csize *sizeof(uint32_t));
 		if (new_node == 0)
 			return -NO_MEMORY;
 		nodes_merging = 0;
@@ -408,9 +415,7 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	hp->init_node.starts = hp->init_node_threshold;	// empty init_node
 	sweep_node->next = &hp->init_node;
 	hp->nodes = sweep_node;
-
-	hp->gc_tail = sweep_node;
-	hp->gc_old = hp->gc_tail;
+	hp->gc_scythe = sweep_node;
 
 	hp->total_size = sweep_size;
 

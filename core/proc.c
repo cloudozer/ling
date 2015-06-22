@@ -350,6 +350,16 @@ void proc_fill_root_regs(proc_t *proc, region_t *root_regs, term_t *rs, int live
 										proc->pending_timers);
 }
 
+void proc_burn_fat0(proc_t *proc, term_t *rs, int live)
+{
+	int nr_regs = proc_count_root_regs(proc);
+	if (nr_regs > MAX_ROOT_REGS || proc->hp.suppress_gc)
+		return;
+	region_t root_regs[nr_regs];
+	proc_fill_root_regs(proc, root_regs, rs, live);
+	gc_hook0(&proc->hp, root_regs, nr_regs);
+}
+
 uint32_t *proc_burn_fat(proc_t *proc, int needed, term_t *rs, int live)
 {
 	//NB: registers values and the live count are present in the time
