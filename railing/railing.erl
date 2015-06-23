@@ -43,7 +43,10 @@ ld(posix_x86) ->
 			"-arch", "x86_64",
 			"-framework", "System"
 		];
-		_ -> gold()
+		{unix, linux} ->
+			["gcc", "-lm"];
+		_ ->
+			gold()
 	end;
 ld(_) -> gold().
 

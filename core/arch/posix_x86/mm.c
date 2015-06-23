@@ -10,6 +10,12 @@
 #include <sys/mman.h>
 
 #define MEMORY_SIZE		(256*1024*1024)
+#ifdef __APPLE__
+#	define MMAP_ADDR NULL
+#elif __linux
+#	define MMAP_ADDR 0x10000000
+#endif
+
 #if 0
 
 #define MEMORY_END		((void *)(256*1024*1024))
@@ -38,7 +44,7 @@ void mm_init(void)
 	extern uint8_t _bss_end;
 	memset(&_bss_start, 0, &_bss_end - &_bss_start);
 #endif
-	mem_start = mmap(NULL, MEMORY_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
+	mem_start = mmap(MMAP_ADDR, MEMORY_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
 	if (mem_start == MAP_FAILED) {
 		exit(43);
 	}
