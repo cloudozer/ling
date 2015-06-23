@@ -115,6 +115,8 @@ void start_ling(start_info_t *si)
 	HYPERVISOR_set_callbacks(0, 0, 0, 0);
 #endif
 
+	// LING does not support more than 4G of memory.
+	// Postpone the check until the console is available.
 	mm_init(start_info.nr_pages, start_info.pt_base, start_info.nr_pt_frames);
 	nalloc_init();
 
@@ -128,6 +130,9 @@ void start_ling(start_info_t *si)
 
 	xenstore_read("name", my_domain_name, sizeof(my_domain_name));
 	//print_xenstore_values();
+
+	if (start_info.nr_pages > 1024*1024)
+		fatal_error("LING does not support domains larger than 4Gb");
 
 	if (disk_vbd_is_present())
 		disk_init();

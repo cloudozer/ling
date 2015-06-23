@@ -196,12 +196,12 @@ int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, 
 	// with respect to the number of regions to be put on the stack relative to
 	// the term size of a cons cell. This may not be the case as some programs
 	// seems to require more. The upper bound esimation requires more thought.
-	int upper_bound = nr_regs + (copy_size + total_active_size +1) /2 +256;	// 2 is the size of a cons cell
+	uint32_t upper_bound = nr_regs + (copy_size + total_active_size +1) /2 +256; // 2 is the size of a cons cell
 
 	// The region stack now uses a unallocated page space. It is possible to use
 	// it because no allocations are allowed during term marshalling.
 	void *stack_starts = mm_alloc_tmp();
-	int stack_size = mm_alloc_left() *PAGE_SIZE;
+	uint32_t stack_size = mm_alloc_left() *PAGE_SIZE;
 	if (upper_bound *sizeof(region_t) > stack_size)
 	{
 		//debug("heap_gc_non_recursive_N(): not enough memory for regions stack: upper %d\n", upper_bound);
@@ -311,12 +311,12 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	
 	// The estimate of the upper bound of regions needed to the process to
 	// complete - keep in sync with the formula in heap_gc_non_recursive()
-	int upper_bound = nr_regs + (hp->total_size +1) /2 +256;
+	uint32_t upper_bound = nr_regs + (hp->total_size +1) /2 +256;
 
 	// The region stack now uses a unallocated page space. It is possible to use
 	// it because no allocations are allowed during term marshalling.
 	void *stack_starts = mm_alloc_tmp();
-	int stack_size = mm_alloc_left() *PAGE_SIZE;
+	uint32_t stack_size = mm_alloc_left() *PAGE_SIZE;
 	if (upper_bound *sizeof(region_t) > stack_size)
 	{
 		printk("GC: stack too small: stack_size %d needed %d\n",
