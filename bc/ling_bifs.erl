@@ -3,6 +3,7 @@
 
 is_builtin(crypto, exor, 2) -> true;
 is_builtin(crypto, rand_bytes, 1) -> true;
+is_builtin(crypto, aes_ctr_stream_crypt, 3) -> true;
 is_builtin(crypto, aes_cbc_crypt, 4) -> true;
 is_builtin(crypto, sha512_mac_n, 3) -> true;
 is_builtin(crypto, sha384_mac_n, 3) -> true;

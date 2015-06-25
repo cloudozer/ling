@@ -701,7 +701,8 @@ term_t cbif_binary_to_list1(proc_t *proc, term_t *regs)
 		badarg(Bin);
 
 	int size = (bs.ends - bs.starts) /8;
-	uint32_t *htop = proc_burn_fat(proc, size*2, regs, 1);
+	//uint32_t *htop = proc_burn_fat(proc, size*2, regs, 1);
+	uint32_t *htop = heap_alloc(&proc->hp, size*2);
 
 	// reload after gc
 	Bin = regs[0];
@@ -758,7 +759,8 @@ term_t cbif_binary_to_list3(proc_t *proc, term_t *regs)
 		badarg(Stop);
 
 	int size = end -beg +1;
-	uint32_t *htop = proc_burn_fat(proc, size*2, regs, 3);
+	//uint32_t *htop = proc_burn_fat(proc, size*2, regs, 3);
+	uint32_t *htop = heap_alloc(&proc->hp, size*2);
 
 	// reload after gc
 	Bin = regs[0];
@@ -797,7 +799,8 @@ term_t cbif_bitstring_to_list1(proc_t *proc, term_t *regs)
 	int needed = 2*size;
 	if (((bs.ends - bs.starts) & 7) != 0)
 		needed += WSIZE(t_sub_bin_t) +2; // +2 for the last cons
-	uint32_t *htop = proc_burn_fat(proc, needed, regs, 1);
+	//uint32_t *htop = proc_burn_fat(proc, needed, regs, 1);
+	uint32_t *htop = heap_alloc(&proc->hp, needed);
 
 	// reload after gc
 	Bin = regs[0];
@@ -1295,7 +1298,6 @@ term_t cbif_plusplus2(proc_t *proc, term_t *regs)
 		badarg(As);	// the first list can not be odd
 
 	//TODO: unbounded alloc, use proc_burn_fat()
-	//
 	uint32_t *htop = heap_alloc(&proc->hp, len*2);
 	term_t result = tag_cons(htop);
 
@@ -1359,7 +1361,7 @@ term_t cbif_minusminus2(proc_t *proc, term_t *regs)
 	term_t *acons = peel_cons(As);
 	term_t res_r = nil;
 
-	//TODO: semi-unbounded alloc, use proc_burn_fat()
+	//TODO: semi-unbounded alloc, use proc_burn_fat()?
 	//
 	do {
 		int copy = 1;

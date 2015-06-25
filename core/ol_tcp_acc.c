@@ -84,7 +84,8 @@ static void reuse_pending(acc_pend_t **free_pends, acc_pend_t *elem);
 // turn an ordinary TCP outlet to a listening mode
 void ol_tcp_acc_promote(outlet_t *ol, struct tcp_pcb *old_pcb, int backlog)
 {
-	assert(ol->recv_buf_node == 0);
+	//XXX: see similar assert() in ol_tcp.c
+	//assert(ol->recv_buf_node == 0);
 	ol->vtab = &ol_tcp_acc_vtab;	// switch outlet behaviour
 
 	struct tcp_pcb *smaller_pcb = tcp_listen(old_pcb);

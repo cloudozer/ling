@@ -45,6 +45,7 @@
 #include <nettle/hmac.h>
 #include <nettle/aes.h>
 #include <nettle/cbc.h>
+#include <nettle/ctr.h>
 
 #include "crc32.h"
 #include "adler32.h"
@@ -105,4 +106,3 @@
 	return noval; \
 } while (0)
 
-//EOF

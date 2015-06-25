@@ -458,7 +458,9 @@ static term_t ol_tcp_control(outlet_t *ol,
 
 	case INET_REQ_LISTEN:
 	{
-		assert(ol->recv_buf_node == 0);	// or use destroy_private()
+		//XXX: how rec_buf_size option gets inherited?
+
+		//assert(ol->recv_buf_node == 0);	// or use destroy_private()
 		int backlog = GET_UINT_16(data);
 		ol_tcp_acc_promote(ol, ol->tcp, backlog);
 		*reply++ = INET_REP_OK;

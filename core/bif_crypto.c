@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "bif_impl.h"
 
 term_t cbif_sha1(proc_t *proc, term_t *regs)
@@ -222,9 +218,44 @@ term_t cbif_sha224_mac_n3(proc_t *proc, term_t *regs)
 
 term_t cbif_sha256_mac_n3(proc_t *proc, term_t *regs)
 {
-	//TODO
-	printk("sha256_mac_n(%pt, %pt, %pt) called\n", T(regs[0]), T(regs[1]), T(regs[2]));
-	bif_not_implemented();
+	term_t Key  = regs[0];
+	term_t Data = regs[1];
+	term_t Size = regs[2];
+
+	if (!is_list(Key) && !is_boxed_binary(Key))
+		badarg(Key);
+	if (!is_list(Data) && !is_boxed_binary(Data))
+		badarg(Data);
+	if (!is_int(Size))
+		badarg(Size);
+
+	int trunc_size = int_value(Size);
+	if (trunc_size < 1 || trunc_size > SHA256_DIGEST_SIZE)
+		badarg(Size);
+
+	int key_size = iolist_size(Key);
+	if (key_size < 0)
+		badarg(Key);
+	assert(key_size <= 65536);	// TODO: use heap_tmp_buf for a longer Key
+	uint8_t key_buf[key_size];
+	iolist_flatten(Key, key_buf);
+
+	int data_size = iolist_size(Data);
+	if (data_size < 0)
+		badarg(Data);
+	assert(data_size <= 65536);	// TODO: use heap_tmp_buf for larger Data
+	uint8_t data_buf[data_size];
+	iolist_flatten(Data, data_buf);
+
+	struct hmac_sha256_ctx ctx;
+	hmac_sha256_set_key(&ctx, key_size, key_buf);
+	hmac_sha256_update(&ctx, data_size, data_buf);
+
+	uint8_t *ptr;
+	term_t mac = heap_make_bin(&proc->hp, trunc_size, &ptr);
+	hmac_sha256_digest(&ctx, trunc_size, ptr);
+
+	return mac;
 }
 
 term_t cbif_sha384_mac_n3(proc_t *proc, term_t *regs)
@@ -296,6 +327,54 @@ term_t cbif_aes_cbc_crypt4(proc_t *proc, term_t *regs)
 		CBC_DECRYPT(&ctx, aes_decrypt, data_size, ptr, data_buf);
 
 	return cipher_text;
+}
+
+term_t cbif_aes_ctr_stream_crypt3(proc_t *proc, term_t *regs)
+{
+	term_t Key     = regs[0];
+	term_t Counter = regs[1];
+	term_t Data    = regs[2];
+
+	if (!is_list(Key) && !is_boxed_binary(Key))
+		badarg(Key);
+	if (!is_list(Counter) && !is_boxed_binary(Counter))
+		badarg(Counter);
+	if (!is_list(Data) && !is_boxed_binary(Data))
+		badarg(Data);
+
+	int key_size = iolist_size(Key);
+	if (key_size < AES_MIN_KEY_SIZE || key_size > AES_MAX_KEY_SIZE)
+		badarg(Key);
+	uint8_t key_buf[key_size];
+	iolist_flatten(Key, key_buf);
+
+	int counter_size = iolist_size(Counter);
+	if (counter_size != AES_BLOCK_SIZE)
+		badarg(Counter);
+	uint8_t counter_buf[AES_BLOCK_SIZE];
+	iolist_flatten(Counter, counter_buf);
+
+	int data_size = iolist_size(Data);
+	if (data_size < 0)
+		badarg(Data);
+	assert(data_size <= 65536);		//TODO: use heap_tmp_buf for larger Data
+	uint8_t data_buf[data_size];
+	iolist_flatten(Data, data_buf);
+
+	struct CTR_CTX(struct aes_ctx, AES_BLOCK_SIZE) ctx;
+	aes_set_encrypt_key((struct aes_ctx *)&ctx, key_size, key_buf);
+	CTR_SET_COUNTER(&ctx, counter_buf);
+
+	uint8_t *txt_ptr;
+	term_t cipher_text = heap_make_bin(&proc->hp, data_size, &txt_ptr);
+	CTR_CRYPT(&ctx, aes_encrypt, data_size, txt_ptr, data_buf);
+
+	uint8_t *ctr2_ptr;
+	term_t counter2 = heap_make_bin(&proc->hp, AES_BLOCK_SIZE, &ctr2_ptr);
+	memcpy(ctr2_ptr, ctx.ctr, AES_BLOCK_SIZE);
+
+	term_t state = heap_tuple2(&proc->hp, Key, counter2);
+	return heap_tuple2(&proc->hp, state, cipher_text);
 }
 
 term_t cbif_rand_bytes1(proc_t *proc, term_t *regs)
