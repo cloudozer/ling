@@ -140,7 +140,7 @@ term_t trace_module = noval;
 #endif
 
 // tunable
-#define BS_INIT_FAIL_GC_THRESH	8000
+//#define BS_INIT_FAIL_GC_THRESH	8000
 
 #define DELIVER_SIGNALS 	1
 
@@ -1180,7 +1180,6 @@ msg_queue_next(&proc->mailbox);
 <%@ variant(Index, wait, Id, [Loop], Wsz, Attrs) %>
 <% Id %>: <% hc(Attrs) %> {
 <% inc(Index) %>
-//TODO: should we burn process fat here too?
 ip = <% arg(Loop) %>;
 proc->result.what = SLICE_RESULT_WAIT;
 proc->result.until_when = LING_INFINITY;
@@ -3330,7 +3329,7 @@ swap_out();
 int live = <% arg(Live) %>;
 rs[live] = tmp_arg1;
 rs[live+1] = tmp_arg2;
-proc_burn_fat_y(proc, rs, live +2);
+//proc_burn_fat_y(proc, rs, live +2);
 tmp_arg2 = rs[live +1];
 tmp_arg1 = rs[live];
 
@@ -3399,12 +3398,12 @@ if (x < 0)
 	badarg();
 }
 
-if (osz >= BS_INIT_FAIL_GC_THRESH)
-{
-	swap_out();
-	proc_burn_fat_y(proc, rs, <% arg(Live) %>);
-	swap_in();
-}
+//if (osz >= BS_INIT_FAIL_GC_THRESH)
+//{
+//	swap_out();
+//	proc_burn_fat_y(proc, rs, <% arg(Live) %>);
+//	swap_in();
+//}
 
 binnode_t *node = binnode_make(osz);
 int needed = WSIZE(t_proc_bin_t) + WSIZE(t_sub_bin_t) + <% arg(Extra) %>;
@@ -3642,7 +3641,6 @@ int num_slots = <% arg(NumSlots) %> +1;	//NB: +1
 if (boxed_tag(bdata) != SUBTAG_MATCH_CTX
 			|| match_ctx_num_slots(bdata) < num_slots)
 {
-	//NB: Live unused, burn some fat?
 	light_swap_out();
 	bin = bits_bs_start_match2(bin, num_slots, &proc->hp);
 	light_swap_in();

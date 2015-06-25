@@ -36,7 +36,7 @@
 #include "ling_common.h"
 
 #define VGC_RETIRE_AFTER	50
-#define VGC_RETIRE_INCR		20
+#define VGC_RETIRE_INCR		7
 #define VGC_GC_HYSTER		512
 
 //static uint32_t fast_rand(void);
