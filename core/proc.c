@@ -350,7 +350,7 @@ void proc_fill_root_regs(proc_t *proc, region_t *root_regs, term_t *rs, int live
 										proc->pending_timers);
 }
 
-void proc_burn_fat0(proc_t *proc, term_t *rs, int live)
+void proc_burn_fat_y(proc_t *proc, term_t *rs, int live)
 {
 	int nr_regs = proc_count_root_regs(proc);
 	if (nr_regs > MAX_ROOT_REGS || proc->hp.suppress_gc)
@@ -360,26 +360,14 @@ void proc_burn_fat0(proc_t *proc, term_t *rs, int live)
 	gc_hook0(&proc->hp, root_regs, nr_regs);
 }
 
-uint32_t *proc_burn_fat(proc_t *proc, int needed, term_t *rs, int live)
+void proc_burn_fat_w(proc_t *proc, term_t *rs, int live)
 {
-	//NB: registers values and the live count are present in the time
-	// capsule but it is better to receive the reference to eliminate
-	// excessive copying
-	//
-
 	int nr_regs = proc_count_root_regs(proc);
-
-	//NB: There can be a lot of root regions. The typical cause is an
-	// overgrown mailbox. The space for root regions should be
-	// allocated dynamically.
-	//
 	if (nr_regs > MAX_ROOT_REGS || proc->hp.suppress_gc)
-		return heap_alloc(&proc->hp, needed);
-
+		return;
 	region_t root_regs[nr_regs];
 	proc_fill_root_regs(proc, root_regs, rs, live);
-
-	return heap_ensure(&proc->hp, needed, root_regs, nr_regs);
+	gc_hook3(&proc->hp, root_regs, nr_regs);
 }
 
 void proc_destroy(proc_t *proc)

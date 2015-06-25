@@ -36,6 +36,7 @@
 #include "ling_common.h"
 
 #define VGC_RETIRE_AFTER	50
+#define VGC_RETIRE_INCR		20
 #define VGC_GC_HYSTER		512
 
 //static uint32_t fast_rand(void);
@@ -74,7 +75,7 @@ static inline int will_expand(memnode_t *node, int needed)
 	return (node->ends - node->starts < needed);
 }
 
-// proc_burn_fat0()
+// proc_burn_fat_y()
 void gc_hook0(heap_t *hp, region_t *root_regs, int nr_regs)
 {
 	// select the youngestest node
@@ -154,6 +155,17 @@ void gc_hook2(heap_t *hp, region_t *root_regs, int nr_regs)
 	int ok = heap_gc_generational_N(hp, hp->gc_scythe, root_regs, nr_regs);
 	if (ok == 0)
 		hp->gc_scythe = new_scythe;
+}
+
+// proc_burn_fat_w()
+void gc_hook3(heap_t *hp, region_t *root_regs, int nr_regs)
+{
+	hp->retire_count += VGC_RETIRE_INCR;
+	if (hp->retire_count >= VGC_RETIRE_AFTER)
+	{
+		hp->retire_count = 0;
+		heap_retire(hp, root_regs, nr_regs);
+	}
 }
 
 //static uint32_t fast_rand(void)

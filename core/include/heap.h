@@ -94,9 +94,10 @@ void heap_reset_init_node_end(heap_t *hp, uint32_t *ends);
 uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs);
 void heap_retire(heap_t *hp, region_t *root_regs, int nr_regs);
 
-void gc_hook0(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by proc_burn_fat0()
+void gc_hook0(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by proc_burn_fat_y()
 int  gc_hook1(heap_t *hp, int needed, region_t *root_regs, int nr_regs); // called by heap_ensure()
 void gc_hook2(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by heap_retire()
+void gc_hook3(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by heap_burn_fat_w()
 
 uint32_t *heap_alloc(heap_t *hp, int needed);
 uint32_t *heap_alloc_N(heap_t *hp, int needed);
