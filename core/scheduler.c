@@ -102,6 +102,8 @@ void lwip_check_timeouts(void);
 
 void netif_poll_all(void);
 
+int netmap_do_pending(void);
+
 #ifdef LING_DEBUG
 static enum sched_phase_t current_phase = PHASE_NONE;
 
@@ -386,6 +388,7 @@ do_pending:
 	etimer_expired(ticks);
 	// 'hardware' events
 	int nr_fired = events_do_pending();
+	nr_fired += netmap_do_pending();
 	update_event_times(nr_fired, ticks);
 	set_phase(PHASE_NEXT);
 
