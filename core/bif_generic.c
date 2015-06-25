@@ -701,7 +701,7 @@ term_t cbif_binary_to_list1(proc_t *proc, term_t *regs)
 		badarg(Bin);
 
 	int size = (bs.ends - bs.starts) /8;
-	uint32_t *htop = proc_burn_fat(proc, size*2, regs, 1);
+	uint32_t *htop = heap_alloc(&proc->hp, size*2);//proc_burn_fat(proc, size*2, regs, 1);
 
 	// reload after gc
 	Bin = regs[0];
@@ -758,7 +758,7 @@ term_t cbif_binary_to_list3(proc_t *proc, term_t *regs)
 		badarg(Stop);
 
 	int size = end -beg +1;
-	uint32_t *htop = proc_burn_fat(proc, size*2, regs, 3);
+	uint32_t *htop = heap_alloc(&proc->hp, size*2);//proc_burn_fat(proc, size*2, regs, 3);
 
 	// reload after gc
 	Bin = regs[0];
@@ -797,7 +797,7 @@ term_t cbif_bitstring_to_list1(proc_t *proc, term_t *regs)
 	int needed = 2*size;
 	if (((bs.ends - bs.starts) & 7) != 0)
 		needed += WSIZE(t_sub_bin_t) +2; // +2 for the last cons
-	uint32_t *htop = proc_burn_fat(proc, needed, regs, 1);
+	uint32_t *htop = heap_alloc(&proc->hp, needed);//proc_burn_fat(proc, needed, regs, 1);
 
 	// reload after gc
 	Bin = regs[0];
