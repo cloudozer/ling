@@ -35,11 +35,43 @@
 
 #include "ling_common.h"
 
-#define VGC_RETIRE_AFTER	50
-#define VGC_RETIRE_INCR		10
-#define VGC_GC_HYSTER		512
+#include "string.h"
 
 //static uint32_t fast_rand(void);
+
+static void do_action(int action, heap_t *hp, region_t *root_regs, int nr_regs);
+
+struct gc_point_t {
+	int up;
+	int down;
+};
+
+static struct gc_point_t gc_model[GC_NR_LOCS][GC_NR_ACTS];
+
+static int gc_loc_counters[GC_NR_LOCS] = { 0 };
+static int gc_act_counters[GC_NR_ACTS] = { 0 };
+
+void gc_opt_init(void)
+{
+	memset(gc_model, 0, sizeof(gc_model));
+	struct gc_point_t *pts = gc_model[GC_LOC_PROC_YIELD];
+	pts[GC_ACT_YOUNGEST].up = 1;  pts[GC_ACT_YOUNGEST].down = 1;
+	pts[GC_ACT_MERGEABLE].up = 1;  pts[GC_ACT_MERGEABLE].down = 2;
+	pts[GC_ACT_SCYTHE].up = 1;    pts[GC_ACT_SCYTHE].down = 64;
+
+	pts = gc_model[GC_LOC_PROC_WAIT];
+	//pts[GC_ACT_YOUNGEST].up = 1;  pts[GC_ACT_YOUNGEST].down = 2;
+	pts[GC_ACT_MERGEABLE].up = 1;    pts[GC_ACT_MERGEABLE].down = 8;
+	pts[GC_ACT_SCYTHE].up = 1;    pts[GC_ACT_SCYTHE].down = 64;
+
+	pts = gc_model[GC_LOC_TEST_HEAP];
+	pts[GC_ACT_YOUNGEST].up = 1;  pts[GC_ACT_YOUNGEST].down = 1;
+	pts[GC_ACT_YOUNGER].up = 1;   pts[GC_ACT_YOUNGER].down = 1;
+	pts[GC_ACT_MERGEABLE].up = 1; pts[GC_ACT_MERGEABLE].down = 1;
+
+	pts = gc_model[GC_LOC_IDLE];
+	pts[GC_ACT_SCYTHE].up = 1;    pts[GC_ACT_SCYTHE].down = 1;
+}
 
 static int will_merge(memnode_t *cur)
 {
@@ -70,54 +102,46 @@ static int collect_mergeable(heap_t *hp, region_t *root_regs, int nr_regs)
 	return heap_gc_generational_N(hp, cur, root_regs, nr_regs);
 }
 
-static inline int will_expand(memnode_t *node, int needed)
+void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_regs)
 {
-	return (node->ends - node->starts < needed);
-}
-
-// proc_burn_fat_y()
-void gc_hook0(heap_t *hp, region_t *root_regs, int nr_regs)
-{
-	// select the youngestest node
-	memnode_t *youngest = hp->nodes;
-	if (youngest != 0)
+	gc_loc_counters[gc_loc]++;
+	for (int action = 0; action < GC_NR_ACTS; action++)
 	{
-		if (hp->gc_scythe == youngest)
-			hp->gc_scythe = hp->gc_scythe->next;	// make sure gc_scythe is valid
-
-		int ok = heap_gc_generational_N(hp, youngest, root_regs, nr_regs);
-		if (ok < 0)
-			printk("GC:generational: not enough memory for GC run, ignored\n");
-	}
-
-	if (++hp->retire_count >= VGC_RETIRE_AFTER)
-	{
-		hp->retire_count = 0;
-		heap_retire(hp, root_regs, nr_regs);
+		struct gc_point_t *pnt = &gc_model[gc_loc][action];
+		if (pnt->up > 0)
+		{
+			int *counter = &hp->gc_counters[gc_loc][action];
+			*counter += pnt->up;
+			if (*counter >= pnt->down)
+			{
+				gc_act_counters[action]++;
+				do_action(action, hp, root_regs, nr_regs);
+				*counter -= pnt->down;
+			}
+		}
 	}
 }
 
-// heap_ensure()
-int gc_hook1(heap_t *hp, int needed, region_t *root_regs, int nr_regs)
+static void do_action(int action, heap_t *hp, region_t *root_regs, int nr_regs)
 {
-	assert(needed > 0);
-	needed += VGC_GC_HYSTER;	// avoid degenerate GC of the youngest node
-
-	// select the youngestest node
-	memnode_t *youngest = hp->nodes;
-	if (youngest != 0)
+	switch (action)
 	{
-		if (hp->gc_scythe == youngest)
-			hp->gc_scythe = hp->gc_scythe->next;	// make sure gc_scythe is valid
+	case GC_ACT_YOUNGEST:
+	{
+		memnode_t *youngest = hp->nodes;
+		if (youngest != 0)
+		{
+			if (hp->gc_scythe == youngest)
+				hp->gc_scythe = hp->gc_scythe->next;	// make sure gc_scythe is valid
 
-		int ok = heap_gc_generational_N(hp, youngest, root_regs, nr_regs);
-		if (ok < 0)
-			printk("GC:generational: not enough memory for GC run, ignored\n");
+			int ok = heap_gc_generational_N(hp, youngest, root_regs, nr_regs);
+			if (ok < 0)
+				printk("GC:generational: not enough memory for GC run [0], ignored\n");
+		}
+		break;
 	}
-
-	if (will_expand(hp->nodes, needed))
+	case GC_ACT_YOUNGER:
 	{
-		// collect the second youngest too
 		if (hp->nodes != 0 && hp->nodes->next != 0)
 		{
 			memnode_t *young = hp->nodes->next;
@@ -126,46 +150,46 @@ int gc_hook1(heap_t *hp, int needed, region_t *root_regs, int nr_regs)
 
 			int ok = heap_gc_generational_N(hp, young, root_regs, nr_regs);
 			if (ok < 0)
-				printk("GC:generational: not enough memory for GC run [2], ignored\n");
+				printk("GC:generational: not enough memory for GC run [1], ignored\n");
 		}
-	
+		break;
+	}
+	case GC_ACT_MERGEABLE:
+	{
 		collect_mergeable(hp, root_regs, nr_regs);
+		break;
 	}
+	default:
+		assert(action == GC_ACT_SCYTHE);
 
-	return needed;
+		if (hp->gc_scythe == 0)
+			hp->gc_scythe = hp->nodes;
+
+		// gc may destroy gc_scythe; save its successor
+		memnode_t *new_scythe = hp->gc_scythe->next;
+
+		//printk("GC:scythe: heap 0x%08x node 0x%08x pages %d\n", hp, hp->gc_scythe, hp->gc_scythe->index);
+
+		int ok = heap_gc_generational_N(hp, hp->gc_scythe, root_regs, nr_regs);
+		if (ok < 0)
+			printk("GC:generational: not enough memory for GC run [2], ignored\n");
+		else
+			hp->gc_scythe = new_scythe;
+
+		break;
+	}
 }
 
-// heap_retire()
-void gc_hook2(heap_t *hp, region_t *root_regs, int nr_regs)
+void dump_gc_counters(void)
 {
-	if (hp->full_sweep_after != 0 && hp->sweep_after_count >= hp->full_sweep_after)
-	{
-		heap_gc_full_sweep_N(hp, root_regs, nr_regs);
-		return;
-	}
-
-	if (hp->gc_scythe == 0)
-		hp->gc_scythe = hp->nodes;
-
-	// gc may destroy gc_scythe; save its successor
-	memnode_t *new_scythe = hp->gc_scythe->next;
-
-	//printk("GC:retire: heap 0x%08x node 0x%08x pages %d\n", hp, hp->gc_scythe, hp->gc_scythe->index);
-
-	int ok = heap_gc_generational_N(hp, hp->gc_scythe, root_regs, nr_regs);
-	if (ok == 0)
-		hp->gc_scythe = new_scythe;
-}
-
-// proc_burn_fat_w()
-void gc_hook3(heap_t *hp, region_t *root_regs, int nr_regs)
-{
-	hp->retire_count += VGC_RETIRE_INCR;
-	if (hp->retire_count >= VGC_RETIRE_AFTER)
-	{
-		hp->retire_count = 0;
-		heap_retire(hp, root_regs, nr_regs);
-	}
+	printk("GC_LOC_IDLE: %d\n", gc_loc_counters[GC_LOC_IDLE]);
+	printk("GC_LOC_PROC_YIELD: %d\n", gc_loc_counters[GC_LOC_PROC_YIELD]);
+	printk("GC_LOC_PROC_WAIT: %d\n", gc_loc_counters[GC_LOC_PROC_WAIT]);
+	printk("GC_LOC_TEST_HEAP: %d\n", gc_loc_counters[GC_LOC_TEST_HEAP]);
+	printk("GC_ACT_YOUNGEST: %d\n", gc_act_counters[GC_ACT_YOUNGEST]);
+	printk("GC_ACT_YOUNGER: %d\n", gc_act_counters[GC_ACT_YOUNGER]);
+	printk("GC_ACT_MERGEABLE: %d\n", gc_act_counters[GC_ACT_MERGEABLE]);
+	printk("GC_ACT_SCYTHE: %d\n", gc_act_counters[GC_ACT_SCYTHE]);
 }
 
 //static uint32_t fast_rand(void)

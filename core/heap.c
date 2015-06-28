@@ -72,24 +72,13 @@ void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends)
 	//hp->expected_top = 0;
 
 	hp->gc_scythe = hp->nodes;
-	//hp->retire_count = 0;
+	//hp->gc_counters = 0;
 }
 
 void heap_reset_init_node_end(heap_t *hp, uint32_t *ends)
 {
 	assert(ends >= hp->init_node.ends);
 	hp->init_node.ends = ends;
-}
-
-uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs)
-{
-	int needed1 =  gc_hook1(hp, needed, root_regs, nr_regs);
-	return heap_alloc(hp, needed1);
-}
-
-void heap_retire(heap_t *hp, region_t *root_regs, int nr_regs)
-{
-	gc_hook2(hp, root_regs, nr_regs);
 }
 
 uint32_t *heap_alloc(heap_t *hp, int needed)

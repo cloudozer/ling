@@ -81,6 +81,7 @@ void proc_main(proc_t *proc);
 void lwip_init(void);
 void pcre_init(void);
 void counters_init(void);
+void gc_opt_init(void);
 
 UNUSED static void print_start_info(void);
 UNUSED static void print_xenmem_info(void);
@@ -154,6 +155,7 @@ void start_ling(start_info_t *si)
 	ets_init();
 	pcre_init();
 	counters_init();
+	gc_opt_init();
 
 	//print_start_info();
 	//print_xenmem_info();

@@ -186,7 +186,7 @@ static void garbage_collect_waiting_processes(uint64_t alloted_ns)
 			region_t root_regs[nr_regs];
 			proc_fill_root_regs(fatty, root_regs, fatty->cap.regs, fatty->cap.live);
 			uint64_t gc_started_ns = monotonic_clock();
-			heap_retire(hp, root_regs, nr_regs);
+			gc_hook(GC_LOC_IDLE, fatty->pid, hp, root_regs, nr_regs);
 			uint64_t consumed_ns = (monotonic_clock() -gc_started_ns);
 			if (consumed_ns > alloted_ns)
 				break;

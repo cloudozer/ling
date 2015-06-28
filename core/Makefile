@@ -35,15 +35,14 @@ CPPFLAGS += -D__XEN_INTERFACE_VERSION__=$(XEN_INTERFACE_VERSION)
 
 CPPFLAGS += -DLING_VER=$(LING_VER)
 
-CPPFLAGS += -DLING_DEBUG
-CPPFLAGS += -DDEBUG_UNUSED_MEM
+#CPPFLAGS += -DLING_DEBUG
+#CPPFLAGS += -DDEBUG_UNUSED_MEM
 #CPPFLAGS += -DTRACE_HARNESS
 
 COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer
-# -flto
 
 CFLAGS := \
-	-Wall -Werror -std=gnu99 -O0 -ggdb \
+	-Wall -Werror -std=gnu99 -O0 \
 	-fexcess-precision=standard -frounding-math -mfpmath=sse -msse2 \
 	-Wno-nonnull -Wno-strict-aliasing \
 	$(COMMON_CFLAGS)

@@ -64,6 +64,8 @@ extern uint32_t trace_mask;
 
 void dump_netmap_state(int what);
 
+void dump_gc_counters(void);
+
 term_t cbif_domain_name0(proc_t *proc, term_t *regs)
 {
 	return heap_strz(&proc->hp, my_domain_name);
@@ -203,6 +205,12 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 		else if (Arg == A_RX)
 			dump_netmap_state(1);
 		break;
+	case A_GC:
+		if (Arg == tag_int(1))
+			printk("Pages left: %d\n", mm_alloc_left());
+		else if (Arg == tag_int(7))
+			dump_gc_counters();
+		break;
 	default:
 		badarg(What);
 	}
@@ -216,4 +224,3 @@ term_t cbif_stats0(proc_t *proc, term_t *regs)
 	return A_OK;
 }
 
-//EOF

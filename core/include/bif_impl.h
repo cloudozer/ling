@@ -50,6 +50,7 @@
 #include "crc32.h"
 #include "adler32.h"
 
+#include "mm.h"
 #include "atom_defs.h"
 #include "bits.h"
 #include "getput.h"

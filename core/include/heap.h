@@ -41,6 +41,22 @@
 // Heap allocations
 //
 
+// gc_hook() locations
+#define GC_LOC_IDLE			0
+#define GC_LOC_PROC_YIELD	1
+#define GC_LOC_PROC_WAIT	2
+#define GC_LOC_TEST_HEAP	3
+#define GC_NR_LOCS			4
+
+// gc actions
+#define GC_ACT_YOUNGEST		0
+#define GC_ACT_YOUNGER		1
+#define GC_ACT_MERGEABLE	2
+#define GC_ACT_SCYTHE		3
+#define GC_NR_ACTS			4
+
+#define HEAP_ASK_FOR_MORE	512
+
 typedef struct heap_t heap_t;
 struct heap_t {
 	memnode_t init_node;			// a fake memory node for the initial buffer
@@ -57,9 +73,9 @@ struct heap_t {
 	// the expected value of the next heap_set_top()
 	uint32_t *expected_top;
 #endif
-	// Viktor's GC
+	// GC model
 	memnode_t *gc_scythe;
-	int retire_count;			// the counter for heap_retire() inside heap_ensure()
+	int gc_counters[GC_NR_LOCS][GC_NR_ACTS];
 };
 
 typedef struct region_t region_t;
@@ -87,23 +103,13 @@ void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends);
 
 void heap_reset_init_node_end(heap_t *hp, uint32_t *ends);
 
-// Ensures that heap has size words unoccupied after the heap_top() pointer
-//
-// Returns the heap top or 0 if there is not enough memory
-//
-uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs);
-void heap_retire(heap_t *hp, region_t *root_regs, int nr_regs);
-
-void gc_hook0(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by proc_burn_fat_y()
-int  gc_hook1(heap_t *hp, int needed, region_t *root_regs, int nr_regs); // called by heap_ensure()
-void gc_hook2(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by heap_retire()
-void gc_hook3(heap_t *hp, region_t *root_regs, int nr_regs);			 // called by heap_burn_fat_w()
-
 uint32_t *heap_alloc(heap_t *hp, int needed);
 uint32_t *heap_alloc_N(heap_t *hp, int needed);
 
 int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, int nr_regs);
 int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs);
+
+void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_regs);
 
 void *heap_top(heap_t *hp);
 void heap_set_top0(heap_t *hp, uint32_t *new_top);
@@ -145,4 +151,3 @@ term_t heap_make_ref(heap_t *heap);
 int ref_is_local(term_t t);
 uint64_t local_ref_id(term_t t);
 
-//EOF

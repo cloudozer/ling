@@ -329,51 +329,11 @@ schedule:
 	}
 	memcpy(proc->cap.fr, fr, NUM_FREGS*sizeof(double));
 
-	//REMOVE ME
-//	static int nr_burn_none = 0;
-//	static int nr_burn_yield = 0;
-//	static int nr_burn_wait  = 0;
-//	static int nr_burn_done  = 0;
-//	static int nr_burn_exit  = 0;
-//	static int nr_burn_exit2  = 0;
-//	static int nr_burn_error  = 0;
-//	static int nr_burn_throw  = 0;
-//	static int nr_burn_outlet_close  = 0;
-//	static int nr_burn_purge_procs  = 0;
-//
-//	switch (proc->result.what)
-//	{
-//	case SLICE_RESULT_NONE: nr_burn_none++; break;
-//	case SLICE_RESULT_YIELD: nr_burn_yield++; break;
-//	case SLICE_RESULT_WAIT: nr_burn_wait++; break;
-//	case SLICE_RESULT_DONE: nr_burn_done++; break;
-//	case SLICE_RESULT_EXIT: nr_burn_exit++; break;
-//	case SLICE_RESULT_EXIT2: nr_burn_exit2++; break;
-//	case SLICE_RESULT_ERROR: nr_burn_error++; break;
-//	case SLICE_RESULT_THROW: nr_burn_throw++; break;
-//	case SLICE_RESULT_OUTLET_CLOSE: nr_burn_outlet_close++; break;
-//	case SLICE_RESULT_PURGE_PROCS: nr_burn_purge_procs++; break;
-//	}
-//
-//	if (nr_burn_yield % 10000 == 0)
-//	{
-//		printk("NONE: %d\n", nr_burn_none);
-//		printk("YIELD: %d\n", nr_burn_yield);
-//		printk("WAIT: %d\n", nr_burn_wait);
-//		printk("DONE: %d\n", nr_burn_done);
-//		printk("EXIT: %d\n", nr_burn_exit);
-//		printk("EXIT2: %d\n", nr_burn_exit2);
-//		printk("ERROR: %d\n", nr_burn_error);
-//		printk("THROW: %d\n", nr_burn_throw);
-//		printk("OUTLET_CLOSE: %d\n", nr_burn_outlet_close);
-//		printk("PURGE_PROCS: %d\n", nr_burn_purge_procs);
-//	}
-
 	// slim down the process
 	if (proc->result.what == SLICE_RESULT_YIELD)
-		proc_burn_fat_y(proc, proc->cap.regs, proc->cap.live);
+		proc_burn_fat(GC_LOC_PROC_YIELD, proc, proc->cap.regs, proc->cap.live);
 	else if (proc->result.what == SLICE_RESULT_WAIT)
-		proc_burn_fat_w(proc, proc->cap.regs, proc->cap.live);
+		proc_burn_fat(GC_LOC_PROC_WAIT, proc, proc->cap.regs, proc->cap.live);
 
 	proc = scheduler_next(proc, reds_left);
 
@@ -3329,7 +3289,6 @@ swap_out();
 int live = <% arg(Live) %>;
 rs[live] = tmp_arg1;
 rs[live+1] = tmp_arg2;
-//proc_burn_fat_y(proc, rs, live +2);
 tmp_arg2 = rs[live +1];
 tmp_arg1 = rs[live];
 
@@ -3397,13 +3356,6 @@ if (x < 0)
 	<% jump_or_continue(Fail0) %>;
 	badarg();
 }
-
-//if (osz >= BS_INIT_FAIL_GC_THRESH)
-//{
-//	swap_out();
-//	proc_burn_fat_y(proc, rs, <% arg(Live) %>);
-//	swap_in();
-//}
 
 binnode_t *node = binnode_make(osz);
 int needed = WSIZE(t_proc_bin_t) + WSIZE(t_sub_bin_t) + <% arg(Extra) %>;
@@ -4154,16 +4106,8 @@ if (r0 == noval)
 		r0 = rs[2];
 	else
 	{
-		// A very nice spot for a garbage collection:
-		// a few live registers and a portion of the
-		// stack just gone.
-		//
-		
 		swap_out();
-		proc_burn_fat_y(proc, rs, 3);
-
-		// Both error and exit exceptions are converted to {'EXIT',Reason}
-	
+		// both error and exit exceptions are converted to {'EXIT',Reason}
 		if (rs[1] == A_ERROR)
 			rs[2] = heap_tuple2(&proc->hp, rs[2], proc->stack_trace);
 		rs[0] = heap_tuple2(&proc->hp, AEXIT__, rs[2]);
@@ -4359,18 +4303,12 @@ sp -= gap;
 cp = 0; // not to confuse stack tracing
 
 <%@ test_heap(HeapNeeded, Live) %>
-if (unlikely(hend - htop < <% arg(HeapNeeded) %>))
+int needed = <% arg(HeapNeeded) %>;
+if (unlikely(hend - htop < needed))
 {
 	swap_out();
-	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
-	{
-		region_t root_regs[nr_regs];
-		proc_fill_root_regs(proc, root_regs, rs, <% arg(Live) %>);
-		heap_ensure(&proc->hp, <% arg(HeapNeeded) %>, root_regs, nr_regs);
-	}
-	else
-		heap_alloc(&proc->hp, <% arg(HeapNeeded) %>);
+	proc_burn_fat(GC_LOC_TEST_HEAP, proc, rs, <% arg(Live) %>);
+	heap_alloc(&proc->hp, needed + HEAP_ASK_FOR_MORE);
 	swap_in();
 }
 

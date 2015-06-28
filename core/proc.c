@@ -350,24 +350,18 @@ void proc_fill_root_regs(proc_t *proc, region_t *root_regs, term_t *rs, int live
 										proc->pending_timers);
 }
 
-void proc_burn_fat_y(proc_t *proc, term_t *rs, int live)
+void proc_burn_fat(int gc_loc, proc_t *proc, term_t *rs, int live)
 {
 	int nr_regs = proc_count_root_regs(proc);
 	if (nr_regs > MAX_ROOT_REGS || proc->hp.suppress_gc)
 		return;
 	region_t root_regs[nr_regs];
 	proc_fill_root_regs(proc, root_regs, rs, live);
-	gc_hook0(&proc->hp, root_regs, nr_regs);
-}
-
-void proc_burn_fat_w(proc_t *proc, term_t *rs, int live)
-{
-	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs > MAX_ROOT_REGS || proc->hp.suppress_gc)
-		return;
-	region_t root_regs[nr_regs];
-	proc_fill_root_regs(proc, root_regs, rs, live);
-	gc_hook3(&proc->hp, root_regs, nr_regs);
+	heap_t *hp = &proc->hp;
+	if (hp->full_sweep_after != 0 && hp->sweep_after_count >= hp->full_sweep_after)
+		heap_gc_full_sweep_N(hp, root_regs, nr_regs);
+	else
+		gc_hook(gc_loc, proc->pid, &proc->hp, root_regs, nr_regs);
 }
 
 void proc_destroy(proc_t *proc)
