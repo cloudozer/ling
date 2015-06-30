@@ -66,6 +66,8 @@ void dump_netmap_state(int what);
 
 void dump_gc_counters(void);
 
+extern struct gc_point_t { int up; int down; } gc_model[GC_NR_LOCS][GC_NR_ACTS];
+
 term_t cbif_domain_name0(proc_t *proc, term_t *regs)
 {
 	return heap_strz(&proc->hp, my_domain_name);
@@ -151,6 +153,44 @@ term_t cbif_profile_display0(proc_t *proc, term_t *regs)
 	return A_OK;
 }
 
+void collect_gc_times_and_efficiency(proc_t *proc)
+{
+	static int done = 0;
+	if (done) return;
+	done = 1;
+
+	int nr_regs = proc_count_root_regs(proc);
+	assert(nr_regs <= MAX_ROOT_REGS);
+	region_t root_regs[nr_regs];
+	proc_fill_root_regs(proc, root_regs, 0, 0);
+	heap_t *hp = &proc->hp;
+
+	int nr_nodes = 0;
+	memnode_t *gc_nodes[1000];
+	memnode_t *node = hp->nodes;
+	while (nr_nodes < 1000)
+	{
+		assert(node != 0);
+		gc_nodes[nr_nodes++] = node;
+		assert(node->next != 0);
+		node = node->next->next;	// skip one
+	}
+
+	for (int i = nr_nodes-1; i >= 0; i--)	// backwards
+	{
+		uint32_t saved_size = hp->total_size;
+		uint64_t started_ns = monotonic_clock();
+
+		int ok = heap_gc_generational_N(hp, gc_nodes[i], root_regs, nr_regs);
+		assert(ok == 0);
+
+		uint64_t elapsed_ns = monotonic_clock() - started_ns;
+		uint32_t reclaimed = saved_size - hp->total_size;
+
+		printk("%d:%d:%d:%lu\n", i, gc_nodes[i]->index, reclaimed, elapsed_ns);
+	}
+}
+
 term_t cbif_experimental2(proc_t *proc, term_t *regs)
 {
 	term_t What = regs[0];
@@ -208,8 +248,49 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 	case A_GC:
 		if (Arg == tag_int(1))
 			printk("Pages left: %d\n", mm_alloc_left());
+		else if (Arg == tag_int(2))
+		{
+			int nr_nodes = 0;
+			int total_pages = 0;
+			memnode_t *node = proc->hp.nodes;
+			while (node != 0)
+			{
+				nr_nodes++;
+				total_pages += node->index;
+				node = node->next;
+			}
+			printk("Heap: %d nodes, %d pages\n", nr_nodes, total_pages);
+		}
 		else if (Arg == tag_int(7))
 			dump_gc_counters();
+		else if (Arg == tag_int(13))
+		{
+			int nr_nodes = 0;
+			memnode_t *node = proc->hp.nodes;
+			while (node != 0)
+			{
+				nr_nodes++;
+				node = node->next;
+			}
+
+			if (nr_nodes >= 2000)
+				collect_gc_times_and_efficiency(proc);
+		}
+		else if (is_tuple(Arg))
+		{
+			term_t *elts = peel_tuple(Arg);
+			assert(elts[0] == 4);
+			assert(is_int(elts[1]));
+			assert(is_int(elts[2]));
+			assert(is_int(elts[3]));
+			assert(is_int(elts[4]));
+			int loc = int_value(elts[1]);
+			int act = int_value(elts[2]);
+			int up = int_value(elts[3]);
+			int down = int_value(elts[4]);
+			gc_model[loc][act].up = up;
+			gc_model[loc][act].down = down;
+		}
 		break;
 	default:
 		badarg(What);

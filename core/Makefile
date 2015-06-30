@@ -42,7 +42,7 @@ CPPFLAGS += -DLING_VER=$(LING_VER)
 COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer
 
 CFLAGS := \
-	-Wall -Werror -std=gnu99 -O0 \
+	-Wall -Werror -std=gnu99 -O3 \
 	-fexcess-precision=standard -frounding-math -mfpmath=sse -msse2 \
 	-Wno-nonnull -Wno-strict-aliasing \
 	$(COMMON_CFLAGS)

@@ -108,7 +108,8 @@ void start_ling(start_info_t *si)
 	time_init();	// sets start_of_day_wall_clock
 
 	// use the time value to seed PRNG
-	mt_seed(start_of_day_wall_clock);
+	//XXX mt_seed(start_of_day_wall_clock);
+	mt_seed(0);
 	
 #if defined(__x86_64__)
 	HYPERVISOR_set_callbacks(0, 0, 0);

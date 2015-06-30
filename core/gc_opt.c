@@ -36,6 +36,7 @@
 #include "ling_common.h"
 
 #include "string.h"
+#include "assert.h"
 
 //static uint32_t fast_rand(void);
 
@@ -46,7 +47,7 @@ struct gc_point_t {
 	int down;
 };
 
-static struct gc_point_t gc_model[GC_NR_LOCS][GC_NR_ACTS];
+struct gc_point_t gc_model[GC_NR_LOCS][GC_NR_ACTS];
 
 static int gc_loc_counters[GC_NR_LOCS] = { 0 };
 static int gc_act_counters[GC_NR_ACTS] = { 0 };
@@ -54,15 +55,19 @@ static int gc_act_counters[GC_NR_ACTS] = { 0 };
 void gc_opt_init(void)
 {
 	memset(gc_model, 0, sizeof(gc_model));
+	return;
+
 	struct gc_point_t *pts = gc_model[GC_LOC_PROC_YIELD];
-	pts[GC_ACT_YOUNGEST].up = 1;  pts[GC_ACT_YOUNGEST].down = 1;
-	pts[GC_ACT_MERGEABLE].up = 1;  pts[GC_ACT_MERGEABLE].down = 2;
+	pts[GC_ACT_YOUNGEST].up = 1;  pts[GC_ACT_YOUNGEST].down = 4;
+	//pts[GC_ACT_YOUNGER].up = 1;  pts[GC_ACT_YOUNGER].down = 4;
+	pts[GC_ACT_MERGEABLE].up = 1;  pts[GC_ACT_MERGEABLE].down = 32;
 	pts[GC_ACT_SCYTHE].up = 1;    pts[GC_ACT_SCYTHE].down = 64;
 
 	pts = gc_model[GC_LOC_PROC_WAIT];
-	//pts[GC_ACT_YOUNGEST].up = 1;  pts[GC_ACT_YOUNGEST].down = 2;
-	pts[GC_ACT_MERGEABLE].up = 1;    pts[GC_ACT_MERGEABLE].down = 8;
-	pts[GC_ACT_SCYTHE].up = 1;    pts[GC_ACT_SCYTHE].down = 64;
+	pts[GC_ACT_YOUNGEST].up = 1;  pts[GC_ACT_YOUNGEST].down = 8;
+	//pts[GC_ACT_YOUNGER].up = 1;  pts[GC_ACT_YOUNGER].down = 4;
+	pts[GC_ACT_MERGEABLE].up = 1;  pts[GC_ACT_MERGEABLE].down = 64;
+	pts[GC_ACT_SCYTHE].up = 1;    pts[GC_ACT_SCYTHE].down = 20;
 
 	pts = gc_model[GC_LOC_TEST_HEAP];
 	pts[GC_ACT_YOUNGEST].up = 1;  pts[GC_ACT_YOUNGEST].down = 1;
