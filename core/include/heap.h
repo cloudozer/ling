@@ -46,14 +46,9 @@
 #define GC_LOC_PROC_YIELD	1
 #define GC_LOC_PROC_WAIT	2
 #define GC_LOC_TEST_HEAP	3
-#define GC_NR_LOCS			4
+#define GC_LOCS				4
 
-// gc actions
-#define GC_ACT_YOUNGEST		0
-#define GC_ACT_YOUNGER		1
-#define GC_ACT_MERGEABLE	2
-#define GC_ACT_SCYTHE		3
-#define GC_NR_ACTS			4
+#define GC_COHORTS			3
 
 #define HEAP_ASK_FOR_MORE	512
 
@@ -73,9 +68,10 @@ struct heap_t {
 	// the expected value of the next heap_set_top()
 	uint32_t *expected_top;
 #endif
-	// GC model
-	memnode_t *gc_scythe;
-	int gc_counters[GC_NR_LOCS][GC_NR_ACTS];
+	// Viktor's GC
+	memnode_t *gc_cohorts[GC_COHORTS];
+	int gc_yield_tally;
+	int gc_wait_tally;
 };
 
 typedef struct region_t region_t;

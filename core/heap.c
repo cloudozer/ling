@@ -71,8 +71,9 @@ void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends)
 	//hp->minor_gcs = 0;
 	//hp->expected_top = 0;
 
-	hp->gc_scythe = hp->nodes;
-	//hp->gc_counters = 0;
+	//hp->gc_cohorts are 0
+	//hp->gc_yield_tally = 0;
+	//hp->gc_wait_tally = 0;
 }
 
 void heap_reset_init_node_end(heap_t *hp, uint32_t *ends)

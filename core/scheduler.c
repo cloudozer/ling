@@ -178,16 +178,13 @@ static void garbage_collect_waiting_processes(uint64_t alloted_ns)
 		proc_t *fatty = (index >= nr_timed)
 				? proc_list_at(&queues.on_infinite_receive, index -nr_timed)
 				: wait_list_at(&queues.on_timed_receive, index);
-		heap_t *hp = &fatty->hp;
-		if (hp->gc_scythe != 0)		// prevent infinite reaping
-		{
-			uint64_t gc_started_ns = monotonic_clock();
-			proc_burn_fat(GC_LOC_IDLE, fatty, fatty->cap.regs, fatty->cap.live);
-			uint64_t consumed_ns = (monotonic_clock() -gc_started_ns);
-			if (consumed_ns > alloted_ns)
-				break;
-			alloted_ns -= consumed_ns;
-		}
+		//heap_t *hp = &fatty->hp;
+		uint64_t gc_started_ns = monotonic_clock();
+		proc_burn_fat(GC_LOC_IDLE, fatty, fatty->cap.regs, fatty->cap.live);
+		uint64_t consumed_ns = (monotonic_clock() -gc_started_ns);
+		if (consumed_ns > alloted_ns)
+			break;
+		alloted_ns -= consumed_ns;
 		counter++;
 		nr_scanned++;
 	}

@@ -64,9 +64,11 @@ extern uint32_t trace_mask;
 
 void dump_netmap_state(int what);
 
-void dump_gc_counters(void);
-
-extern struct gc_point_t { int up; int down; } gc_model[GC_NR_LOCS][GC_NR_ACTS];
+extern int gc_model_size_multiplier;
+extern int gc_model_yield_up;
+extern int gc_model_yield_down;
+extern int gc_model_wait_up;
+extern int gc_model_wait_down;
 
 term_t cbif_domain_name0(proc_t *proc, term_t *regs)
 {
@@ -259,10 +261,31 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 				total_pages += node->index;
 				node = node->next;
 			}
-			printk("Heap: %d nodes, %d pages\n", nr_nodes, total_pages);
+			printk("Heap: %d nodes %d pages %d total_size\n", nr_nodes, total_pages, proc->hp.total_size);
 		}
-		else if (Arg == tag_int(7))
-			dump_gc_counters();
+		else if (Arg == tag_int(10))
+		{
+			// dump cohort sizes
+			heap_t *hp = &proc->hp;
+			memnode_t *node = hp->nodes;
+			int ch = 0;
+			int size = 0;
+			printk("ch");
+			while (1)
+			{
+				while (ch < GC_COHORTS && node == hp->gc_cohorts[ch])
+				{
+					printk(":%d", size);
+					ch++;
+					size = 0;
+				}
+				if (node == 0)
+					break;
+				size++;
+				node = node->next;
+			}
+			printk(":%d\n", size);
+		}
 		else if (Arg == tag_int(13))
 		{
 			int nr_nodes = 0;
@@ -279,17 +302,17 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 		else if (is_tuple(Arg))
 		{
 			term_t *elts = peel_tuple(Arg);
-			assert(elts[0] == 4);
+			assert(elts[0] == 5);
 			assert(is_int(elts[1]));
 			assert(is_int(elts[2]));
 			assert(is_int(elts[3]));
 			assert(is_int(elts[4]));
-			int loc = int_value(elts[1]);
-			int act = int_value(elts[2]);
-			int up = int_value(elts[3]);
-			int down = int_value(elts[4]);
-			gc_model[loc][act].up = up;
-			gc_model[loc][act].down = down;
+			assert(is_int(elts[5]));
+			gc_model_size_multiplier = int_value(elts[1]);
+			gc_model_yield_up = int_value(elts[2]); 
+			gc_model_yield_down = int_value(elts[3]);
+			gc_model_wait_up = int_value(elts[4]);
+			gc_model_wait_down = int_value(elts[5]);
 		}
 		break;
 	default:

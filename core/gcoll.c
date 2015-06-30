@@ -415,7 +415,9 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	hp->init_node.starts = hp->init_node_threshold;	// empty init_node
 	sweep_node->next = &hp->init_node;
 	hp->nodes = sweep_node;
-	hp->gc_scythe = sweep_node;
+
+	for (int ch = 0; ch < GC_COHORTS; ch++)
+		hp->gc_cohorts[ch] = sweep_node;
 
 	hp->total_size = sweep_size;
 
