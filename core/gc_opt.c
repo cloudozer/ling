@@ -38,24 +38,34 @@
 #include "string.h"
 #include "assert.h"
 
+#define GC_COHORT_THRESH	4
+
 // Tunable parameters
 int gc_model_size_multiplier = 2;
 int gc_model_yield_up = 1;
-int gc_model_yield_down = 5;
+int gc_model_yield_down = 4;
 int gc_model_wait_up = 1;
-int gc_model_wait_down = 5;
+int gc_model_wait_down = 4;
 
 static void collect(heap_t *hp, region_t *root_regs, int nr_regs);
+static void collect1(heap_t *hp, region_t *root_regs, int nr_regs);
 static void collect_cohort(heap_t *hp, int ch, region_t *root_regs, int nr_regs);
+
+int cohort_colls[GC_COHORTS] = { 0 };
 
 void gc_opt_init(void)
 {
 }
 
+int gc_skip_idle(heap_t *hp)
+{
+	return (hp->gc_cohorts[0] == hp->nodes);	// no untouched nodes
+}
+
 void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_regs)
 {
-	if (gc_loc == GC_LOC_TEST_HEAP || gc_loc == GC_LOC_IDLE)
-		collect(hp, root_regs, nr_regs);
+	if (gc_loc == GC_LOC_TEST_HEAP)
+		collect(hp, root_regs, nr_regs);	// may this tunable?
 	else if (gc_loc == GC_LOC_PROC_YIELD)
 	{
 		hp->gc_yield_tally += gc_model_yield_up;
@@ -74,37 +84,76 @@ void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_reg
 			hp->gc_wait_tally -= gc_model_wait_down;
 		}
 	}
+	else
+	{
+		assert(gc_loc == GC_LOC_IDLE);
+		collect1(hp, root_regs, nr_regs);	//TODO
+	}
 }
 
 static void collect(heap_t *hp, region_t *root_regs, int nr_regs)
 {
 	memnode_t *node = hp->nodes;
-	int ch = 0;
-	int size = 0;
-	int max_ch = 0;
-	int max_size = 0;
-	int weight = 1;
-	while (ch < GC_COHORTS)
+	int size0 = 0;
+	while (node != hp->gc_cohorts[0])
 	{
-		while (ch < GC_COHORTS && node == hp->gc_cohorts[ch])
-		{
-			if (size >= max_size * weight)
-			{
-				max_size = size;
-				max_ch = ch;
-			}
-			ch++;
-			weight *= gc_model_size_multiplier;	//NB
-			size = 0;
-		}
-		if (node == 0)
-			break;
-		size++;
+		size0++;
 		node = node->next;
 	}
 
-	if (max_size > 0)	
-		collect_cohort(hp, max_ch, root_regs, nr_regs);
+	int ch = 0;
+	while (ch < GC_COHORTS)
+	{
+		int size1 = 0;
+		memnode_t *limit = (ch < GC_COHORTS-1) ?hp->gc_cohorts[ch+1] :0;
+		while (node != limit)
+		{
+			size1++;
+			node = node->next;
+		}
+
+		if (size0 >= GC_COHORT_THRESH && size0 * gc_model_size_multiplier > size1)
+			break;
+		else
+		{
+			size0 = size1;
+			ch++;
+		}
+	}
+
+	if (ch >= GC_COHORTS)
+		return;		// cohorts lined up perfectly
+
+	cohort_colls[ch]++;
+
+	collect_cohort(hp, ch, root_regs, nr_regs);
+}
+
+static void collect1(heap_t *hp, region_t *root_regs, int nr_regs)
+{
+	// No runnable processes - collect cohorts starting with the oldest one
+	memnode_t *node = hp->gc_cohorts[0];
+	int ch = 0;
+	while (ch < GC_COHORTS)
+	{
+		int size = 0;
+		memnode_t *limit = (ch < GC_COHORTS-1) ?hp->gc_cohorts[ch+1] :0;
+		while (node != limit)
+		{
+			size++;
+			node = node->next;
+		}
+		if (size == 0)
+			break;
+		ch++;
+	}
+
+	if (ch >= GC_COHORTS)
+		ch = GC_COHORTS-1;
+
+	cohort_colls[ch]++;
+
+	collect_cohort(hp, ch, root_regs, nr_regs);
 }
 
 static void collect_cohort(heap_t *hp, int ch, region_t *root_regs, int nr_regs)
@@ -123,8 +172,9 @@ static void collect_cohort(heap_t *hp, int ch, region_t *root_regs, int nr_regs)
 	hp->gc_cohorts[ch] = prev; // may become invalid; fix after GC
 
 	int ok = heap_gc_generational_N(hp, prev, root_regs, nr_regs);
-	assert(ok == 0);
-
+	if (ok < 0)
+		printk("collect_cohort: no memory while collecting cohort %d, ignored\n", ch);
+		
 	for (int i = 0; i <= ch; i++)
 		if (hp->gc_cohorts[i] == prev)
 			hp->gc_cohorts[i] = *ref;

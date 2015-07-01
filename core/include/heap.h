@@ -48,7 +48,7 @@
 #define GC_LOC_TEST_HEAP	3
 #define GC_LOCS				4
 
-#define GC_COHORTS			3
+#define GC_COHORTS			4
 
 #define HEAP_ASK_FOR_MORE	512
 
@@ -105,6 +105,7 @@ uint32_t *heap_alloc_N(heap_t *hp, int needed);
 int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, int nr_regs);
 int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs);
 
+int gc_skip_idle(heap_t *hp);
 void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_regs);
 
 void *heap_top(heap_t *hp);

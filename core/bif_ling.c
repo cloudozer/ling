@@ -70,6 +70,8 @@ extern int gc_model_yield_down;
 extern int gc_model_wait_up;
 extern int gc_model_wait_down;
 
+extern int cohort_colls[GC_COHORTS];
+
 term_t cbif_domain_name0(proc_t *proc, term_t *regs)
 {
 	return heap_strz(&proc->hp, my_domain_name);
@@ -224,6 +226,11 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 				node = node->next;
 			}
 			printk("Heap: %d nodes %d pages %d total_size\n", nr_nodes, total_pages, proc->hp.total_size);
+		}
+		else if (Arg == tag_int(3))
+		{
+			for (int i = 0; i < GC_COHORTS; i++)
+				printk("Cohort %d: collected %d time(s)\n", i, cohort_colls[i]);
 		}
 		else if (Arg == tag_int(10))
 		{
