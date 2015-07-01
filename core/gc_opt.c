@@ -59,7 +59,7 @@ void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_reg
 	else if (gc_loc == GC_LOC_PROC_YIELD)
 	{
 		hp->gc_yield_tally += gc_model_yield_up;
-		if (hp->gc_yield_tally >= gc_model_yield_down)
+		while (hp->gc_yield_tally >= gc_model_yield_down)
 		{
 			collect(hp, root_regs, nr_regs);
 			hp->gc_yield_tally -= gc_model_yield_down;
@@ -68,7 +68,7 @@ void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_reg
 	else if (gc_loc == GC_LOC_PROC_WAIT)
 	{
 		hp->gc_wait_tally += gc_model_wait_up;
-		if (hp->gc_wait_tally >= gc_model_wait_down)
+		while (hp->gc_wait_tally >= gc_model_wait_down)
 		{
 			collect(hp, root_regs, nr_regs);
 			hp->gc_wait_tally -= gc_model_wait_down;
