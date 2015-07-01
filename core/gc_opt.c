@@ -131,7 +131,14 @@ static void collect(heap_t *hp, region_t *root_regs, int nr_regs)
 
 static void collect1(heap_t *hp, region_t *root_regs, int nr_regs)
 {
+	if (hp->full_sweep_after != 0 && hp->sweep_after_count >= hp->full_sweep_after)
+	{
+		heap_gc_full_sweep_N(hp, root_regs, nr_regs);
+		return;
+	}
+
 	// No runnable processes - collect cohorts starting with the oldest one
+
 	memnode_t *node = hp->gc_cohorts[0];
 	int ch = 0;
 	while (ch < GC_COHORTS)
