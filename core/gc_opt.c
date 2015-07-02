@@ -46,7 +46,7 @@ int gc_model_size_multiplier = 2;
 int gc_model_yield_up = 1;
 int gc_model_yield_down = 4;
 int gc_model_wait_up = 1;
-int gc_model_wait_down = 4;
+int gc_model_wait_down = 50;
 
 static void collect(heap_t *hp, region_t *root_regs, int nr_regs);
 static void collect_cohort(heap_t *hp, int ch, region_t *root_regs, int nr_regs);
@@ -87,6 +87,15 @@ void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_reg
 	else
 	{
 		assert(gc_loc == GC_LOC_IDLE);
+
+		if (hp->full_sweep_after != 0 &&
+			hp->gc_cohorts[GC_COHORTS-1] == hp->nodes && 	// all nodes are old
+			hp->sweep_after_count >= hp->full_sweep_after)
+		{
+			heap_gc_full_sweep_N(hp, root_regs, nr_regs);
+			return;
+		}
+
 		assert(hp->gc_yield_runs > 0);
 		hp->gc_yield_runs--;
 		collect(hp, root_regs, nr_regs);
@@ -95,12 +104,6 @@ void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_reg
 
 static void collect(heap_t *hp, region_t *root_regs, int nr_regs)
 {
-	if (hp->full_sweep_after != 0 && hp->sweep_after_count >= hp->full_sweep_after)
-	{
-		heap_gc_full_sweep_N(hp, root_regs, nr_regs);
-		return;
-	}
-
 	memnode_t *node = hp->nodes;
 	int size0 = 0;
 	while (node != hp->gc_cohorts[0])

@@ -86,6 +86,7 @@ struct region_t {
 
 #define HEAP_NEW_SIZE_RATIO			16
 #define HEAP_NEW_SIZE_CAP			(16384 - WSIZE(memnode_t))
+#define HEAP_NEW_SIZE_INDEX			16
 
 inline static int heap_chunk_size(int needed, int total_size)
 {

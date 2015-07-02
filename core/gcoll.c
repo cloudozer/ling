@@ -44,8 +44,6 @@
 #include "string.h"
 #include "mm.h"
 
-#define HEAP_GC_MAX_INDEX	16
-
 typedef struct regions_t regions_t;
 struct regions_t {
 	region_t *top;
@@ -83,12 +81,10 @@ static region_t *containing_region(region_t *regions, int n, void *addr);
 
 int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, int nr_regs)
 {
+	assert(gc_node != 0);
+
 	ssi(SYS_STATS_GC_RUNS);
 	hp->minor_gcs++;
-
-	assert(gc_node != 0);
-	if (gc_node->index > HEAP_GC_MAX_INDEX)
-		return 0;
 
 	int is_init_node = (gc_node == &hp->init_node);
 
@@ -165,7 +161,9 @@ int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, 
 	int nodes_merging = 1;
 	if (prev_node != 0 && NODE_SPACE_LEFT(prev_node) >= copy_size*sizeof(uint32_t))
 		new_node = prev_node;
-	else if (gc_node->next != 0 && NODE_SPACE_LEFT(gc_node->next) >= copy_size*sizeof(uint32_t))
+	else if (gc_node->next != 0 &&
+			 gc_node->index <= HEAP_NEW_SIZE_INDEX &&	// do not merge with the sweep node
+			 NODE_SPACE_LEFT(gc_node->next) >= copy_size*sizeof(uint32_t))
 		new_node = gc_node->next;
 	else
 	{
@@ -296,7 +294,7 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 
 	// copies all live terms to a single node
 	ssi(SYS_STATS_GC_RUNS);
-	//printk("GC:full-sweep: heap %pp total_size %d", hp, hp->total_size);
+	printk("GC:full-sweep: heap %pp total_size %d", hp, hp->total_size);
 
 	// Potentially, we can use init_node here if total_size is very low;
 	// this happens rarely and will complicate logic too much though.
@@ -319,9 +317,8 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	uint32_t stack_size = mm_alloc_left() *PAGE_SIZE;
 	if (upper_bound *sizeof(region_t) > stack_size)
 	{
-		printk("GC: stack too small: stack_size %d needed %d\n",
+		printk("GC:full-sweep: stack too small: stack_size %d needed %d\n",
 				stack_size, upper_bound *sizeof(region_t));
-		//printk("heap_gc_full_sweep(): not enough memory for regions stack: upper %d\n", upper_bound);
 		nfree(sweep_node);
 		return -NO_MEMORY;
 	}
@@ -421,7 +418,7 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 
 	hp->total_size = sweep_size;
 
-	//printk(" done, sweep_size %d\n", sweep_size);
+	printk(" done, sweep_size %d\n", sweep_size);
 	return 0;
 }
 
