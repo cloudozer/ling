@@ -70,6 +70,8 @@ struct heap_t {
 #endif
 	// Viktor's GC
 	memnode_t *gc_cohorts[GC_COHORTS];
+	uint8_t gc_flags[GC_COHORTS];
+	int gc_yield_runs;
 	int gc_yield_tally;
 	int gc_wait_tally;
 };

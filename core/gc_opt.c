@@ -38,7 +38,8 @@
 #include "string.h"
 #include "assert.h"
 
-#define GC_COHORT_THRESH	4
+#define GC_LIMIT_PASSED		1
+#define GC_COHORT_LIMIT		4
 
 // Tunable parameters
 int gc_model_size_multiplier = 2;
@@ -48,7 +49,6 @@ int gc_model_wait_up = 1;
 int gc_model_wait_down = 4;
 
 static void collect(heap_t *hp, region_t *root_regs, int nr_regs);
-static void collect1(heap_t *hp, region_t *root_regs, int nr_regs);
 static void collect_cohort(heap_t *hp, int ch, region_t *root_regs, int nr_regs);
 
 int cohort_colls[GC_COHORTS] = { 0 };
@@ -59,7 +59,7 @@ void gc_opt_init(void)
 
 int gc_skip_idle(heap_t *hp)
 {
-	return (hp->gc_cohorts[0] == hp->nodes);	// no untouched nodes
+	return (hp->gc_yield_runs == 0);
 }
 
 void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_regs)
@@ -87,12 +87,20 @@ void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_reg
 	else
 	{
 		assert(gc_loc == GC_LOC_IDLE);
-		collect1(hp, root_regs, nr_regs);	//TODO
+		assert(hp->gc_yield_runs > 0);
+		hp->gc_yield_runs--;
+		collect(hp, root_regs, nr_regs);
 	}
 }
 
 static void collect(heap_t *hp, region_t *root_regs, int nr_regs)
 {
+	if (hp->full_sweep_after != 0 && hp->sweep_after_count >= hp->full_sweep_after)
+	{
+		heap_gc_full_sweep_N(hp, root_regs, nr_regs);
+		return;
+	}
+
 	memnode_t *node = hp->nodes;
 	int size0 = 0;
 	while (node != hp->gc_cohorts[0])
@@ -100,6 +108,8 @@ static void collect(heap_t *hp, region_t *root_regs, int nr_regs)
 		size0++;
 		node = node->next;
 	}
+
+	int nr_collectable = size0;
 
 	int ch = 0;
 	while (ch < GC_COHORTS)
@@ -112,51 +122,28 @@ static void collect(heap_t *hp, region_t *root_regs, int nr_regs)
 			node = node->next;
 		}
 
-		if (size0 >= GC_COHORT_THRESH && size0 * gc_model_size_multiplier > size1)
+		if (size0 == 0)
+			hp->gc_flags[ch] &= ~GC_LIMIT_PASSED;
+		else if (size0 >= GC_COHORT_LIMIT)
+			hp->gc_flags[ch] |= GC_LIMIT_PASSED;
+
+		if ((hp->gc_flags[ch] & GC_LIMIT_PASSED) &&
+			(size0 * gc_model_size_multiplier > size1))
 			break;
 		else
 		{
+			nr_collectable += size1;
+
 			size0 = size1;
 			ch++;
 		}
 	}
 
+	// limit the number of yield runs to the number of collectable nodes
+	hp->gc_yield_runs = nr_collectable;
+
 	if (ch >= GC_COHORTS)
 		return;		// cohorts lined up perfectly
-
-	cohort_colls[ch]++;
-
-	collect_cohort(hp, ch, root_regs, nr_regs);
-}
-
-static void collect1(heap_t *hp, region_t *root_regs, int nr_regs)
-{
-	if (hp->full_sweep_after != 0 && hp->sweep_after_count >= hp->full_sweep_after)
-	{
-		heap_gc_full_sweep_N(hp, root_regs, nr_regs);
-		return;
-	}
-
-	// No runnable processes - collect cohorts starting with the oldest one
-
-	memnode_t *node = hp->gc_cohorts[0];
-	int ch = 0;
-	while (ch < GC_COHORTS)
-	{
-		int size = 0;
-		memnode_t *limit = (ch < GC_COHORTS-1) ?hp->gc_cohorts[ch+1] :0;
-		while (node != limit)
-		{
-			size++;
-			node = node->next;
-		}
-		if (size == 0)
-			break;
-		ch++;
-	}
-
-	if (ch >= GC_COHORTS)
-		ch = GC_COHORTS-1;
 
 	cohort_colls[ch]++;
 

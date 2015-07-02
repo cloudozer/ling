@@ -232,10 +232,12 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 			for (int i = 0; i < GC_COHORTS; i++)
 				printk("Cohort %d: collected %d time(s)\n", i, cohort_colls[i]);
 		}
-		else if (Arg == tag_int(10))
+		else if (is_short_pid(Arg))
 		{
-			// dump cohort sizes
-			heap_t *hp = &proc->hp;
+			proc_t *target = scheduler_lookup(Arg);
+			assert(target != 0);	
+		
+			heap_t *hp = &target->hp;
 			memnode_t *node = hp->nodes;
 			int ch = 0;
 			int size = 0;

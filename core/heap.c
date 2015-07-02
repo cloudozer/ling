@@ -72,6 +72,8 @@ void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends)
 	//hp->expected_top = 0;
 
 	//hp->gc_cohorts are 0
+	//hp->gc_flags are 0
+	//hp->gc_yield_runs = 0;
 	//hp->gc_yield_tally = 0;
 	//hp->gc_wait_tally = 0;
 }
