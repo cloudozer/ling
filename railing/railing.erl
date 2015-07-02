@@ -37,7 +37,7 @@ ld(xen_x86) ->
 ld(posix_x86) ->
 	case os:type() of
 		{unix, darwin} -> [
-			"ld",
+			"clang",
 			"-image_base", "0x8000",
 			"-pagezero_size", "0x8000",
 			"-arch", "x86_64",
