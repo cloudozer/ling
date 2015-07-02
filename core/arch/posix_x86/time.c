@@ -47,48 +47,50 @@
 
 /* required for statistics */
 uint64_t start_of_day_wall_clock = 0;
+static uint64_t monotonic_delta = 0;
 
 void time_init(void)
 {
     start_of_day_wall_clock = wall_clock();
+    monotonic_delta = start_of_day_wall_clock - monotonic_clock();
+    /*printf("start_of_day_wall_clock = %llu\n",
+           (unsigned long long)start_of_day_wall_clock); // */
 }
 
 uint64_t monotonic_clock(void)
 {
-    printf("monotonic_clock: tick\n");
-    uint64_t usec = 0;
+    uint64_t nsec = 0;
 
 #ifdef __APPLE__
     mach_timebase_info_data_t timebase_info;
     mach_timebase_info(&timebase_info);
     uint64_t ret = mach_absolute_time();
-    uint64_t nsec = ret * timebase_info.numer / timebase_info.denom;
-    usec = nsec / 1000;
+    nsec = ret * timebase_info.numer / timebase_info.denom;
 #else
     struct timespec tp = { .tv_sec = 0, .tv_nsec = 0 };
     clock_gettime(CLOCK_MONOTONIC, &tp);
-    usec = tp.tv_sec * 1000000 + tp.tv_nsec/1000;
+    nsec = tp.tv_sec * 1000000000ull + (uint64_t)tp.tv_nsec;
 #endif
-    return usec / 1000; // microseconds
+    return nsec + monotonic_delta; // nanoseconds
 }
 
 uint64_t wall_clock(void)
 {
-    printf("wall_clock: tick\n");
     struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
     gettimeofday(&tv, NULL);
-	return (tv.tv_sec * 1000000 + tv.tv_usec) / 1000; // microseconds
+    uint64_t t = ((uint64_t)tv.tv_sec * 1000000ull + (uint64_t)tv.tv_usec);
+	return 1000ull * t; // nanoseconds
 }
 
 void expand_time(struct time_exp_t *xt, uint64_t wall_clock)
 {
 	memset(xt, 0, sizeof(*xt));
-    time_t wall_sec = wall_clock / 1000000;
+    time_t wall_sec = wall_clock / 1000000000ull;
 
     struct tm tm;
-    gmtime_r(wall_sec, &tm);
+    gmtime_r(&wall_sec, &tm);
 
-    xt->tm_usec   = wall_clock % 1000000;
+    xt->tm_usec   = wall_clock % 1000000000ull;
     xt->tm_sec    = tm.tm_sec;
     xt->tm_min    = tm.tm_min;
     xt->tm_hour   = tm.tm_hour;
