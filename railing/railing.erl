@@ -46,7 +46,7 @@ main(Args) ->
 
 	case lists:member(version, Opts) of
 		true ->
-			io:format("LING v~s\n", [?LING_VER]),
+			io:format("LING ~s\n", [?LING_VER]),
 			halt();
 		_ ->
 			ok
