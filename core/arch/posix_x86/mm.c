@@ -12,7 +12,7 @@
 #ifdef __APPLE__
 #	define MMAP_ADDR NULL
 #elif __linux
-#	define MMAP_ADDR 0x10000000
+#	define MMAP_ADDR (void *)0x10000000
 #endif
 
 #if 0
