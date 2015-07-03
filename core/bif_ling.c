@@ -213,7 +213,7 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 		break;
 	case A_GC:
 		if (Arg == tag_int(1))
-			printk("Pages left: %d\n", mm_alloc_left());
+			return tag_int(mm_alloc_left());
 		else if (Arg == tag_int(2))
 		{
 			int nr_nodes = 0;

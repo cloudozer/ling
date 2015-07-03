@@ -358,10 +358,7 @@ void proc_burn_fat(int gc_loc, proc_t *proc, term_t *rs, int live)
 	region_t root_regs[nr_regs];
 	proc_fill_root_regs(proc, root_regs, rs, live);
 	heap_t *hp = &proc->hp;
-	if (hp->full_sweep_after != 0 && hp->sweep_after_count >= hp->full_sweep_after)
-		heap_gc_full_sweep_N(hp, root_regs, nr_regs);
-	else
-		gc_hook(gc_loc, proc->pid, &proc->hp, root_regs, nr_regs);
+	gc_hook(gc_loc, proc->pid, &proc->hp, root_regs, nr_regs);
 }
 
 void proc_destroy(proc_t *proc)
