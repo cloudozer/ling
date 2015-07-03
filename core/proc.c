@@ -357,7 +357,6 @@ void proc_burn_fat(int gc_loc, proc_t *proc, term_t *rs, int live)
 		return;
 	region_t root_regs[nr_regs];
 	proc_fill_root_regs(proc, root_regs, rs, live);
-	heap_t *hp = &proc->hp;
 	gc_hook(gc_loc, proc->pid, &proc->hp, root_regs, nr_regs);
 }
 
