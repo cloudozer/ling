@@ -398,6 +398,7 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	uint32_t sweep_size = htop - sweep_node->starts;
 	sweep_node->starts = htop;
 
+	assert(hp->total_size >= sweep_size);
 	ssa(SYS_STATS_GC_WORDS_RECLAIM, hp->total_size -sweep_size);
 
 	// Replace all heap nodes with the sweep node - beware of init_node

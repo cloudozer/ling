@@ -38,20 +38,27 @@
 #include "string.h"
 #include "assert.h"
 
-#define GC_LIMIT_PASSED		1
-#define GC_COHORT_LIMIT		4
+// When a cohort size reaches GC_COHORT_SIZE, the GC_LIMIT_PASSED flag is set.
+// This enables GC for the cohort until its size drop to 0.
+#define GC_LIMIT_PASSED			1
+#define GC_COHORT_LIMIT			4
 
-// Tunable parameters
-int gc_model_size_multiplier = 2;
-int gc_model_yield_up = 1;
-int gc_model_yield_down = 4;
-int gc_model_wait_up = 1;
-int gc_model_wait_down = 50;
+// A cohort size time GC_SIZE_MULTIPLIER must exceed the size of the next cohort,
+// for the smaller cohort to be eligible for GC.
+#define GC_SIZE_MULTIPLIER		2
+
+// GC_EVENT_YIELD_UP / GC_EVENT_YIELD_DOWN portion of the process yield event
+// result in the (minor) GC run.
+#define GC_EVENT_YIELD_UP		7
+#define GC_EVENT_YIELD_DOWN 	100
+// similar for process wait evevt
+#define GC_EVENT_WAIT_UP		3
+#define GC_EVENT_WAIT_DOWN		1000
+
+// A full-sweep GC may happen when the scheduler is IDLE and all data is old.
 
 static void collect(heap_t *hp, region_t *root_regs, int nr_regs);
 static void collect_cohort(heap_t *hp, int ch, region_t *root_regs, int nr_regs);
-
-int cohort_colls[GC_COHORTS] = { 0 };
 
 void gc_opt_init(void)
 {
@@ -68,20 +75,20 @@ void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_reg
 		collect(hp, root_regs, nr_regs);	// may this tunable?
 	else if (gc_loc == GC_LOC_PROC_YIELD)
 	{
-		hp->gc_yield_tally += gc_model_yield_up;
-		while (hp->gc_yield_tally >= gc_model_yield_down)
+		hp->gc_yield_tally += GC_EVENT_YIELD_UP;
+		while (hp->gc_yield_tally >= GC_EVENT_YIELD_DOWN)
 		{
 			collect(hp, root_regs, nr_regs);
-			hp->gc_yield_tally -= gc_model_yield_down;
+			hp->gc_yield_tally -= GC_EVENT_YIELD_DOWN;
 		}
 	}
 	else if (gc_loc == GC_LOC_PROC_WAIT)
 	{
-		hp->gc_wait_tally += gc_model_wait_up;
-		while (hp->gc_wait_tally >= gc_model_wait_down)
+		hp->gc_wait_tally += GC_EVENT_WAIT_UP;
+		while (hp->gc_wait_tally >= GC_EVENT_WAIT_DOWN)
 		{
 			collect(hp, root_regs, nr_regs);
-			hp->gc_wait_tally -= gc_model_wait_down;
+			hp->gc_wait_tally -= GC_EVENT_WAIT_DOWN;
 		}
 	}
 	else
@@ -131,7 +138,7 @@ static void collect(heap_t *hp, region_t *root_regs, int nr_regs)
 			hp->gc_flags[ch] |= GC_LIMIT_PASSED;
 
 		if ((hp->gc_flags[ch] & GC_LIMIT_PASSED) &&
-			(size0 * gc_model_size_multiplier > size1))
+			(size0 * GC_SIZE_MULTIPLIER > size1))
 			break;
 		else
 		{
@@ -147,8 +154,6 @@ static void collect(heap_t *hp, region_t *root_regs, int nr_regs)
 
 	if (ch >= GC_COHORTS)
 		return;		// cohorts lined up perfectly
-
-	cohort_colls[ch]++;
 
 	collect_cohort(hp, ch, root_regs, nr_regs);
 }
@@ -170,7 +175,7 @@ static void collect_cohort(heap_t *hp, int ch, region_t *root_regs, int nr_regs)
 
 	int ok = heap_gc_generational_N(hp, prev, root_regs, nr_regs);
 	if (ok < 0)
-		printk("collect_cohort: no memory while collecting cohort %d, ignored\n", ch);
+		printk("GC:collect_cohort: no memory while collecting cohort %d, ignored\n", ch);
 		
 	for (int i = 0; i <= ch; i++)
 		if (hp->gc_cohorts[i] == prev)

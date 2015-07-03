@@ -64,14 +64,6 @@ extern uint32_t trace_mask;
 
 void dump_netmap_state(int what);
 
-extern int gc_model_size_multiplier;
-extern int gc_model_yield_up;
-extern int gc_model_yield_down;
-extern int gc_model_wait_up;
-extern int gc_model_wait_down;
-
-extern int cohort_colls[GC_COHORTS];
-
 term_t cbif_domain_name0(proc_t *proc, term_t *regs)
 {
 	return heap_strz(&proc->hp, my_domain_name);
@@ -210,68 +202,6 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 			dump_netmap_state(0);
 		else if (Arg == A_RX)
 			dump_netmap_state(1);
-		break;
-	case A_GC:
-		if (Arg == tag_int(1))
-			return tag_int(mm_alloc_left());
-		else if (Arg == tag_int(2))
-		{
-			int nr_nodes = 0;
-			int total_pages = 0;
-			memnode_t *node = proc->hp.nodes;
-			while (node != 0)
-			{
-				nr_nodes++;
-				total_pages += node->index;
-				node = node->next;
-			}
-			printk("Heap: %d nodes %d pages %d total_size\n", nr_nodes, total_pages, proc->hp.total_size);
-		}
-		else if (Arg == tag_int(3))
-		{
-			for (int i = 0; i < GC_COHORTS; i++)
-				printk("Cohort %d: collected %d time(s)\n", i, cohort_colls[i]);
-		}
-		else if (is_short_pid(Arg))
-		{
-			proc_t *target = scheduler_lookup(Arg);
-			assert(target != 0);	
-		
-			heap_t *hp = &target->hp;
-			memnode_t *node = hp->nodes;
-			int ch = 0;
-			int size = 0;
-			printk("ch");
-			while (1)
-			{
-				while (ch < GC_COHORTS && node == hp->gc_cohorts[ch])
-				{
-					printk(":%d", size);
-					ch++;
-					size = 0;
-				}
-				if (node == 0)
-					break;
-				size++;
-				node = node->next;
-			}
-			printk(":%d\n", size);
-		}
-		else if (is_tuple(Arg))
-		{
-			term_t *elts = peel_tuple(Arg);
-			assert(elts[0] == 5);
-			assert(is_int(elts[1]));
-			assert(is_int(elts[2]));
-			assert(is_int(elts[3]));
-			assert(is_int(elts[4]));
-			assert(is_int(elts[5]));
-			gc_model_size_multiplier = int_value(elts[1]);
-			gc_model_yield_up = int_value(elts[2]); 
-			gc_model_yield_down = int_value(elts[3]);
-			gc_model_wait_up = int_value(elts[4]);
-			gc_model_wait_down = int_value(elts[5]);
-		}
 		break;
 	default:
 		badarg(What);
