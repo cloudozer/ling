@@ -53,15 +53,10 @@
 #include <string.h>
 
 #define ASYNC_REF	0
-//
-// To achieve a record number of concurrent connections, the TCP_MIN_RECV_BUF
-// +TCP_MIN_SEND_BUF should be set to a small value (at most 3200?). This
-// ensures that a single page is allocated per TCP/IP outlet.
-//
-//#define TCP_MIN_SEND_BUF			1024
-//#define TCP_MIN_RECV_BUF			2048
-#define TCP_MIN_SEND_BUF			1024
-#define TCP_MIN_RECV_BUF			4096
+
+// dictated by lwIP
+#define TCP_MIN_SEND_BUF			TCP_SND_BUF
+#define TCP_MIN_RECV_BUF			TCP_WND
 
 static uint8_t *ol_tcp_get_send_buffer(outlet_t *ol, int len);
 static int ol_tcp_send(outlet_t *ol, int len, term_t reply_to);
@@ -104,6 +99,8 @@ outlet_t *ol_tcp_factory(proc_t *cont_proc, uint32_t bit_opts)
 	outlet_t *new_ol = outlet_make_N(&ol_tcp_vtab, cont_proc, bit_opts, extra);
 	if (new_ol == 0)
 		return 0;
+
+	printk("TCP outlet occupies %d pages\n", new_ol->home_node->index);
 
 	inet_set_default_opts(new_ol);
 	//new_ol->tcp = 0;
@@ -806,8 +803,7 @@ static err_t recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t er
 		pbuf_copy_partial(data, ol->recv_buffer +ol->recv_buf_off, len, 0);
 		ol->recv_buf_off += len;
 
-		// A more natural place to acknowledge the data when complete packets
-		// are baked. No.
+		// The correct place to acknowledge the data when complete packets are baked. No.
 		tcp_recved(ol->tcp, len);
 
 		pbuf_free(data);
@@ -1070,7 +1066,11 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 				// ol->recv_buf_off stays the same
 			}
 			else
+			{
+				if (val < TCP_MIN_RECV_BUF)
+					val = TCP_MIN_RECV_BUF;
 				ol->recv_bufsize = val;
+			}
 			break;
 
 		case INET_OPT_PRIORITY:

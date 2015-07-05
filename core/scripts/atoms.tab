@@ -157,6 +157,7 @@ unicode
 utf8
 utf16
 utf32
+warning
 error
 incomplete
 big
@@ -388,3 +389,5 @@ cloudozer
 netmap
 tx
 rx
+gc
+

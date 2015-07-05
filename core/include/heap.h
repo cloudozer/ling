@@ -46,7 +46,7 @@
 #define GC_LOC_PROC_YIELD	1
 #define GC_LOC_PROC_WAIT	2
 #define GC_LOC_TEST_HEAP	3
-#define GC_LOCS				4
+#define GC_LOCATIONS		4
 
 #define GC_COHORTS			4
 
@@ -69,9 +69,18 @@ struct heap_t {
 	uint32_t *expected_top;
 #endif
 	// Viktor's GC
+
+	// If the cohort-based GC sticks, it would be reasonable to split the list of nodes into
+	// separate lists for each cohort. This way the code will get simpler and we avoid bleeding
+	// data from generation to generation while merging nodes.
+
 	memnode_t *gc_cohorts[GC_COHORTS];
 	uint8_t gc_flags[GC_COHORTS];
+
 	int gc_yield_runs;
+
+	// Instead of tallies, we may record the number of reductions for each cohort.
+	// The number of reductions serves as a surrogate time.
 	int gc_yield_tally;
 	int gc_wait_tally;
 };
@@ -88,7 +97,15 @@ struct region_t {
 #define HEAP_NEW_SIZE_CAP			(16384 - WSIZE(memnode_t))
 #define HEAP_NEW_SIZE_INDEX			16
 
-inline static int heap_chunk_size(int needed, int total_size)
+static inline int is_sweep_node(memnode_t *node)
+{
+	// sweep_node -> init_node -> 0
+	return (node->index > HEAP_NEW_SIZE_INDEX &&
+			node->next != 0 &&
+			node->next->next == 0);
+}
+
+static inline int heap_chunk_size(int needed, int total_size)
 {
 	int csize = total_size / HEAP_NEW_SIZE_RATIO;
 	if (csize > HEAP_NEW_SIZE_CAP)

@@ -162,7 +162,7 @@ int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, 
 	if (prev_node != 0 && NODE_SPACE_LEFT(prev_node) >= copy_size*sizeof(uint32_t))
 		new_node = prev_node;
 	else if (gc_node->next != 0 &&
-			 gc_node->index <= HEAP_NEW_SIZE_INDEX &&	// do not merge with the sweep node
+			 !is_sweep_node(gc_node->next) &&	// do not merge with the sweep node
 			 NODE_SPACE_LEFT(gc_node->next) >= copy_size*sizeof(uint32_t))
 		new_node = gc_node->next;
 	else

@@ -81,7 +81,6 @@ jmp_buf no_memory_jmp_buf;
 struct {
 	// lists of nodes of same size; free[0] contains odd-sized nodes
 	memnode_t *free[MAX_INDEX];
-	int nr_freed_pages;
 } node_allocator;
 
 void nalloc_init(void)
@@ -89,8 +88,6 @@ void nalloc_init(void)
 	int i;
 	for (i = 0; i < MAX_INDEX; i++)
 		node_allocator.free[i] = 0;
-
-	node_allocator.nr_freed_pages = 0;
 
 #ifdef NALLOC_STATS
 	na_ts_ns = monotonic_clock();
@@ -109,7 +106,12 @@ memnode_t *nalloc(int size)
 {
 	memnode_t *node = nalloc_internal(size);
 	if (node == 0)
+	{
+#ifdef LING_DEBUG
+		printk("NO MEMORY!\n");
+#endif
 		no_memory_signal();
+	}
 
 	return node;
 }
@@ -125,11 +127,6 @@ memnode_t *nalloc_N(int size)
 //		gdb_break();
 //#endif
 	return node;
-}
-
-int nalloc_freed_pages()
-{
-	return node_allocator.nr_freed_pages;
 }
 
 static memnode_t *nalloc_internal(int size)
@@ -166,8 +163,6 @@ static memnode_t *nalloc_internal(int size)
 		{
 			*ref = node->next;
 			node->next = 0;
-
-			node_allocator.nr_freed_pages -= node->index;
 			return node;
 		}
 
@@ -179,8 +174,6 @@ static memnode_t *nalloc_internal(int size)
 		memnode_t *node = node_allocator.free[index];
 		node_allocator.free[index] = node->next;
 		node->next = 0;
-
-		node_allocator.nr_freed_pages -= node->index;
 		return node;
 	}
 
@@ -193,8 +186,6 @@ static memnode_t *nalloc_internal(int size)
 		new_node->index = index;
 		new_node->starts = NODE_THRESHOLD(new_node);
 		new_node->ends = (void *)new_node + ext_size;
-
-		node_allocator.nr_freed_pages -= new_node->index;
 		return new_node;
 	}
 
@@ -207,8 +198,6 @@ static memnode_t *nalloc_internal(int size)
 		// try to allocate a node by splitting larger nodes
 		chip = split_nodes(index);
 
-	if (chip != 0)
-		node_allocator.nr_freed_pages -= chip->index;
 	return chip;
 }
 
@@ -309,8 +298,6 @@ void nfree(memnode_t *node)
 	while (p +1 <= node->ends)
 		*p++ = UNUSED_MEM_SIGN;
 #endif
-
-	node_allocator.nr_freed_pages += node->index;
 
 	int index = node->index;
 	if (node->index >= MAX_INDEX)

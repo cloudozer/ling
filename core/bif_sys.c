@@ -808,6 +808,12 @@ term_t cbif_native_name_encoding0(proc_t *proc, term_t *regs)
 	return A_UTF8;
 }
 
+term_t cbif_warning_map0(proc_t *proc, term_t *regs)
+{
+	// In BEAM, this can be changed using +W command line flags
+	return A_WARNING;
+}
+
 static term_t start_timer(proc_t *proc, term_t *regs, int enveloped)
 {
 	term_t Time = regs[0];

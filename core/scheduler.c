@@ -357,7 +357,7 @@ static uint64_t proc_started_ns = 0;
 		if (scheduler_park_runnable_N(current) < 0)
 			memory_exhausted = 1;
 		outlet_t *closing = current->result.closing;
-		assert(is_atom(current->result.why));
+		//assert(is_atom(current->result.why));
 		outlet_close(closing, current->result.why);
 		break;
 	}

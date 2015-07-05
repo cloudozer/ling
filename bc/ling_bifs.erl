@@ -207,6 +207,7 @@ is_builtin(erlang, read_timer, 1) -> true;
 is_builtin(erlang, cancel_timer, 1) -> true;
 is_builtin(erlang, send_after, 3) -> true;
 is_builtin(erlang, start_timer, 3) -> true;
+is_builtin(error_logger, warning_map, 0) -> true;
 is_builtin(file, native_name_encoding, 0) -> true;
 is_builtin(erlang, universaltime, 0) -> true;
 is_builtin(erlang, localtime, 0) -> true;

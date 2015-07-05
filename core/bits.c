@@ -50,8 +50,6 @@
 #include "getput.h"
 #include "bignum.h"
 
-#define BS_APPEND_SLACK		256
-
 void bits_get_real(void *pbin, bits_t *bs)
 {
 	switch (boxed_tag(pbin))
@@ -649,7 +647,7 @@ int bits_calc_bit_size(term_t size, uint8_t unit, uint32_t *bcount)
 
 term_t bits_bs_init_writable(int size, heap_t *hp)
 {
-	uint32_t node_size = size + BS_APPEND_SLACK;
+	uint32_t node_size = binnode_append_slack(size);
 	binnode_t *node = binnode_make(node_size);
 
 	int needed = WSIZE(t_proc_bin_t) + WSIZE(t_sub_bin_t);
@@ -710,7 +708,7 @@ int bits_bs_private_append(term_t bin,
 	{
 		// reallocate node
 		int old_size = node->ends -node->starts;
-		int new_size = old_size + (bcount +7) /8 + BS_APPEND_SLACK;
+		int new_size = binnode_append_slack(old_size + (bcount +7) /8);
 		binnode_t *new_node = binnode_make(new_size);
 		memcpy(new_node->starts, node->starts, old_size);
 		pb->node = new_node; // modified in place
@@ -780,7 +778,7 @@ term_t bits_bs_append(term_t bin,
 		if ((bs.ends - bs.starts) % unit != 0)
 			return A_BADARG;
 
-		uint32_t node_size = (bs.ends -bs.starts +bcount +7) /8 + BS_APPEND_SLACK;
+		uint32_t node_size = binnode_append_slack((bs.ends -bs.starts +bcount +7) /8);
 		binnode_t *node = binnode_make(node_size);
 
 		uint8_t *data = bs.data + bs.starts /8;

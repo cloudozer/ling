@@ -135,6 +135,8 @@ erlang:universaltime()		cbif_universaltime0
 
 file:native_name_encoding()	cbif_native_name_encoding0
 
+error_logger:warning_map()	cbif_warning_map0
+
 erlang:start_timer(Time,Dest,Msg)	cbif_start_timer3
 erlang:send_after(Time,Dest,Msg)	cbif_send_after3
 erlang:cancel_timer(TRef)			cbif_cancel_timer1

@@ -203,6 +203,35 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 		else if (Arg == A_RX)
 			dump_netmap_state(1);
 		break;
+	case A_GC:
+		if (Arg == tag_int(1))
+			printk("Pages left: %d\n", mm_alloc_left());
+		else if (is_short_pid(Arg))
+		{
+			proc_t *target = scheduler_lookup(Arg);
+			assert(target != 0);	
+		
+			heap_t *hp = &target->hp;
+			memnode_t *node = hp->nodes;
+			int ch = 0;
+			int size = 0;
+			printk("ch");
+			while (1)
+			{
+				while (ch < GC_COHORTS && node == hp->gc_cohorts[ch])
+				{
+					printk(":%d", size);
+					ch++;
+					size = 0;
+				}
+				if (node == 0)
+					break;
+				size++;
+				node = node->next;
+			}
+			printk(":%d\n", size);
+		}
+		break;
 	default:
 		badarg(What);
 	}
