@@ -100,7 +100,7 @@ outlet_t *ol_tcp_factory(proc_t *cont_proc, uint32_t bit_opts)
 	if (new_ol == 0)
 		return 0;
 
-	printk("TCP outlet occupies %d pages\n", new_ol->home_node->index);
+	//printk("TCP outlet occupies %d pages\n", new_ol->home_node->index);
 
 	inet_set_default_opts(new_ol);
 	//new_ol->tcp = 0;
