@@ -52,7 +52,8 @@
 #define GC_EVENT_YIELD_UP		7
 #define GC_EVENT_YIELD_DOWN 	100
 // similar for process wait evevt
-#define GC_EVENT_WAIT_UP		3
+//#define GC_EVENT_WAIT_UP		3
+#define GC_EVENT_WAIT_UP		15
 #define GC_EVENT_WAIT_DOWN		1000
 
 // A full-sweep GC may happen when the scheduler is IDLE and all data is old.
