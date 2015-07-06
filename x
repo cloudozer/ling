@@ -1,7 +1,8 @@
-make -B -C core/lib/lwip
+#!/usr/bin/bash
+#make -B -C core/lib/lwip
+#rm core/ol_tcp.o
 rm core/ling_main.*
-rm core/ol_tcp.o
 make
 make -B -C railing
-cp railing/railing ~/testling
+cp railing/railing ~/BWT
 

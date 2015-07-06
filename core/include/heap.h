@@ -77,12 +77,11 @@ struct heap_t {
 	memnode_t *gc_cohorts[GC_COHORTS];
 	uint8_t gc_flags[GC_COHORTS];
 
+	// How many time GC may run for this heap when VM is idle
 	int gc_yield_runs;
 
-	// Instead of tallies, we may record the number of reductions for each cohort.
-	// The number of reductions serves as a surrogate time.
-	int gc_yield_tally;
-	int gc_wait_tally;
+	// the process reductions when the last GC run happened
+	uint32_t gc_last_reds;
 };
 
 typedef struct region_t region_t;
@@ -124,9 +123,6 @@ uint32_t *heap_alloc_N(heap_t *hp, int needed);
 
 int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, int nr_regs);
 int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs);
-
-int gc_skip_idle(heap_t *hp);
-void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_regs);
 
 void *heap_top(heap_t *hp);
 void heap_set_top0(heap_t *hp, uint32_t *new_top);

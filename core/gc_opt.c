@@ -47,14 +47,8 @@
 // for the smaller cohort to be eligible for GC.
 #define GC_SIZE_MULTIPLIER		2
 
-// GC_EVENT_YIELD_UP / GC_EVENT_YIELD_DOWN portion of the process yield event
-// result in the (minor) GC run.
-#define GC_EVENT_YIELD_UP		7
-#define GC_EVENT_YIELD_DOWN 	100
-// similar for process wait evevt
-//#define GC_EVENT_WAIT_UP		3
-#define GC_EVENT_WAIT_UP		15
-#define GC_EVENT_WAIT_DOWN		1000
+// A number of reductions between two GC runs
+#define GC_MIN_REDS				6000
 
 // A full-sweep GC may happen when the scheduler is IDLE and all data is old.
 
@@ -70,32 +64,12 @@ int gc_skip_idle(heap_t *hp)
 	return (hp->gc_yield_runs == 0);
 }
 
-void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_regs)
+void gc_hook(int gc_loc, proc_t *proc, region_t *root_regs, int nr_regs)
 {
-	if (gc_loc == GC_LOC_TEST_HEAP)
-		collect(hp, root_regs, nr_regs);	// may this tunable?
-	else if (gc_loc == GC_LOC_PROC_YIELD)
-	{
-		hp->gc_yield_tally += GC_EVENT_YIELD_UP;
-		while (hp->gc_yield_tally >= GC_EVENT_YIELD_DOWN)
-		{
-			collect(hp, root_regs, nr_regs);
-			hp->gc_yield_tally -= GC_EVENT_YIELD_DOWN;
-		}
-	}
-	else if (gc_loc == GC_LOC_PROC_WAIT)
-	{
-		hp->gc_wait_tally += GC_EVENT_WAIT_UP;
-		while (hp->gc_wait_tally >= GC_EVENT_WAIT_DOWN)
-		{
-			collect(hp, root_regs, nr_regs);
-			hp->gc_wait_tally -= GC_EVENT_WAIT_DOWN;
-		}
-	}
-	else
-	{
-		assert(gc_loc == GC_LOC_IDLE);
+	heap_t *hp = &proc->hp;
 
+	if (gc_loc == GC_LOC_IDLE)
+	{
 		if (hp->full_sweep_after != 0 &&
 			hp->gc_cohorts[GC_COHORTS-1] == hp->nodes && 	// all nodes are old
 			hp->sweep_after_count >= hp->full_sweep_after)
@@ -106,6 +80,14 @@ void gc_hook(int gc_loc, term_t pid, heap_t *hp, region_t *root_regs, int nr_reg
 
 		assert(hp->gc_yield_runs > 0);
 		hp->gc_yield_runs--;
+		collect(hp, root_regs, nr_regs);
+	}
+	else
+	{
+		uint32_t new_reds = proc->total_reds - hp->gc_last_reds;
+		if (new_reds < GC_MIN_REDS)
+			return;
+		hp->gc_last_reds = proc->total_reds;
 		collect(hp, root_regs, nr_regs);
 	}
 }

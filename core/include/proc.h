@@ -200,6 +200,9 @@ void proc_fill_root_regs(proc_t *proc, region_t *root_regs, term_t *rs, int live
 void proc_burn_fat(int gc_loc, proc_t *proc, term_t *rs, int live);
 void proc_destroy(proc_t *proc);
 
+int gc_skip_idle(heap_t *hp);
+void gc_hook(int gc_loc, proc_t *proc, region_t *root_regs, int nr_regs);
+
 // BIF utilities
 int proc_spawn_N(proc_t *new_proc, term_t m, term_t f, term_t args);
 int proc_spawn_fun0_N(proc_t *new_proc, t_fun_t *f);
