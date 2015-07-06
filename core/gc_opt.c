@@ -37,6 +37,7 @@
 
 #include "string.h"
 #include "assert.h"
+#include "proc.h"
 
 // When a cohort size reaches GC_COHORT_SIZE, the GC_LIMIT_PASSED flag is set.
 // This enables GC for the cohort until its size drop to 0.

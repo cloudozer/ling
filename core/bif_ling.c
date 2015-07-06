@@ -245,3 +245,81 @@ term_t cbif_stats0(proc_t *proc, term_t *regs)
 	return A_OK;
 }
 
+term_t cbif_xenstore_read1(proc_t *proc, term_t *regs)
+{
+	term_t Key = regs[0];
+	if (!is_list(Key) && !is_boxed_binary(Key))
+		badarg(Key);
+	int key_size = iolist_size(Key);
+	if (key_size < 0)
+		badarg(Key);
+	uint8_t buf[key_size +1];
+	iolist_flatten(Key, buf);
+	buf[key_size] = 0;
+
+	char val[XENSTORE_RING_SIZE];
+	int ok = xenstore_read((char *)buf, val, sizeof(val));
+	if (ok != 0)
+		return tag_int(ok);
+
+	return heap_strz(&proc->hp, val);	
+}
+
+term_t cbif_xenstore_write2(proc_t *proc, term_t *regs)
+{
+	term_t Key = regs[0];
+	term_t Value = regs[1];
+	if (!is_list(Key) && !is_boxed_binary(Key))
+		badarg(Key);
+	if (!is_list(Value) && !is_boxed_binary(Value))
+		badarg(Value);
+	int key_size = iolist_size(Key);
+	if (key_size < 0)
+		badarg(Key);
+	int val_size = iolist_size(Value);
+	if (val_size < 0)
+		badarg(Value);
+	uint8_t key_buf[key_size+1];
+	iolist_flatten(Key, key_buf);
+	key_buf[key_size] = 0;
+	uint8_t val_buf[val_size+1];
+	iolist_flatten(Value, val_buf);
+	val_buf[val_size] = 0;
+
+	int ok = xenstore_write((char *)key_buf, (char *)val_buf);
+	//printk("xenstore_write(\"%s\", \"%s\");\n", key_buf, val_buf);
+	if (ok != 0)
+		return int_value(ok);
+
+	return A_OK;
+}
+
+term_t cbif_xenstore_list1(proc_t *proc, term_t *regs)
+{
+	term_t Key = regs[0];
+	if (!is_list(Key) && !is_boxed_binary(Key))
+		badarg(Key);
+	int key_size = iolist_size(Key);
+	if (key_size < 0)
+		badarg(Key);
+	uint8_t buf[key_size +1];
+	iolist_flatten(Key, buf);
+	buf[key_size] = 0;
+
+	char val[XENSTORE_RING_SIZE];
+	int ok = xenstore_read_dir((char *)buf, val, sizeof(val));
+	if (ok != 0)
+		return tag_int(ok);
+
+	term_t dir = nil;
+	char *p = val;
+	while (*p != 0)
+	{
+		term_t name = heap_strz(&proc->hp, p);
+		dir = heap_cons(&proc->hp, name, dir);
+		p += strlen(p) +1;
+	}
+
+	return list_rev(dir, &proc->hp);
+}
+
