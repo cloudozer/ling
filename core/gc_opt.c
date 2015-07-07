@@ -37,6 +37,7 @@
 
 #include "string.h"
 #include "assert.h"
+#include "proc.h"
 
 // When a cohort size reaches GC_COHORT_SIZE, the GC_LIMIT_PASSED flag is set.
 // This enables GC for the cohort until its size drop to 0.
@@ -48,7 +49,7 @@
 #define GC_SIZE_MULTIPLIER		2
 
 // A number of reductions between two GC runs
-#define GC_MIN_REDS				6000
+#define GC_MIN_REDS				1000
 
 // A full-sweep GC may happen when the scheduler is IDLE and all data is old.
 
