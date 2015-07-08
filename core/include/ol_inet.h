@@ -35,7 +35,9 @@
 
 #include "outlet.h"
 
+#ifdef LING_WITH_LWIP
 #include "lwip/err.h"
+#endif
 
 #include "decode.h"
 
@@ -203,6 +205,8 @@ void inet_async_error(term_t oid, term_t reply_to, uint16_t ref, term_t err);
 void inet_reply(term_t oid, term_t reply_ty, term_t reply);
 void inet_reply_error(term_t oid, term_t reply_to, term_t reason);
 
+#ifdef LING_WITH_LWIP
 term_t lwip_err_to_term(err_t err);
+#endif
 
 //EOF

@@ -39,10 +39,12 @@
 
 #include "ling_common.h"
 
-#include "lwip/err.h"
-#include "lwip/ip4.h"
-#include "lwip/ip6.h"
-#include "lwip/dns.h"
+#ifdef LING_WITH_LWIP
+# include "lwip/err.h"
+# include "lwip/ip4.h"
+# include "lwip/ip6.h"
+# include "lwip/dns.h"
+#endif
 
 #include "getput.h"
 
@@ -234,7 +236,9 @@ static int ol_dns_send(outlet_t *ol, int len, term_t reply_to)
 	left--; 
 	if (proto != PROTO_IPV4)
 	{
+#if LWIP_DNS
 		error_reply(ol, serial, "IPv6 not supported");
+#endif
 		return 0;
 	}
 

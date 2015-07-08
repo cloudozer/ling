@@ -37,7 +37,7 @@ ld(xen_x86) ->
 ld(posix_x86) ->
 	case os:type() of
 		{unix, darwin} -> [
-			"ld",
+			"clang",
 			"-image_base", "0x8000",
 			"-pagezero_size", "0x8000",
 			"-arch", "x86_64",
@@ -261,7 +261,8 @@ embedfs_object(EmbedFsPath, ImgName) ->
 	OutPath = filename:join(filename:absname(cache_dir()), "embedfs.o"),
 	case ?ARCH of
 		xen_x86 ->
-			ok = sh("ld -r -b binary -o " ++ OutPath ++ " embed.fs", CC);
+			LdCmd = lists:flatmap(fun(Opt) -> Opt ++ " " end, ld()),
+			ok = sh(LdCmd ++ " -r -b binary -o " ++ OutPath ++ " embed.fs", CC);
 		_ ->
 			EmbedCPath = filename:join(filename:absname(cache_dir()), "embedfs.c"),
 			{ok, Embed} = file:read_file(EmbedFsPath),

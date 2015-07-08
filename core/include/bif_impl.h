@@ -89,9 +89,11 @@
 
 #include "disk.h"
 
+#ifdef LING_WITH_LWIP
 #include "lwip/ip_addr.h"
 #include "lwip/stats.h"
 #include "lwip/netif.h"
+#endif
 
 #define fail(reason) do { \
 	proc->bif_excep_reason = (reason); \

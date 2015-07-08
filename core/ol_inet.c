@@ -42,11 +42,13 @@
 #include "atom_defs.h"
 #include "term_util.h"
 
+#ifdef LING_WITH_LWIP
 #include "lwip/ip.h"
 #undef LWIP_SOCKET
 #define LWIP_SOCKET 1
 #include "lwip/sockets.h"
 #undef LWIP_SOCKET
+#endif
 
 void inet_set_default_opts(outlet_t *ol)
 {
@@ -71,6 +73,7 @@ void inet_set_default_opts(outlet_t *ol)
 
 int inet_set_opt(outlet_t *ol, int opt, uint32_t val)
 {
+#ifdef LING_WITH_LWIP
 	assert(ol->ip != 0);
 	uint8_t *opts = &ol->ip->so_options;
 
@@ -172,10 +175,14 @@ unsupported:
 	}
 
 	return 0;
+#else
+	return -1;
+#endif
 }
 
 int inet_get_opt(outlet_t *ol, int opt, uint32_t *val)
 {
+#ifdef LING_WITH_LWIP
 	assert(ol->ip != 0);
 	uint8_t opts = ol->ip->so_options;
 
@@ -272,6 +279,9 @@ unsupported:
 	}
 
 	return 0;
+#else
+	return -1;
+#endif
 }
 
 void inet_async(term_t oid, term_t reply_to, uint16_t ref, term_t reply)
@@ -395,6 +405,7 @@ nomem:
 	scheduler_signal_exit_N(caller, oid, A_NO_MEMORY);
 }
 
+#ifdef LING_WITH_LWIP
 term_t lwip_err_to_term(err_t err)
 {
 	switch ((int)err)
@@ -419,5 +430,6 @@ term_t lwip_err_to_term(err_t err)
 		return A_LWIP_IF;
 	}
 }
+#endif
 
 //EOF

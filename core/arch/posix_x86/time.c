@@ -31,50 +31,75 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "time.h"
-
 #include "ling_common.h"
 
 #include "time.h"
 
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 
-//TODO
-//TODO
-//TODO
+#ifdef __APPLE__
+# include <mach/mach.h>
+# include <mach/mach_time.h>
+# include <CoreServices/CoreServices.h>
+#endif //__APPLE__
 
-// Stubby stubs
-
+/* required for statistics */
 uint64_t start_of_day_wall_clock = 0;
-
-uint64_t fake_clock = 1234567890;
+static uint64_t monotonic_delta = 0;
 
 void time_init(void)
 {
-	//TODO
+    start_of_day_wall_clock = wall_clock();
+    monotonic_delta = start_of_day_wall_clock - monotonic_clock();
+    /*printf("start_of_day_wall_clock = %llu\n",
+           (unsigned long long)start_of_day_wall_clock); // */
 }
 
 uint64_t monotonic_clock(void)
 {
-	//TODO
-	fake_clock += 1000000;
-	return fake_clock;
+    uint64_t nsec = 0;
+
+#ifdef __APPLE__
+    mach_timebase_info_data_t timebase_info;
+    mach_timebase_info(&timebase_info);
+    uint64_t ret = mach_absolute_time();
+    nsec = ret * timebase_info.numer / timebase_info.denom;
+#else
+    struct timespec tp = { .tv_sec = 0, .tv_nsec = 0 };
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    nsec = tp.tv_sec * 1000000000ull + (uint64_t)tp.tv_nsec;
+#endif
+    return nsec + monotonic_delta; // nanoseconds
 }
 
 uint64_t wall_clock(void)
 {
-	//TODO
-	fake_clock += 1000000;
-	return fake_clock;
+    struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
+    gettimeofday(&tv, NULL);
+    uint64_t t = ((uint64_t)tv.tv_sec * 1000000ull + (uint64_t)tv.tv_usec);
+	return 1000ull * t; // nanoseconds
 }
 
 void expand_time(struct time_exp_t *xt, uint64_t wall_clock)
 {
-	//TODO
 	memset(xt, 0, sizeof(*xt));
-	xt->tm_year = 115;
-	xt->tm_mon = 1;
-	xt->tm_mday = 17;
-	xt->tm_wday = 2;
+    time_t wall_sec = wall_clock / 1000000000ull;
+
+    struct tm tm;
+    gmtime_r(&wall_sec, &tm);
+
+    xt->tm_usec   = wall_clock % 1000000000ull;
+    xt->tm_sec    = tm.tm_sec;
+    xt->tm_min    = tm.tm_min;
+    xt->tm_hour   = tm.tm_hour;
+    xt->tm_mday   = tm.tm_mday;
+    xt->tm_mon    = tm.tm_mon;
+    xt->tm_year   = tm.tm_year;
+    xt->tm_wday   = tm.tm_wday;
+    xt->tm_yday   = tm.tm_yday;
+    xt->tm_isdst  = tm.tm_isdst;
+    xt->tm_gmtoff = tm.tm_gmtoff;
 }
 

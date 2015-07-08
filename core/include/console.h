@@ -4,7 +4,11 @@
 #include "arch_console.h"
 #include "ser_cons.h"
 
+#ifndef OUTLET_DEFINED
 typedef struct outlet_t outlet_t;
+#define OUTLET_DEFINED 1
+#endif
+
 int console_is_initialized(void);
 
 void console_attach(outlet_t *ol);

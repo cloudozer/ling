@@ -33,8 +33,24 @@
 
 #pragma once
 
-#include "lwip/ip_addr.h"
-#include "lwip/netif.h"
+#ifdef LING_WITH_LWIP
+
+# include "lwip/ip_addr.h"
+# include "lwip/netif.h"
+
+#else
+typedef struct ip_addr {
+    uint32_t addr;
+} ip_addr_t;
+
+static inline void ip_addr_set_zero(ip_addr_t *ipaddr) {
+    ipaddr->addr = 0;
+}
+
+typedef void (*netif_status_callback_fn)();
+
+struct netif;
+#endif //LING_WITH_LWIP
 
 void netif_setup(ip_addr_t *ip_addr,
 				 ip_addr_t *net_mask,

@@ -28,3 +28,5 @@ LDFLAGS_FINAL += -lgcc
 
 STARTUP_OBJ     := arch/$(ARCH)/startup.o
 STARTUP_SRC_EXT := S
+
+LING_WITH_LWIP  := 1

@@ -5,6 +5,10 @@
 
 #include "syscalls.h"
 
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 #define constwrite1(s) write(1, (s), sizeof(s)-1)
 
 static outlet_t *attached_outlet;
@@ -16,7 +20,7 @@ console_init(void)
 	constwrite1("console hello\n");
 #endif
 	int flag = O_NONBLOCK;
-	fcntl(0, F_SETFL, flag);
+	fcntl(STDIN_FILENO, F_SETFL, flag);
 }
 
 int
@@ -46,13 +50,13 @@ console_detach(outlet_t *ol)
 int
 console_write(char *buf, int len)
 {
-	return write(1, buf, len);
+	return write(STDOUT_FILENO, buf, len);
 }
 
 int
 ser_cons_write(char *buf, int len)
 {
-	return write(1, buf, len);
+	return write(STDOUT_FILENO, buf, len);
 }
 
 int
@@ -61,7 +65,7 @@ console_do_pending(void)
 	char buf[1];
 	int total = 0;
 
-	while (read(0, buf, 1) == 1) {
+	while (read(STDIN_FILENO, buf, 1) == 1) {
 		if (attached_outlet)
 			outlet_pass_new_data(attached_outlet, (uint8_t *)buf, 1);
 		total++;

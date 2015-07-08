@@ -1,5 +1,5 @@
 
-.PHONY: default bc core apps railing test install checkotp test.img
+.PHONY: default bc core apps railing test install checkotp test.img clean fresh
 
 include Config.mk
 
@@ -37,3 +37,15 @@ build-arm:
 		&& ./railing image -n kernel \
 		&& mv kernel.img kernel.elf \
 		&& arm-none-eabi-objcopy -O binary kernel.elf kernel.img
+
+# use `make fresh` when you don't want to rebuild core/ling_main.c
+fresh:
+	mv core/ling_main.o . ; \
+	rm -r core/*.o core/arch/$(ARCH)/*.o railing/railing.img railing/.railing ; \
+	mv ling_main.o core/
+
+clean:
+	rm -r core/ling_main.c core/include/atom_defs.h core/*.inc \
+	    core/*.o core/arch/$(ARCH)/*.o \
+	    core/preload/*.beam railing/railing railing/railing.img railing/.railing \
+	    || true

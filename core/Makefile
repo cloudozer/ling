@@ -2,9 +2,13 @@
 INCLUDES := premod.inc code_base.inc include/mod_info.inc preload/literals.c catch_tab.inc
 default: lwip pcre nettle $(INCLUDES) vmling.o
 
+NETTLE_FLAGS   :=
+NETTLE_LDFLAGS :=
+NETTLE_CFLAGS  := -fno-stack-protector -U_FORTIFY_SOURCE
+
 include ../Config.mk
 
-CPPFLAGS := -D_ISOC99_SOURCE -D_GNU_SOURCE
+CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
 CPPFLAGS += -DLING_VER=$(LING_VER)
 CPPFLAGS += -isystem lib/nettle
 CPPFLAGS += -isystem lib/pcre
@@ -12,10 +16,13 @@ CPPFLAGS += -isystem lib
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
 CPPFLAGS += -iquote bignum
 CPPFLAGS += -isystem lib/misc/include
+ifdef LING_WITH_LWIP
+CPPFLAGS += -DLING_WITH_LWIP=1
 CPPFLAGS += -iquote lib/lwip/src/include
 CPPFLAGS += -iquote lib/lwip/src/include/ipv4
 CPPFLAGS += -iquote lib/lwip/src/include/ipv6
 CPPFLAGS += -iquote lib/lwip/ling
+endif
 ifdef LING_DEBUG
 CPPFLAGS += -DLING_DEBUG
 CPPFLAGS += -DDEBUG_UNUSED_MEM
@@ -31,10 +38,6 @@ LDFLAGS  := -Xlinker -r
 LDFLAGS_FINAL := lib/nettle/libnettle.a
 
 ASFLAGS  := -D__ASSEMBLY__
-
-NETTLE_FLAGS   :=
-NETTLE_LDFLAGS :=
-NETTLE_CFLAGS  := -fno-stack-protector -U_FORTIFY_SOURCE
 
 include arch/$(ARCH)/config.mk
 
@@ -82,6 +85,7 @@ PCRE_OBJS := \
 	lib/pcre/pcre_version.o \
 	lib/pcre/pcre_xclass.o
 
+ifdef LING_WITH_LWIP
 LWIP_SRC_DIRS := \
 	lib/lwip/src/api \
 	lib/lwip/src/core \
@@ -91,6 +95,7 @@ LWIP_SRC_DIRS := \
 
 LWIP_SRCS := $(foreach dir,$(LWIP_SRC_DIRS),$(wildcard $(dir)/*.c))
 LWIP_OBJS := $(patsubst %.c,%.o,$(LWIP_SRCS))
+endif
 
 ALL_OBJS := $(OBJS) $(ARCH_OBJS) $(BIGNUM_OBJS) $(MISC_OBJS) $(PCRE_OBJS) $(LWIP_OBJS)
 ALL_OBJS += ling_main.o
@@ -115,8 +120,11 @@ $(MISC_AS_OBJS): %.o: %.s
 $(PCRE_OBJS): %.o: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -DHAVE_CONFIG_H -o $@ -c $<
 
+ifdef LING_WITH_LWIP
 $(LWIP_OBJS): %.o: %.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-char-subscripts -o $@ -c $<
+
+endif
 
 ling_main.c: scripts/ling_main_c.et scripts/hot_cold_iops
 	scripts/main_gen $^
@@ -158,7 +166,7 @@ lib/nettle/libnettle.a: lib/nettle/config.h
 
 lib/nettle/config.h: lib/nettle.tar.gz
 	mkdir -p lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \
-	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl --disable-documentation $(NETTLE_FLAGS) CFLAGS="$(NETTLE_CFLAGS)" LDFLAGS="$(NETTLE_LDFLAGS)"
+	cd lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl --disable-documentation $(NETTLE_FLAGS) CC="$(CC)" CPPFLAGS="$(CPPFLAGS)" CFLAGS="$(NETTLE_CFLAGS)" LDFLAGS="$(NETTLE_LDFLAGS)"
 	rm -rf lib/nettle/{tools,examples,testsuite}
 	mkdir -p lib/nettle/{tools,examples,testsuite}
 	echo 'all:' > lib/nettle/tools/Makefile
