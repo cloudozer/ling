@@ -562,7 +562,7 @@ term_t cbif_function_exported3(proc_t *proc, term_t *regs)
 	if (!is_atom(Mod) || !is_atom(Func) || !is_int(Arity))
 		badarg();
 	term_t n = int_value(Arity);
-	if (n < 0 || n > 255)
+	if (n > 255)
 		badarg(Arity);
 	export_t *e = code_base_lookup(Mod, Func, n);
 	if (e == 0)

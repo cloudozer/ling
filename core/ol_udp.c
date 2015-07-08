@@ -42,6 +42,8 @@
 #include "outlet.h"
 #include "ol_inet.h"
 
+#ifdef LING_WITH_LWIP
+
 #include "lwip/udp.h"
 #include "lwip/timers.h"
 #undef LWIP_SOCKET
@@ -620,5 +622,7 @@ static void recv_timeout_cb(void *arg)
 	ol->cr_in_progress = 0;
 	inet_async_error(ol->oid, ol->cr_reply_to, 0 /*ASYNC_REF*/, A_TIMEOUT);
 }
+
+#endif // LING_WITH_LWIP
 
 //EOF

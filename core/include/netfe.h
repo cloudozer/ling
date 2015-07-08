@@ -2,14 +2,18 @@
 
 #include <stdint.h>
 
-#include "lwip/netif.h"
+#include "netif.h"
 
 #define ETH_MTU		1500
 #define ETH_ALEN	6
 
+
 #include "arch_netfe.h"
 
+#ifndef OUTLET_DEFINED
 typedef struct outlet_t outlet_t;
+#define OUTLET_DEFINED 1
+#endif
 
 typedef struct netfe_t netfe_t;
 

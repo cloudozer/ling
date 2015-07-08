@@ -36,6 +36,8 @@
 
 #include "ling_common.h"
 
+#ifdef LING_WITH_LWIP
+
 #include "lwip/def.h"
 #include "lwip/tcp.h"
 #include "lwip/timers.h"
@@ -1172,5 +1174,6 @@ static int ol_tcp_get_opts(outlet_t *ol,
 
 	return q -buf;
 }
+#endif // LING_WITH_LWIP
 
 //EOF

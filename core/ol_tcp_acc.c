@@ -40,6 +40,8 @@
 #include "outlet.h"
 #include "ol_inet.h"
 
+#ifdef LING_WITH_LWIP
+
 #include "lwip/tcp.h"
 #include "lwip/timers.h"
 
@@ -623,4 +625,5 @@ static void reuse_pending(acc_pend_t **free_pends, acc_pend_t *elem)
 	*free_pends = elem;
 }
 
+#endif // LING_WITH_LWIP
 //EOF

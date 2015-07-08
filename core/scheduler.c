@@ -406,7 +406,9 @@ do_pending:
 	set_phase(PHASE_EVENTS);
 	// software events/timeouts
 	lwip_check_timeouts();
+#ifdef LING_WITH_LWIP
 	netif_poll_all();		// for loopback 
+#endif
 	etimer_expired(ticks);
 	// 'hardware' events
 	int nr_fired = events_do_pending();

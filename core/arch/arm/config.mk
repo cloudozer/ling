@@ -27,3 +27,4 @@ NETTLE_CFLAGS  += -DNDEBUG -mfloat-abi=hard -mfpu=vfp
 NETTLE_FLAGS   += --host=$(HOST_TOOLCHAIN)
 NETTLE_LDFLAGS += -specs=nosys.specs
 
+LING_WITH_LWIP := 1

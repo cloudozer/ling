@@ -41,10 +41,12 @@
 
 #include "ling_common.h"
 
-#include "lwip/netif.h"
-#include "lwip/stats.h"
-#include "lwip/dhcp.h"
-#include "netif/etharp.h"
+#include "netif.h"
+#ifdef LING_WITH_LWIP
+# include "lwip/stats.h"
+# include "lwip/dhcp.h"
+# include "netif/etharp.h"
+#endif
 
 #include "time.h"
 #include "netfe.h"
@@ -73,16 +75,24 @@ uint32_t sys_now()
 // a better function name for the scheduler loop
 void lwip_check_timeouts(void)
 {
+#ifdef LING_WITH_LWIP
 	sys_check_timeouts();	// defined in lwIP
+#endif
 }
 
 uint64_t lwip_closest_timeout(void)
 {
+#ifdef LING_WITH_LWIP
 	uint32_t relative_ms = sys_closest_timeout();
 	if (relative_ms == 0xffffffff)
 		return LING_INFINITY;
 	return (uint64_t)relative_ms *1000000 + sys_now_origin_ns;
+#else
+	return LING_INFINITY;
+#endif
 }
+
+#ifdef LING_WITH_LWIP
 
 static err_t
 netif_ethif_output(struct netif *nf, struct pbuf *p)
@@ -162,5 +172,6 @@ void netif_setup(ip_addr_t *ip_addr,
 		netif_set_up(nf);
 	}
 }
+#endif //LING_WITH_LWIP
 
 //EOF

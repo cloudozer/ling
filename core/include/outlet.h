@@ -58,7 +58,11 @@
 #define PB_VALUE(bits, off, sz) \
 	(((bits) >> (off)) & ((1 << (sz)) -1))
 
+
+#ifndef OUTLET_DEFINED
 typedef struct outlet_t outlet_t;
+#define OUTLET_DEFINED 1
+#endif
 
 typedef struct outlet_vtab_t outlet_vtab_t;
 struct outlet_vtab_t {

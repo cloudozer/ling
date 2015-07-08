@@ -408,7 +408,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		if (x < 0)
 			return x;
 		//Free vars
-		for (int i = 0; i < num_free; i++);
+		for (int i = 0; i < num_free; i++)
 		{
 			x = ext_term_decode_size2(depth+1, es);
 			if (x < 0)

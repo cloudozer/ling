@@ -252,12 +252,17 @@ static int bin_to_addr(ip_addr_t *addr, term_t Bin)
 	bits_copy(&bs, &dst);
 	buf[len] = 0;
 
+#ifdef LING_WITH_LWIP
 	if (!ipaddr_aton(buf, addr))
 		return -BAD_ARG;
 
 	return 0;
+#else
+    return -NOT_FOUND;
+#endif
 }
 
+#ifdef LING_WITH_LWIP
 static void status_cb(struct netif *netif)
 {
 	if (netif_is_up(netif))
@@ -272,6 +277,7 @@ static void status_cb(struct netif *netif)
 		}
 	}
 }
+#endif
 
 term_t cbif_setup4(proc_t *proc, term_t *regs)
 {
@@ -318,10 +324,22 @@ term_t cbif_setup4(proc_t *proc, term_t *regs)
 			badarg(Gateway);
 	}
 
+#ifdef LING_WITH_LWIP
 	netif_setup(&ip_addr,
 				&net_mask,
 				&gateway, Dhcp == A_TRUE, status_cb);
 	return A_TRUE;
+#else
+	// init ! netif_up
+	proc_t *init_proc = scheduler_process_by_name(A_INIT);
+	assert(init_proc != 0);
+	if (scheduler_new_local_mail_N(init_proc, A_NETIF_UP) < 0)
+	{
+		printk("status_cb: cannot notify init about status change\n");
+		//ignore -- killing init is not an option
+	}
+	return A_FALSE;
+#endif
 }
 
 //EOF
