@@ -186,10 +186,6 @@ ling:experimental(What,Arg)			cbif_experimental2
 
 lwip:stats()			cbif_stats0
 
-xenstore:read$(Key)			cbif_xenstore_read1
-xenstore:write$(Key,Val)	cbif_xenstore_write2
-xenstore:list$(Key)			cbif_xenstore_list1
-
 # bif_hash.c
 erlang:hash(Term,Range)		cbif_hash2
 erlang:phash(Term,Range)	cbif_phash2

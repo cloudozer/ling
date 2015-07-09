@@ -117,6 +117,21 @@ void event_bind(uint32_t port, event_entry_t entry, void *data)
 	bound_events[nr_bound++] = port;
 }
 
+void event_unbind(uint32_t port)
+{
+	assert(event_handlers[port].entry != dummy_handler);
+	event_handlers[port].entry = dummy_handler;
+
+	int found;
+	for (found = 0; found < nr_bound; found++)
+		if (bound_events[found] == port)
+			break;
+
+	assert(found < nr_bound);
+	bound_events[found] = bound_events[nr_bound -1];
+	nr_bound--;
+}
+
 uint32_t event_alloc_unbound(domid_t remote_domid)
 {
 	evtchn_alloc_unbound_t op;
@@ -148,6 +163,4 @@ void event_kick(uint32_t port)
 	if (rs < 0)
 		fatal_error("event_kick: %d", rs);
 }
-
-/*EOF*/
 

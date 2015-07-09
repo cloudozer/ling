@@ -31,33 +31,70 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef EVENT_H
-#define EVENT_H
+#include "outlet.h"
 
-#include "ling_xen.h"
+#include "ling_common.h"
 
-typedef void (*event_entry_t)(uint32_t port, void *data);
+#include "xenstore.h"
+#include "xen/io/xs_wire.h"
+#include "getput.h"
 
-void events_poll(uint64_t timeout);
-int events_do_pending(void);
-void events_init(void);
-void event_bind(uint32_t port, event_entry_t entry, void *data);
-void event_unbind(uint32_t port);
-uint32_t event_alloc_unbound(domid_t remote_domid);
-uint32_t event_bind_virq(uint32_t virq, event_entry_t entry, void *data);
-void event_kick(uint32_t port);
+static term_t ol_xstore_control(outlet_t *ol,
+		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp);
+static int ol_xstore_attach(outlet_t *ol);
+static void ol_xstore_detach(outlet_t *ol);
 
-static inline void event_clear(uint32_t port)
+static outlet_vtab_t ol_xstore_vtab = {
+	.control = ol_xstore_control,
+	.attach	 = ol_xstore_attach,
+	.detach  = ol_xstore_detach,
+};
+
+static uint32_t next_request_id = 1;
+
+outlet_t *ol_xstore_factory(proc_t *cont_proc, uint32_t bit_opts)
 {
-    shared_info_t *s = HYPERVISOR_shared_info;
-    synch_clear_bit(port, &s->evtchn_pending[0]);
+	return outlet_make_N(&ol_xstore_vtab, cont_proc, bit_opts, 0);
 }
 
-static inline void event_mask(uint32_t port)
+static term_t ol_xstore_control(outlet_t *ol,
+		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp)
 {
-    shared_info_t *s = HYPERVISOR_shared_info;
-    synch_set_bit(port, &s->evtchn_mask[0]);
+	assert(op == XS_READ || op == XS_WRITE || op == XS_MKDIR || op == XS_RM || op == XS_DIRECTORY ||
+		   op == XS_GET_PERMS || op == XS_SET_PERMS || op == XS_WATCH || op == XS_UNWATCH ||
+		   op == XS_TRANSACTION_START || op == XS_TRANSACTION_END);
+	assert(dlen >= 4);
+	uint32_t tx_id = GET_UINT_32(data);
+	uint8_t *payload = data+4;
+	int pl_len = dlen-4;
+
+	uint32_t req_id = next_request_id++;
+	struct xsd_sockmsg msg = {
+		.type = op,
+		.req_id = req_id,
+		.tx_id = tx_id,
+		.len = pl_len+1,	// +1 for null byte
+	};
+
+	xenstore_request((char *)&msg, sizeof(msg));
+	xenstore_request((char *)payload, pl_len);
+	xenstore_complete();	// adds null byte
+
+	ol->xstore_pend_op	   = op;
+	ol->xstore_pend_req_id = req_id;
+	ol->xstore_pend_tx_id  = tx_id;
+
+	return nil;
 }
 
-#endif
+static int ol_xstore_attach(outlet_t *ol)
+{
+	xstore_attach(ol);
+	return 0;
+}
+
+static void ol_xstore_detach(outlet_t *ol)
+{
+	xstore_detach(ol);
+}
 

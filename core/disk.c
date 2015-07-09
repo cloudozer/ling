@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "disk.h"
 #include "ling_common.h"
 
@@ -508,4 +504,3 @@ disk_info_t *disk_get_info(void)
 	return &vbd_info;
 }
 
-//EOF

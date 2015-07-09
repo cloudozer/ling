@@ -31,33 +31,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef EVENT_H
-#define EVENT_H
-
-#include "ling_xen.h"
-
-typedef void (*event_entry_t)(uint32_t port, void *data);
-
-void events_poll(uint64_t timeout);
-int events_do_pending(void);
-void events_init(void);
-void event_bind(uint32_t port, event_entry_t entry, void *data);
-void event_unbind(uint32_t port);
-uint32_t event_alloc_unbound(domid_t remote_domid);
-uint32_t event_bind_virq(uint32_t virq, event_entry_t entry, void *data);
-void event_kick(uint32_t port);
-
-static inline void event_clear(uint32_t port)
-{
-    shared_info_t *s = HYPERVISOR_shared_info;
-    synch_clear_bit(port, &s->evtchn_pending[0]);
-}
-
-static inline void event_mask(uint32_t port)
-{
-    shared_info_t *s = HYPERVISOR_shared_info;
-    synch_set_bit(port, &s->evtchn_mask[0]);
-}
-
-#endif
+#define XSTORE_READ			0
+#define XSTORE_WRITE		1
+#define XSTORE_MKDIR		2
+#define XSTORE_RM			3
+#define XSTORE_DIRECTORY	4
+#define XSTORE_GET_PERMS	5
+#define XSTORE_SET_PERMS	6
+#define XSTORE_WATCH		7
+#define XSTORE_UNWATCH		8
+#define XSTORE_TRANS_START	9
+#define XSTORE_TRANS_END	10
 
