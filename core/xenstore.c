@@ -65,7 +65,6 @@ void xstore_attach(outlet_t *ol)
 				T(ol->oid), T(attached_outlet->oid));
 	attached_outlet = ol;
 	event_bind(store_port, xstore_int, 0);
-	printk("%pt attached to Xenstore driver\n", T(ol->oid));
 }
 
 void xstore_detach(outlet_t *ol)
@@ -73,7 +72,6 @@ void xstore_detach(outlet_t *ol)
 	assert(attached_outlet == ol);
 	event_unbind(store_port);
 	attached_outlet = 0;
-	printk("%pt detached from Xenstore driver\n", T(ol->oid));
 }
 
 static term_t op_to_term(uint32_t op)
@@ -86,6 +84,7 @@ static term_t op_to_term(uint32_t op)
 	else if (op == XS_GET_PERMS)			return A_GET_PERMS;
 	else if (op == XS_SET_PERMS)			return A_SET_PERMS;
 	else if (op == XS_WATCH)				return A_WATCH;
+	else if (op == XS_WATCH_EVENT)			return A_WATCH_EVENT;
 	else if (op == XS_UNWATCH)				return A_UNWATCH;
 	else if (op == XS_TRANSACTION_START)	return A_TRANSACTION_START;
 	else if (op == XS_TRANSACTION_END)		return A_TRANSACTION_END;
@@ -100,21 +99,24 @@ static void xstore_int(uint32_t port, void *data)
 	{
 		struct xsd_sockmsg msg;
 		xenstore_response((char *)&msg, sizeof(msg));
-		assert(msg.len > 0);
-		char payload[msg.len];
-		xenstore_response(payload, msg.len);
-		uint32_t pl_len = msg.len;
-		if (payload[pl_len-1] == 0)
-			pl_len--;
+		proc_t *cont_proc = scheduler_lookup(attached_outlet->owner);
+		assert(cont_proc != 0);
+		term_t data = nil;
+		if (msg.len > 0)
+		{
+			char payload[msg.len];
+			xenstore_response(payload, msg.len);
+			uint32_t pl_len = msg.len;
+			if (payload[pl_len-1] == 0)
+				pl_len--;
+			data = heap_str_N(&cont_proc->hp, payload, pl_len);
+		}
 		if (msg.type != XS_WATCH_EVENT)	
 		{
 			assert(attached_outlet->xstore_pend_req_id == msg.req_id);
 			assert(attached_outlet->xstore_pend_tx_id == msg.tx_id);
 		}
-		proc_t *cont_proc = scheduler_lookup(attached_outlet->owner);
-		assert(cont_proc != 0);
-		// {watch,Path}
-		term_t data = heap_str_N(&cont_proc->hp, payload, pl_len);
+		// {watch,Port,Path}
 		uint32_t *p = 0;
 		if (data != noval)
 			p = heap_alloc_N(&cont_proc->hp, 1+3);

@@ -32,66 +32,170 @@
 %% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -module(xenstore).
--export([read/1,write/2,mkdir/1,rm/1,directory/1]).
--export([get_perms/1,set_perms/2,watch/2,unwatch/1]).
+-behaviour(gen_server).
+-define(SERVER, ?MODULE).
+
+-include("xenstore.hrl").
+
+%% ------------------------------------------------------------------
+%% API Function Exports
+%% ------------------------------------------------------------------
+
+-export([start_link/0]).
+-export([read/1,write/2,write/3,mkdir/1,mkdir/2,delete/1,delete/2,list/1]).
+-export([get_perms/1,set_perms/2,set_perms/3,watch/1,unwatch/1]).
 -export([transaction/0,commit/1,rollback/1]).
 
--define(XS_DEBUG, 0).
--define(XS_DIRECTORY, 1).
--define(XS_READ, 2).
--define(XS_GET_PERMS, 3).
--define(XS_WATCH, 4).
--define(XS_UNWATCH, 5).
--define(XS_TRANSACTION_START, 6).
--define(XS_TRANSACTION_END, 7).
--define(XS_INTRODUCE, 8).
--define(XS_RELEASE, 9).
--define(XS_GET_DOMAIN_PATH, 10).
--define(XS_WRITE, 11).
--define(XS_MKDIR, 12).
--define(XS_RM, 13).
--define(XS_SET_PERMS, 14).
--define(XS_WATCH_EVENT, 15).
--define(XS_ERROR, 16).
--define(XS_IS_DOMAIN_INTRODUCED, 17).
--define(XS_RESUME, 18).
--define(XS_SET_TARGET, 19).
--define(XS_RESTRICT, 20).
--define(XS_RESET_WATCHES, 21).
+%% ------------------------------------------------------------------
+%% gen_server Function Exports
+%% ------------------------------------------------------------------
 
-read(Key) ->
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+%% ------------------------------------------------------------------
+%% API Function Definitions
+%% ------------------------------------------------------------------
+
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+read(Key) when is_list(Key) ->
+	gen_server:call(?SERVER, {?XS_READ,Key,0});
+read(_) -> {error,badarg}.
+
+write(Key, Value) -> write(Key, Value, 0).
+write(Key, Value, Tid) when is_list(Key), is_list(Value), is_integer(Tid) ->
+	gen_server:call(?SERVER, {?XS_WRITE,[Key,Value],Tid});
+write(_, _, _) -> {error,badarg}.
+
+mkdir(Path) -> mkdir(Path, 0).
+mkdir(Path, Tid) when is_list(Path), is_integer(Tid) -> 
+	gen_server:call(?SERVER, {?XS_MKDIR,Path,Tid});
+mkdir(_, _) -> {error,badarg}.
+
+delete(Path) -> delete(Path, 0).
+delete(Path, Tid) when is_list(Path), is_integer(Tid) -> 
+	gen_server:call(?SERVER, {?XS_RM,Path,Tid});
+delete(_, _) -> {error,badarg}.
+
+list(Path) when is_list(Path) ->
+	gen_server:call(?SERVER, {?XS_DIRECTORY,Path,0});
+list(_) -> {error,badarg}.
+
+get_perms(Path) when is_list(Path) ->
+	gen_server:call(?SERVER, {?XS_GET_PERMS,Path,0});
+get_perms(_) -> {error,badarg}.
+
+set_perms(Path, Perms) -> set_perms(Path, Perms, 0).
+set_perms(Path, Perms, Tid) when is_list(Path), is_list(Perms), is_integer(Tid) ->
+	gen_server:call(?SERVER, {?XS_SET_PERMS,[Path|Perms],Tid});
+set_perms(_, _, _) -> {error,badarg}.
+
+watch(Path) when is_list(Path) ->
+	Caller = self(),
+	gen_server:call(?SERVER, {watch,Path,Caller});
+watch(_) -> {error,badarg}.
+
+unwatch(Path) when is_list(Path) ->
+	Caller = self(),
+	gen_server:call(?SERVER, {unwatch,Path,Caller});
+unwatch(_) -> {error,badarg}.
+
+transaction() ->
+	gen_server:call(?SERVER, {?XS_TRANSACTION_START,[],0}).
+
+commit(Tid) when is_integer(Tid) ->
+	gen_server:call(?SERVER, {?XS_TRANSACTION_END,"T",Tid});
+commit(_) -> {error,badarg}.
+
+rollback(Tid) when is_integer(Tid) ->
+	gen_server:call(?SERVER, {?XS_TRANSACTION_END,"F",Tid});
+rollback(_) -> {error,badarg}.
+
+%% ------------------------------------------------------------------
+%% gen_server Function Definitions
+%% ------------------------------------------------------------------
+
+init(_Args) ->
 	XS = open_port(xenstore, []),
-	port_control(XS, ?XS_READ, [0,0,0,0] ++ Key),
-	receive R -> R end,
+    {ok,{XS,[]}}.
+
+handle_call({watch,Path,Caller}, _From, {XS,Watches} =St) ->
+	Token = integer_to_list(length(Watches)),
+	case ctl_cmd(XS, ?XS_WATCH, 0, [Path,Token]) of
+		ok -> {reply,ok,{XS,[{Token,Path,Caller}|Watches]}};
+		Error -> {reply,Error,St} end;
+
+handle_call({unwatch,Path,Caller}, _From, {XS,Watches}) ->
+	{Q,Watches1} = stop_watches(XS, Path, Caller, Watches),
+	{reply,Q,{XS,Watches1}};
+
+handle_call({Op,PL,Tid}, _From, {XS,_} =St) ->
+	Q = ctl_cmd(XS, Op, Tid, PL),
+	{reply,Q,St};
+
+handle_call(_Request, _From, St) ->
+    {reply,ok,St}.
+
+handle_cast(_Msg, St) ->
+    {noreply,St}.
+
+handle_info({watch_event,_,Result}, {_,Watches} =St) ->
+	[Path,Token] = parse(Result),
+	Callers = [ Caller || {Token1,_,Caller} <- Watches, Token1 =:= Token ],
+	lists:foreach(fun(Caller) -> Caller ! {watch,Path} end, Callers),
+    {noreply,St}.
+
+terminate(_Reason, {XS,_}) ->
 	port_close(XS),
-	R.
+    ok.
 
-write(_Key, _Value) -> throw(not_implemented).
-mkdir(_Path) 		-> throw(not_implemented).
-rm(_Key)			-> throw(not_implemented).
-directory(_Path)	-> throw(not_implemented).
-get_perms(_Path)	-> throw(not_implemented).
-set_perms(_Path, _Perms) -> throw(not_implemented).
-watch(_Path, _Token)	 -> throw(not_implemented).
-unwatch(_Path)		-> throw(not_implemented).
-transaction()		-> throw(not_implemented).
-commit(_Tx)			-> throw(not_implemented).
-rollback(_Tx)		-> throw(not_implemented).
+code_change(_OldVsn, St, _Extra) ->
+    {ok,St}.
 
-%%posix(22)	-> einval;
-%%posix(13)	-> eaccess;
-%%posix(17)	-> eexist;
-%%posix(21)	-> eisdir;
-%%posix(2)	-> enoent;
-%%posix(12)	-> enomem;
-%%posix(28)	-> enospc;
-%%posix(5)	-> eio;
-%%posix(39)	-> enotempty;
-%%posix(38)	-> enosys;
-%%posix(30)	-> erofs;
-%%posix(16)	-> ebusy;
-%%posix(11)	-> eagain;
-%%posix(106)	-> eisconn;
-%%posix(7)	-> e2big;
-%%posix(Code)	-> Code.
+%% ------------------------------------------------------------------
+%% Internal Function Definitions
+%% ------------------------------------------------------------------
 
+ctl_cmd(XS, Op, Tid, PL)	->
+	Data = binary_to_list(<<Tid:32>>) ++ pack(PL),
+	port_control(XS, Op, Data),
+	Tag = op_tag(Op),
+	receive {error,XS,What} 		   -> {error,posix(What)};
+			{transaction_start,XS,Num} -> {ok,list_to_integer(Num)};
+			{Tag,XS,"OK"}			   -> ok;
+			{Tag,XS,Result}			   -> {ok,parse(Result)} end.
+
+pack([L|_] =Ls) when is_list(L) ->
+	string:join(Ls, [0]);
+pack(PL) -> PL.
+
+op_tag(?XS_READ)	  -> read;
+op_tag(?XS_WRITE)	  -> write;
+op_tag(?XS_MKDIR)	  -> mkdir;
+op_tag(?XS_RM)		  -> rm;
+op_tag(?XS_DIRECTORY) -> directory;
+op_tag(?XS_GET_PERMS) -> get_perms;
+op_tag(?XS_SET_PERMS) -> set_perms;
+op_tag(?XS_WATCH)	  -> watch;
+op_tag(?XS_UNWATCH)	  -> unwatch;
+op_tag(?XS_TRANSACTION_START) -> transaction_start;
+op_tag(?XS_TRANSACTION_END)   -> transaction_end.
+
+posix(What) -> list_to_atom(string:to_lower(What)).
+
+parse(Result) ->
+	case lists:member(0, Result) of
+		false -> Result;
+		true  -> string:tokens(Result, [0]) end.
+
+stop_watches(XS, Path, Caller, Watches) -> stop_watches(XS, Path, Caller, Watches, [], ok).
+stop_watches(_XS, _Path, _Caller, [], Acc, Last) -> {lists:reverse(Acc),Last};
+stop_watches(XS, Path, Caller, [{Token,Path,Caller}|Watches], Acc, Last) ->
+	case ctl_cmd(XS, ?XS_UNWATCH, 0, [Path,Token]) of
+		ok  -> stop_watches(XS, Path, Caller, Watches, Acc, Last);
+		Err -> stop_watches(XS, Path, Caller, Watches, Acc, Err) end;
+stop_watches(XS, Path, Caller, [Watch|Watches], Acc, Last) ->
+	stop_watches(XS, Path, Caller, Watches, [Watch|Acc], Last).
+		
