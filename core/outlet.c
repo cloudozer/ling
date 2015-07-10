@@ -77,6 +77,9 @@ drv_spec_t outlet_drivers[NUM_DRIVERS] = {
 	{ .name = A_DNS,			.factory = ol_dns_factory },
 	{ .name = A_UDP,			.factory = ol_udp_factory },
 	{ .name = A_TCP,			.factory = ol_tcp_factory },
+#elif defined LING_WITH_LIBUV
+	{ .name = A_DNS,			.factory = ol_dns_factory },
+	{ .name = A_UDP,			.factory = ol_udp_factory },
 #endif
 #if LING_CONFIG_DISK
 	{ .name = A_DISK,			.factory = ol_disk_factory },

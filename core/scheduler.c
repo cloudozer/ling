@@ -98,9 +98,7 @@ static uint64_t expect_event_in_ns;
 static int scheduler_park_runnable_N(proc_t *proc);
 
 uint64_t lwip_closest_timeout(void);
-void lwip_check_timeouts(void);
-
-void netif_poll_all(void);
+void net_check_timeouts(void);
 
 #ifdef LING_DEBUG
 static enum sched_phase_t current_phase = PHASE_NONE;
@@ -405,10 +403,7 @@ do_pending:
 
 	set_phase(PHASE_EVENTS);
 	// software events/timeouts
-	lwip_check_timeouts();
-#ifdef LING_WITH_LWIP
-	netif_poll_all();		// for loopback 
-#endif
+	net_check_timeouts();
 	etimer_expired(ticks);
 	// 'hardware' events
 	int nr_fired = events_do_pending();

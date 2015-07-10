@@ -42,10 +42,12 @@
 #include "ling_common.h"
 
 #include "netif.h"
-#ifdef LING_WITH_LWIP
+#if LING_WITH_LWIP
 # include "lwip/stats.h"
 # include "lwip/dhcp.h"
 # include "netif/etharp.h"
+#elif LING_WITH_LIBUV
+# include <uv.h>
 #endif
 
 #include "time.h"
@@ -73,10 +75,13 @@ uint32_t sys_now()
 }
 
 // a better function name for the scheduler loop
-void lwip_check_timeouts(void)
+void net_check_timeouts(void)
 {
-#ifdef LING_WITH_LWIP
+#if LING_WITH_LWIP
 	sys_check_timeouts();	// defined in lwIP
+	netif_poll_all();		// for loopback
+#elif LING_WITH_LIBUV
+    uv_run(uv_default_loop(), UV_RUN_NOWAIT);
 #endif
 }
 

@@ -39,11 +39,17 @@
 
 #include "ling_common.h"
 
-#ifdef LING_WITH_LWIP
+#if LING_WITH_LWIP
 # include "lwip/err.h"
 # include "lwip/ip4.h"
 # include "lwip/ip6.h"
 # include "lwip/dns.h"
+#elif LING_WITH_LIBUV
+# include <uv.h>
+# include <arpa/inet.h>
+# include <netinet/in.h>
+
+# define PP_HTONL(x)  htonl(x)
 #endif
 
 #include "getput.h"
@@ -68,6 +74,10 @@ static int ol_dns_send(outlet_t *ol, int len, term_t reply_to);
 
 typedef struct dns_req_t dns_req_t;
 struct dns_req_t {
+#if LING_WITH_LIBUV
+	uv_getaddrinfo_t uv;    // must come first
+	const char *host;
+#endif
 	uint32_t serial;
 	term_t oid;
 };
@@ -86,7 +96,6 @@ outlet_t *ol_dns_factory(proc_t *cont_proc, uint32_t bit_opts)
 	return outlet_make_N(&ol_dns_vtab, cont_proc, bit_opts, extra);
 }
 
-#if LWIP_DNS
 static void send_reply(outlet_t *ol,
 		uint32_t serial, const char *name, ip_addr_t *ipaddr)
 {
@@ -133,6 +142,7 @@ static void error_reply(outlet_t *ol, uint32_t serial, const char *error)
 	outlet_pass_new_data(ol, packet, pack_size);
 }
 
+#if LWIP_DNS || LING_WITH_LIBUV
 static void found_cb(const char *name, ip_addr_t *ipaddr, void *arg)
 {
 	dns_req_t *dr = (dns_req_t *)arg;
@@ -175,7 +185,21 @@ static void found_cb(const char *name, ip_addr_t *ipaddr, void *arg)
 	else
 		error_reply(ol, serial, "DNS error");
 }
-#endif /* LWIP_DNS */
+#endif
+#if LING_WITH_LIBUV
+static void on_resolved(uv_getaddrinfo_t *req, int status, struct addrinfo *res)
+{
+    dns_req_t *dr = (dns_req_t *)req;
+    ip_addr_t ipaddr;
+
+    unsigned long ip = ((struct sockaddr_in *)res->ai_addr)->sin_addr.s_addr;
+    assert(ip < (1ul << 32));
+    ipaddr.addr = (uint32_t)ip;
+
+    found_cb(dr->host, (status ? NULL : &ipaddr), dr);
+}
+#endif
+
 
 static int find_pending(uint32_t serial)
 {
@@ -233,17 +257,14 @@ static int ol_dns_send(outlet_t *ol, int len, term_t reply_to)
 	if (left < 1)
 		return -BAD_ARG;
 	uint8_t proto = *p++;
-	left--; 
+	left--;
 	if (proto != PROTO_IPV4)
 	{
-#if LWIP_DNS
 		error_reply(ol, serial, "IPv6 not supported");
-#endif
 		return 0;
 	}
 
 	if (op == OP_GETHOSTBYNAME)
-#if LWIP_DNS
 	{
 		if (left < 1 +1)		// hostname must have at least 1 char
 			return -BAD_ARG;
@@ -263,6 +284,7 @@ static int ol_dns_send(outlet_t *ol, int len, term_t reply_to)
 		dr->serial = serial;
 		dr->oid = ol->oid;
 
+#if LWIP_DNS
 		err_t rc = dns_gethostbyname(host, &ipaddr, found_cb, dr);
 		if (rc == ERR_OK)
 		{
@@ -272,10 +294,25 @@ static int ol_dns_send(outlet_t *ol, int len, term_t reply_to)
 		}
 		else
 			assert(rc == ERR_INPROGRESS);
-	}
+#elif LING_WITH_LIBUV
+        // fprintf(2, "ol_dns_send(): resolving '%s'...", host); // DEBUG
+        dr->host = host;
+        uv_loop_t *the_loop = uv_default_loop();
+        struct addrinfo hints = {
+            .ai_family = PF_INET,
+            .ai_socktype = SOCK_STREAM,
+            .ai_protocol = IPPROTO_TCP,
+            .ai_flags = 0
+        };
+        int ret = uv_getaddrinfo(the_loop, &dr->uv, on_resolved, host, NULL, &hints);
+        if (ret) {
+            send_reply(ol, serial, host, &ipaddr);
+            num_pending--;
+        }
 #else /* LWIP_DNS */
 		fatal_error("OP_GETHOSTBYNAME not supported");
 #endif
+	}
 	else if (op == OP_GETHOSTBYADDR)
 #if LWIP_DNS
 	{

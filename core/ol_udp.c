@@ -52,6 +52,11 @@
 #undef LWIP_SOCKET
 #include "netif.h"
 
+#elif LING_WITH_LIBUV
+# include <uv.h>
+
+#endif
+
 #include "atom_defs.h"
 #include "getput.h"
 
@@ -86,7 +91,6 @@ outlet_t *ol_udp_factory(proc_t *cont_proc, uint32_t bit_opts)
 		return 0;
 
 	inet_set_default_opts(new_ol);
-	//ol->udp = 0;
 
 	return new_ol;
 }
@@ -178,9 +182,107 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 	reply += strlen(err); \
 } while (0)
 
+#if LING_WITH_LWIP
+
+static inline int is_ipv6_outlet(outlet_t *ol)
+{
+    return PCB_ISIPV6(ol->udp);
+}
+
+static int udp_control_open(outlet_t *ol, int family)
+{
+	assert(ol->udp == 0);
+
+#if LWIP_IPV6
+	ol->udp = (family == INET_AF_INET6)
+		?udp_new_ip6()
+		:udp_new();
+#else
+	if (family != INET_AF_INET)
+		return -1;
+	ol->udp = udp_new();
+#endif
+	assert(ol->udp != 0);
+
+	// set the callback that receives messages
+	udp_recv(ol->udp, recv_cb, ol);
+	return 0;
+}
+
+static int udp_control_bind(outlet_t *ol, ipX_addr_t addr, uint16_t port)
+{
+	assert(ol->udp != 0);
+	int is_ipv6 = PCB_ISIPV6(ol->udp);
+	if (!is_ipv6)
+	{
+		//debug("UDP: binding %pt to %d.%d.%d.%d:%d\n",
+		//	T(ol->oid), data[2], data[3], data[4], data[5], port);
+		udp_bind(ol->udp, &addr, port); // always succeeds
+	}
+	else
+	{
+#if LWIP_IPV6
+		udp_bind_ip6(ol->udp, &addr, port); // always succeeds
+#else
+		return -1;
+#endif
+	}
+
+	uint16_t local_port = ol->udp->local_port;
+	*reply++ = INET_REP_OK;
+	PUT_UINT_16(reply, local_port);
+	reply += 2; //DS: why does it return local_port?
+
+	return 0;
+}
+
+#endif
+
+#if LING_WITH_LIBUV
+
+static inline int is_ipv6_outlet(outlet_t *ol)
+{
+    return ol->family == INET_AF_INET6;
+}
+
+static int udp_control_open(outlet_t *ol, int family)
+{
+	int ret = uv_udp_init(uv_default_loop(), &ol->udp_conn);
+	if (ret)
+		return -1;
+
+	ol->family = family;
+	return uv_udp_recv_start(&ol->udp_conn, /* TODO : alloc */, uv_on_recv);
+}
+
+static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
+{
+    struct sockaddr *saddr;
+    if (is_ipv6_outlet(ol))
+    {
+        struct sockaddr_in6 sa;
+        sa->sin6_family = AF_INET6;
+        sa->sin6_port = port;
+        memcpy(sa->sin6_addr.s6_addr, addr, 16);
+        saddr = (struct sockaddr *)&sa;
+    }
+    else
+    {
+        struct sockaddr_in sa;
+        sa->sin_family = AF_INET;
+        sa->sin_port = port;
+        sa->sin_addr.s_addr = addr.addr;
+        saddr = (struct sockaddr *)&sa;
+    }
+    return uv_udp_bind(&ol->udp_conn, saddr, 0);
+}
+
+#endif
+
 static term_t ol_udp_control(outlet_t *ol,
 		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp)
 {
+    assert(ol->vtab == &ol_udp_vtab);
 	char rbuf[4096];
 	char *reply = rbuf;
 	int sz;
@@ -193,23 +295,16 @@ static term_t ol_udp_control(outlet_t *ol,
 		if (dlen != 2 || data[1] != INET_TYPE_DGRAM)
 			goto error;
 		uint8_t family = data[0];
-		if (family != INET_AF_INET && family != INET_AF_INET6)
+		switch (family)
+        {
+		case INET_AF_INET: case INET_AF_INET6:
+			break;
+		default:
 			goto error;
-		assert(ol->udp == 0);
+		}
 
-#if LWIP_IPV6
-		ol->udp = (family == INET_AF_INET6)
-			?udp_new_ip6()
-			:udp_new();
-#else
-		if (family != INET_AF_INET)
+		if (udp_control_open(ol, family))
 			goto error;
-		ol->udp = udp_new();
-#endif
-		assert(ol->udp != 0);
-
-		// set the callback that receives messages
-		udp_recv(ol->udp, recv_cb, ol);
 
 		*reply++ = INET_REP_OK;
 	}
@@ -223,6 +318,7 @@ static term_t ol_udp_control(outlet_t *ol,
 
 	case INET_REQ_NAME:
 	{
+        /* TODO : libuv */
 		assert(ol->udp != 0);
 		*reply++ = INET_REP_OK;
 		uint16_t name_port = ol->udp->local_port;
@@ -232,13 +328,10 @@ static term_t ol_udp_control(outlet_t *ol,
 			:INET_AF_INET;
 		PUT_UINT_16(reply, name_port);
 		reply += 2;
-		if (!is_ipv6)
-		{
+		if (!is_ipv6) {
 			ip_addr_set_hton((ip_addr_t *)reply, (ip_addr_t *)&ol->udp->local_ip);
 			reply += 4;
-		}
-		else
-		{
+		} else {
 #if LWIP_IPV6
 			ip6_addr_set_hton((ip6_addr_t *)reply, (ip6_addr_t *)&ol->udp->local_ip);
 			reply += 16;
@@ -251,37 +344,23 @@ static term_t ol_udp_control(outlet_t *ol,
 
 	case INET_REQ_BIND:
 	{
-		assert(ol->udp != 0);
-		int is_ipv6 = PCB_ISIPV6(ol->udp);
-		if ((is_ipv6 && dlen != 2 +16) || (!is_ipv6 && dlen != 2 +4))
-			goto error;
 		uint16_t port = GET_UINT_16(data);
-		if (!is_ipv6)
-		{
-			ip_addr_t addr;
-			addr.addr = ntohl(GET_UINT_32(data +2));
-			//debug("UDP: binding %pt to %d.%d.%d.%d:%d\n",
-			//	T(ol->oid), data[2], data[3], data[4], data[5], port);
-			udp_bind(ol->udp, &addr, port); // always succeeds
-		}
-		else
-		{
-#if LWIP_IPV6
-			ip6_addr_t addr;
-			addr.addr[0] = ntohl(GET_UINT_32(data +2));
-			addr.addr[1] = ntohl(GET_UINT_32(data +2 +4));
-			addr.addr[2] = ntohl(GET_UINT_32(data +2 +8));
-			addr.addr[3] = ntohl(GET_UINT_32(data +2 +12));
-			udp_bind_ip6(ol->udp, &addr, port); // always succeeds
-#else
-			goto error;
-#endif
-		}
+        ipX_addr_t addr;
 
-		uint16_t local_port = ol->udp->local_port;
-		*reply++ = INET_REP_OK;
-		PUT_UINT_16(reply, local_port);
-		reply += 2;
+        if (dlen != 2 + (is_ipv6_outlet(ol) ? 16 : 4))
+            goto error;
+
+        if (is_ipv6_outlet(ol)) {
+		    addr.addr[0] = ntohl(GET_UINT_32(data +2));
+		    addr.addr[1] = ntohl(GET_UINT_32(data +2 +4));
+		    addr.addr[2] = ntohl(GET_UINT_32(data +2 +8));
+		    addr.addr[3] = ntohl(GET_UINT_32(data +2 +12));
+        } else {
+		    addr.addr = ntohl(GET_UINT_32(data +2));
+        }
+
+		if (udp_control_bind(ol, &addr, port))
+			goto error;
 	}
 	break;
 
@@ -622,7 +701,5 @@ static void recv_timeout_cb(void *arg)
 	ol->cr_in_progress = 0;
 	inet_async_error(ol->oid, ol->cr_reply_to, 0 /*ASYNC_REF*/, A_TIMEOUT);
 }
-
-#endif // LING_WITH_LWIP
 
 //EOF

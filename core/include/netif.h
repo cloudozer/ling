@@ -43,6 +43,15 @@ typedef struct ip_addr {
     uint32_t addr;
 } ip_addr_t;
 
+typedef struct ip6_addr {
+    uint32_t addr[4];
+} ip6_addr_t;
+
+typedef union {
+    ip_addr_t ip4;
+    ip6_addr_t ip6;
+} ipX_addr_t;
+
 static inline void ip_addr_set_zero(ip_addr_t *ipaddr) {
     ipaddr->addr = 0;
 }

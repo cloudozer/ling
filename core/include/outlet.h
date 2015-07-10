@@ -42,6 +42,10 @@
 
 #include "netfe.h"
 
+#if LING_WITH_LIBUV
+# include <uv.h>
+#endif
+
 #define PB_DEFAULT		3
 
 #define PB_INOUT_OFF	0
@@ -75,6 +79,7 @@ struct outlet_vtab_t {
 	void (*destroy_private)(outlet_t *ol);
 };
 
+#if LING_WITH_LWIP
 typedef struct acc_pend_t acc_pend_t;
 struct acc_pend_t {
 	outlet_t *outlet;
@@ -93,6 +98,7 @@ union {
 	acc_pend_t *prev;
 	acc_pend_t *next;
 };
+#endif
 
 typedef struct disk_req_t disk_req_t;
 struct disk_req_t {
@@ -131,11 +137,18 @@ struct outlet_t {
 	// Go away silently or notify the owner with {Port,closed}
 	uint32_t notify_on_close;
 
+#if LING_WITH_LWIP
 	union {
 		struct ip_pcb *ip;
 		struct udp_pcb *udp;
 		struct tcp_pcb *tcp;
 	};
+#elif LING_WITH_LIBUV
+    int family;             // INET_AF_INET | INET_AF_INET6
+    union {
+        uv_udp_t udp_conn;
+    };
+#endif
 
 	// More options
 	int active;				// INET_ACTIVE* | INET_PASSIVE | INET_ONCE
