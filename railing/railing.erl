@@ -269,7 +269,13 @@ embedfs_object(EmbedFsPath, ImgName) ->
 			ok = bfd_objcopy:blob_to_src(EmbedCPath, "_binary_embed_fs", Embed),
 			ok = sh(cc() ++ ["-o", OutPath, "-c", EmbedCPath])
 	end,
-	ok = sh(ld() ++ ["vmling.o", OutPath, "-o", "../" ++ ImgName], CC).
+	LibOpts = case ?ARCH of
+		posix_x86 ->
+			PkgConfigOutput = string:strip(os:cmd("pkg-config --libs libuv"), right, $\n),
+			string:tokens(PkgConfigOutput, " ");
+		_ -> []
+	end,
+	ok = sh(ld() ++ ["vmling.o"] ++ LibOpts ++ [OutPath, "-o", "../" ++ ImgName], CC).
 
 domain_config(CustomBucks, Config) ->
 	Project = project_name(Config),
@@ -363,7 +369,7 @@ compile(Buck, Beam) ->
 		filename:rootname(filename:basename(Beam)) ++ ".ling"
 	]),
 
-	NeedUpdate = 
+	NeedUpdate =
 		case filelib:last_modified(Ling) of
 			0 ->
 				true;
