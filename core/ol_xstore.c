@@ -73,12 +73,12 @@ static term_t ol_xstore_control(outlet_t *ol,
 		.type = op,
 		.req_id = req_id,
 		.tx_id = tx_id,
-		.len = pl_len+1,	// +1 for null byte
+		.len = pl_len,
 	};
 
 	xenstore_request((char *)&msg, sizeof(msg));
 	xenstore_request((char *)payload, pl_len);
-	xenstore_complete();	// adds null byte
+	xenstore_complete();
 
 	ol->xstore_pend_op	   = op;
 	ol->xstore_pend_req_id = req_id;

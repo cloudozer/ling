@@ -45,6 +45,7 @@
 -export([read/1,write/2,write/3,mkdir/1,mkdir/2,delete/1,delete/2,list/1]).
 -export([get_perms/1,set_perms/2,set_perms/3,watch/1,unwatch/1]).
 -export([transaction/0,commit/1,rollback/1]).
+-export([domid/0]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -88,7 +89,8 @@ get_perms(Path) when is_list(Path) ->
 get_perms(_) -> {error,badarg}.
 
 set_perms(Path, Perms) -> set_perms(Path, Perms, 0).
-set_perms(Path, Perms, Tid) when is_list(Path), is_list(Perms), is_integer(Tid) ->
+set_perms(Path, [X|_] =Perms, Tid) when is_list(Path), is_list(Perms),
+										is_list(X), is_integer(Tid) ->
 	gen_server:call(?SERVER, {?XS_SET_PERMS,[Path|Perms],Tid});
 set_perms(_, _, _) -> {error,badarg}.
 
@@ -113,6 +115,10 @@ rollback(Tid) when is_integer(Tid) ->
 	gen_server:call(?SERVER, {?XS_TRANSACTION_END,"F",Tid});
 rollback(_) -> {error,badarg}.
 
+domid() ->
+	{ok,Value} = xenstore:read("domid"),
+	list_to_integer(Value).
+
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
@@ -128,7 +134,7 @@ handle_call({watch,Path,Caller}, _From, {XS,Watches} =St) ->
 		Error -> {reply,Error,St} end;
 
 handle_call({unwatch,Path,Caller}, _From, {XS,Watches}) ->
-	{Q,Watches1} = stop_watches(XS, Path, Caller, Watches),
+	{Watches1,Q} = stop_watches(XS, Path, Caller, Watches),
 	{reply,Q,{XS,Watches1}};
 
 handle_call({Op,PL,Tid}, _From, {XS,_} =St) ->
@@ -142,7 +148,7 @@ handle_cast(_Msg, St) ->
     {noreply,St}.
 
 handle_info({watch_event,_,Result}, {_,Watches} =St) ->
-	[Path,Token] = parse(Result),
+	[Path,Token] = string:tokens(Result, [0]),
 	Callers = [ Caller || {Token1,_,Caller} <- Watches, Token1 =:= Token ],
 	lists:foreach(fun(Caller) -> Caller ! {watch,Path} end, Callers),
     {noreply,St}.
@@ -158,18 +164,19 @@ code_change(_OldVsn, St, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-ctl_cmd(XS, Op, Tid, PL)	->
-	Data = binary_to_list(<<Tid:32>>) ++ pack(PL),
+ctl_cmd(XS, Op, Tid, PL) ->
+	Data = pack(Op, Tid, PL),
 	port_control(XS, Op, Data),
 	Tag = op_tag(Op),
-	receive {error,XS,What} 		   -> {error,posix(What)};
-			{transaction_start,XS,Num} -> {ok,list_to_integer(Num)};
-			{Tag,XS,"OK"}			   -> ok;
-			{Tag,XS,Result}			   -> {ok,parse(Result)} end.
+	receive {error,XS,What} -> unpack(error, What);
+			{Tag,XS,What}   -> unpack(Tag, What) end.
 
-pack([L|_] =Ls) when is_list(L) ->
-	string:join(Ls, [0]);
-pack(PL) -> PL.
+pack(?XS_WRITE, Tid, [P,V]) ->
+	list_to_binary([<<Tid:32>>,P,0,V]);	%% XS_WRITE is special
+pack(_, Tid, [V|_] = PL) when is_list(V) ->
+	list_to_binary([<<Tid:32>>,[ [X,0] || X <- PL ]]);
+pack(_, Tid, V) ->
+	list_to_binary([<<Tid:32>>,V,0]).
 
 op_tag(?XS_READ)	  -> read;
 op_tag(?XS_WRITE)	  -> write;
@@ -183,12 +190,19 @@ op_tag(?XS_UNWATCH)	  -> unwatch;
 op_tag(?XS_TRANSACTION_START) -> transaction_start;
 op_tag(?XS_TRANSACTION_END)   -> transaction_end.
 
-posix(What) -> list_to_atom(string:to_lower(What)).
-
-parse(Result) ->
-	case lists:member(0, Result) of
-		false -> Result;
-		true  -> string:tokens(Result, [0]) end.
+unpack(error, What) ->
+	{error,list_to_atom(string:to_lower(What))};
+unpack(transaction_start, What) ->
+	{ok,list_to_integer(What)};
+unpack(directory, What) ->
+	case lists:member(0, What) of
+		false -> {ok,[What]};
+		true  -> {ok,string:tokens(What, [0])} end;
+unpack(_Tag, "OK") -> ok;
+unpack(_Tag, What) ->
+	case lists:member(0, What) of
+		false -> {ok,What};
+		true  -> {ok,string:tokens(What, [0])} end.
 
 stop_watches(XS, Path, Caller, Watches) -> stop_watches(XS, Path, Caller, Watches, [], ok).
 stop_watches(_XS, _Path, _Caller, [], Acc, Last) -> {lists:reverse(Acc),Last};
@@ -198,4 +212,4 @@ stop_watches(XS, Path, Caller, [{Token,Path,Caller}|Watches], Acc, Last) ->
 		Err -> stop_watches(XS, Path, Caller, Watches, Acc, Err) end;
 stop_watches(XS, Path, Caller, [Watch|Watches], Acc, Last) ->
 	stop_watches(XS, Path, Caller, Watches, [Watch|Acc], Last).
-		
+

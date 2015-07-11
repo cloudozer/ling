@@ -161,8 +161,6 @@ void xenstore_request(char *message, int len)
 
 void xenstore_complete(void)
 {
-	char null = 0;
-	xenstore_request(&null, 1);
 	event_kick(store_port);
 }
 
