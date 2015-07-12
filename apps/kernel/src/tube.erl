@@ -1,5 +1,7 @@
 -module(tube).
--compile(export_all).
+-export([open/1,open/2]).
+-export([accept/2]).
+-export([close/1]).
 
 -define(STATE_INITIALISING,		"1").
 -define(STATE_INIT_WAIT,		"2").
@@ -23,29 +25,37 @@ open1(NockDir, TipDir) ->
 		ok ->
 			ok = xenstore:mkdir(NockDir),
 			ok = xenstore:write(lc(NockDir, "/tip"), TipDir),
-			NockState = lc(NockDir, "/state"),
-			ok = xenstore:write(NockState, ?STATE_INIT_WAIT),
+			ok = xenstore:write(lc(NockDir, "/state"), ?STATE_INIT_WAIT),
 			TipState = lc(TipDir, "/state"),
 			Pid = spawn(fun() -> ok = xenstore:watch(TipState),
-								 tloop(TipState, TipDir, NockState),
-								 ok = xenstore:delete(NockDir),
-								 ok = xenstore:unwatch(TipState) end),
+								 tloop(TipState, TipDir, NockDir) end),
 			ok = xenstore:write(lc(TipDir, "/nock"), NockDir),
 			{ok,Pid};
 		{error,eacces} -> {error,not_found} end.
 
-tloop(TipState, TipDir, NockState) ->
+close(Pid) -> Pid ! {terminate,self()},
+			  receive {Pid,terminated} -> ok end.
+
+tloop(TipState, TipDir, NockDir) ->
 	receive {watch,TipState} ->
 				case xenstore:read(TipState) of
 					{ok,S} ->
-						tevent(S, TipDir, NockState), tloop(TipState, TipDir, NockState);
+						tevent(S, TipDir, NockDir), tloop(TipState, TipDir, NockDir);
 					{error,enoent} ->
-						tloop(TipState, TipDir, NockState);
-					{error,eacces} -> done end end.
+						tloop(TipState, TipDir, NockDir);
+					{error,eacces} -> tdone(TipState, NockDir) end;
+			{terminate,From} ->
+				tdone(TipState, NockDir),
+				From ! {self(),terminated} end.
+
+tdone(TipState, NockDir) ->
+	ok = xenstore:unwatch(TipState),
+	ok = xenstore:delete(lc(NockDir, "/state")),
+	ok = xenstore:delete(NockDir).
 
 tevent(?STATE_INITIALISING, _, _) -> ok;
 
-tevent(?STATE_INITIALISED, TipDir, NockState) ->
+tevent(?STATE_INITIALISED, TipDir, NockDir) ->
 	{ok,TxRingRef} = xenstore:read(lc(TipDir, "/tx-ring-ref")),
 	{ok,RxRingRef} = xenstore:read(lc(TipDir, "/rx-ring-ref")),
 	{ok,EventChannel} = xenstore:read(lc(TipDir, "/event-channel")),
@@ -53,7 +63,7 @@ tevent(?STATE_INITIALISED, TipDir, NockState) ->
 	%%TODO
 	io:format("START tube port: ~s/~s/~s\n", [TxRingRef,RxRingRef,EventChannel]),
 
-	ok = xenstore:write(NockState, ?STATE_CONNECTED);
+	ok = xenstore:write(lc(NockDir, "/state"), ?STATE_CONNECTED);
 
 tevent(?STATE_CONNECTED, _, _) -> ok.
 
@@ -63,7 +73,7 @@ accept(NockDir, TipDir) ->
 						 aloop(NockState, TipDir),
 						 ok = xenstore:delete(TipDir),
 						 ok = xenstore:unwatch(NockState) end),
-	ok = xenstore:write(lc(TipDir, "/state"), ?STATE_INITIALISING),		%% Initialising
+	ok = xenstore:write(lc(TipDir, "/state"), ?STATE_INITIALISING),
 	{ok,Pid}.
 
 aloop(NockState, TipDir) ->
@@ -72,7 +82,7 @@ aloop(NockState, TipDir) ->
 					{ok,S} ->
 						aevent(S, TipDir),
 						aloop(NockState, TipDir);
-					{error,eacces} -> done end end.
+					{error,_} -> done end end.
 
 aevent(?STATE_INIT_WAIT, TipDir) ->
 
@@ -92,12 +102,12 @@ aevent(?STATE_INIT_WAIT, TipDir) ->
 aevent(?STATE_CONNECTED, TipDir) ->
 	ok = xenstore:write(lc(TipDir, "/state"), ?STATE_CONNECTED).
 
-state(?STATE_INITIALISING) -> "Initialising";
-state(?STATE_INIT_WAIT)	   -> "InitWait";
-state(?STATE_INITIALISED)  -> "Initialised";
-state(?STATE_CONNECTED)	   -> "Connected";
-state(?STATE_CLOSING)	   -> "Closing";
-state(?STATE_CLOSED)	   -> "Closed".
+%%state(?STATE_INITIALISING) -> "Initialising";
+%%state(?STATE_INIT_WAIT)	   -> "InitWait";
+%%state(?STATE_INITIALISED)  -> "Initialised";
+%%state(?STATE_CONNECTED)	   -> "Connected";
+%%state(?STATE_CLOSING)	   -> "Closing";
+%%state(?STATE_CLOSED)	   -> "Closed".
 
 lc(X)    -> lists:concat(X).
 lc(X, Y) -> lists:concat([X,Y]).
