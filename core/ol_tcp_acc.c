@@ -377,8 +377,6 @@ static err_t accept_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, e
 	}
 	else
 	{
-		tcp_recved(tcp, data->tot_len);
-
 		if (pend->ante == 0)
 			pend->ante = data;
 		else

@@ -161,12 +161,7 @@ void ol_tcp_animate(outlet_t *new_ol, struct tcp_pcb *pcb, struct pbuf *ante)
 	if (ante != 0)	// data receive while enqueued
 	{
 		uint16_t len = ante->tot_len;
-		if (len > new_ol->recv_bufsize)
-		{
-			debug("ol_tcp_animate: tot_len=%d, recv_bufsize=%d, truncating\n",
-				  ante->tot_len, new_ol->recv_bufsize);
-			len = new_ol->recv_bufsize;	
-		}
+		assert(len <= new_ol->recv_bufsize);
 		pbuf_copy_partial(ante, new_ol->recv_buffer, len, 0);
 		new_ol->recv_buf_off = len;
 		pbuf_free(ante);
@@ -518,7 +513,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 	if (ol->packet == TCP_PB_RAW && recv_num > ol->recv_bufsize)
 		goto error;
 	
-	if (ol->peer_close_detected)
+	if (ol->peer_close_detected && ol->recv_buf_off == 0)
 		inet_async_error(ol->oid, reply_to, ASYNC_REF, A_CLOSED);
 	else
 	{
@@ -790,21 +785,15 @@ static err_t recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t er
 	else
 	{
 		uint16_t len = data->tot_len;
-		if (len > ol->recv_bufsize -ol->recv_buf_off)
-		{
-			debug("recv_cb: len %d recv_bufsize %d recv_buf_off %d\n",
-									len, ol->recv_bufsize, ol->recv_buf_off);
-			debug("recv_cb: received data do not fit recv_buffer - truncated\n");
-			len = ol->recv_bufsize -ol->recv_buf_off;	// truncation
-		}
+		assert(len <= ol->recv_bufsize -ol->recv_buf_off); // ol->recv_bufsize >= TCP_WND
 
 		//debug("---> recv_cb: recv_bufsize %d recv_buf_off %d\n\t\ttot_len %d len %d\n", 
 		//		ol->recv_bufsize, ol->recv_buf_off, data->tot_len, len);
 		pbuf_copy_partial(data, ol->recv_buffer +ol->recv_buf_off, len, 0);
 		ol->recv_buf_off += len;
 
-		// The correct place to acknowledge the data when complete packets are baked. No.
-		tcp_recved(ol->tcp, len);
+		// The correct place to acknowledge the data when complete packets are baked.
+		//tcp_recved(ol->tcp, len);
 
 		pbuf_free(data);
 		int x = recv_bake_packets(ol, cont_proc);
@@ -978,7 +967,7 @@ more_packets:
 
 				// Is it safe to acknowledge the data here, outside of the
 				// receive callback?
-				//tcp_recved(ol->tcp, consumed);
+				tcp_recved(ol->tcp, consumed);
 
 				if (ol->packet == TCP_PB_HTTP || ol->packet == TCP_PB_HTTP_BIN)
 					active_tag = A_HTTP;
@@ -1057,7 +1046,7 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 					continue;
 				}
 				ol->recv_bufsize = val;
-				assert(ol->recv_buf_off <= ol->recv_bufsize); // no truncation
+				assert(ol->recv_buf_off <= ol->recv_bufsize);
 				memcpy(node->starts, ol->recv_buffer, ol->recv_buf_off);
 				ol->max_recv_bufsize = (void *)node->ends -(void *)node->starts;
 				ol->recv_buffer = (uint8_t *)node->starts;

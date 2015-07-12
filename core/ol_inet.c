@@ -57,7 +57,7 @@ void inet_set_default_opts(outlet_t *ol)
 	ol->buffer = 0;
 	ol->header = 0;
 	ol->packet = TCP_PB_RAW;
-	ol->packet_size = 0;
+	ol->packet_size = TCP_WND;		// TCP window in lwIP is static 
 
 	ol->exit_on_close = 1;
 }
@@ -158,6 +158,8 @@ int inet_set_opt(outlet_t *ol, int opt, uint32_t val)
 		break;
 
 	case INET_LOPT_PACKET_SIZE:
+		if (val == 0 || val > TCP_WND)
+			val = TCP_WND;
 		ol->packet_size = val;
 		break;
 
