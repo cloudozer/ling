@@ -31,21 +31,29 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef xenstore_H
-#define xenstore_H
+#pragma once
 
 #include "ling_xen.h"
+#include "errno.h"
 #include "xen/io/xs_wire.h"
+
+typedef struct outlet_t outlet_t;
 
 void xenstore_init(struct xenstore_domain_interface *intf, uint32_t port);
 
 int xenstore_write(const char *key, char *value);
-int xenstore_read(const char *key, char *value, size_t len);
+int xenstore_read(const char *key, char *value, int len);
 int xenstore_read_int(int *result, const char *key);
 int xenstore_read_u32(uint32_t *result, const char *key);
 int xenstore_read_u64(uint64_t *result, const char *key);
-int xenstore_read_dir(const char *key, char *value, size_t len);
+int xenstore_read_dir(const char *key, char *value, int len);
 int xenstore_write_uint(const char *key, unsigned int n);
 
-#endif
+void xstore_attach(outlet_t *ol);
+void xstore_detach(outlet_t *ol);
+
+// low-level read/write from/to Xenstore ringbuffer
+void xenstore_request(char *message, int len);
+void xenstore_complete(void);
+void xenstore_response(char *buffer, int len);
 

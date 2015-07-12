@@ -77,6 +77,7 @@
 
 #include "monitors.h"
 #include "timers.h"
+#include "xenstore.h"
 #include "console.h"
 #include "netfe.h"
 #include "netif.h"
@@ -91,6 +92,8 @@
 #include "lwip/ip_addr.h"
 #include "lwip/stats.h"
 #include "lwip/netif.h"
+
+#include "xen/io/xs_wire.h"
 
 #define fail(reason) do { \
 	proc->bif_excep_reason = (reason); \

@@ -281,6 +281,18 @@ disk_async
 disk_async_error
 eio
 enotsup
+read
+write
+mkdir
+rm
+directory
+get_perms
+set_perms
+watch
+watch_event
+unwatch
+transaction_start
+transaction_end
 
 #ETS tables
 set
