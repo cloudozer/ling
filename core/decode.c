@@ -338,6 +338,7 @@ default:
 	bs->starts = saved_starts;
 	if (packet_size != 0 && body_len > packet_size)
 	{
+		debug("Over-sized packet detected: body_len %d packet_size %d\n", body_len, packet_size);
 		*reason = A_EMSGSIZE;
 		return noval;
 	}

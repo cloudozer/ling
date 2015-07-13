@@ -28,7 +28,7 @@
 #define LWIP_NETCONN			0
 #define LWIP_SOCKET				0
 
-#define TCP_MSS					1460
+#define TCP_MSS					1440
 //#define TCP_WND					(4*TCP_MSS)
 //#define TCP_SND_BUF				(4*TCP_MSS)
 //#define TCP_SND_QUEUELEN		64
