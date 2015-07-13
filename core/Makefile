@@ -15,7 +15,6 @@ CPPFLAGS += -isystem lib/pcre
 CPPFLAGS += -isystem lib
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
 CPPFLAGS += -iquote bignum
-CPPFLAGS += -isystem lib/misc/include
 ifdef LING_DEBUG
 CPPFLAGS += -DLING_DEBUG
 CPPFLAGS += -DDEBUG_UNUSED_MEM
@@ -34,6 +33,9 @@ ASFLAGS  := -D__ASSEMBLY__
 
 include arch/$(ARCH)/config.mk
 
+ifndef LING_POSIX
+CPPFLAGS += -isystem lib/misc/include
+endif
 ifdef LING_WITH_LWIP
 CPPFLAGS += -DLING_WITH_LWIP=1
 CPPFLAGS += -iquote lib/lwip/src/include

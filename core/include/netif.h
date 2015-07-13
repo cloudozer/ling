@@ -56,6 +56,10 @@ static inline void ip_addr_set_zero(ip_addr_t *ipaddr) {
     ipaddr->addr = 0;
 }
 
+#define ip_addr_set(dest, src) ((dest)->addr = \
+                                    ((src) == NULL ? 0 : \
+                                    (src)->addr))
+
 typedef void (*netif_status_callback_fn)();
 
 struct netif;

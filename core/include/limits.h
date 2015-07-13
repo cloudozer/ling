@@ -36,8 +36,10 @@
 
 #include "arch_limits.h"
 
-#define PAGE_SHIFT	__PAGE_SHIFT
-#define PAGE_SIZE	__PAGE_SIZE
+#ifndef PAGE_SIZE
+# define PAGE_SHIFT	__PAGE_SHIFT
+# define PAGE_SIZE	__PAGE_SIZE
+#endif
 
 #define MAX_ROOT_REGS	65535
 

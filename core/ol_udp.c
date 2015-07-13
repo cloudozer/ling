@@ -54,7 +54,6 @@
 
 #elif LING_WITH_LIBUV
 # include <uv.h>
-
 #endif
 
 #include "atom_defs.h"
@@ -63,6 +62,7 @@
 #include <string.h>
 #include "term_util.h"
 
+static inline int is_ipv6_outlet(outlet_t *ol);
 static uint8_t *ol_udp_get_send_buffer(outlet_t *ol, int len);
 static int ol_udp_send(outlet_t *ol, int len, term_t reply_to);
 static term_t ol_udp_control(outlet_t *ol,
@@ -76,13 +76,69 @@ static outlet_vtab_t ol_udp_vtab = {
 	.destroy_private = ol_udp_destroy_private,
 };
 
+#ifdef LING_WITH_LWIP
 static void recv_cb(void *arg,
 	struct udp_pcb *udp, struct pbuf *data, struct ip_addr *addr, uint16_t port);
 static void recv_timeout_cb(void *arg);
+#endif
 
 static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen);
 static int ol_udp_get_opts(outlet_t *ol,
 					uint8_t *data, int dlen, char *buf, int sz);
+
+#ifdef LING_WITH_LIBUV
+
+static void
+uv_on_recv(uv_udp_t *, ssize_t,
+           const uv_buf_t *, const struct sockaddr *, unsigned);
+
+static int
+send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint16_t len)
+{
+    //assert(!(ol->udp_conn.flags & UV_CLOSED));
+    int ret;
+    uv_buf_t buf = { .base = data, .len = (size_t)len };
+
+    struct sockaddr_in saddr;
+    saddr.sin_family = AF_INET;
+    saddr.sin_port = port;
+    saddr.sin_addr.s_addr = ipaddr->addr;
+
+    uv_udp_send_t req;
+    ret = uv_udp_send(&req, &ol->udp_conn, &buf, 1, (struct sockaddr *)&saddr, NULL);
+    if (ret < 0)
+        return A_ERROR; /* TODO: better description */
+    return A_OK;
+}
+#endif
+
+#ifdef LING_WITH_LWIP
+
+static term_t
+send_udp_packet(outlet_t *ol, ip_addr_t *addr, uint16_t port, void *data, uint16_t len)
+{
+	struct pbuf *packet = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_POOL);
+	struct pbuf *pb = packet;
+	while (len > 0)
+	{
+		assert(pb != 0);
+		int n = (len > pb->len)
+					?pb->len
+					:len;
+		memcpy(pb->payload, data, n);
+		data += n;
+		len -= n;
+		pb = pb->next;
+	}
+
+	//debug("UDP: sending %d byte(s) to %d.%d.%d.%d:%d\n", len,
+	//	ip4_addr1(&addr), ip4_addr2(&addr), ip4_addr3(&addr), ip4_addr4(&addr), port);
+
+	int rc = udp_sendto(ol->udp, packet, addr, port);
+	pbuf_free(packet);
+	return (rc ? lwip_err_to_term(rc) : A_OK);
+}
+#endif
 
 outlet_t *ol_udp_factory(proc_t *cont_proc, uint32_t bit_opts)
 {
@@ -118,18 +174,20 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 	// port[2] addr[4] data[n]
 	// port[2] addr[16] data[n]
 
+#ifdef LING_WITH_LWIP
 	assert(ol->udp != 0);
+#endif
 	uint8_t *data = ol->send_buffer;
 	assert(len >= 2);
 	uint16_t port = GET_UINT_16(data);
 	data += 2;
 	len -= 2;
 
-	ipX_addr_t addr;
+	ip_addr_t addr;
 	
-	int is_ipv6 = PCB_ISIPV6(ol->udp);
-	if (is_ipv6)
+	if (is_ipv6_outlet(ol))
 	{
+#if 0
 		assert(len >= 16);
 		((ip6_addr_t *)&addr)->addr[0] = GET_UINT_32(data);
 		((ip6_addr_t *)&addr)->addr[1] = GET_UINT_32(data +4);
@@ -137,6 +195,10 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 		((ip6_addr_t *)&addr)->addr[3] = GET_UINT_32(data +12);
 		data += 16;
 		len -= 16;
+#else
+        inet_reply_error(ol->oid, reply_to, A_NOT_SUPPORTED);
+        return 0;
+#endif
 	}
 	else
 	{
@@ -146,33 +208,12 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 		len -= 4;
 	}
 
-	struct pbuf *packet = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_POOL);
-	struct pbuf *pb = packet;
-	while (len > 0)
-	{
-		assert(pb != 0);
-		int n = (len > pb->len)
-					?pb->len
-					:len;
-		memcpy(pb->payload, data, n);
-		data += n;
-		len -= n;
-		pb = pb->next;
-	}
+    term_t ret = send_udp_packet(ol, &addr, port, data, len);
+	if (ret == A_OK)
+        inet_reply(ol->oid, reply_to, A_OK);
+    else
+		inet_reply_error(ol->oid, reply_to, ret);
 
-	//debug("UDP: sending %d byte(s) to %d.%d.%d.%d:%d\n", len,
-	//	ip4_addr1(&addr), ip4_addr2(&addr), ip4_addr3(&addr), ip4_addr4(&addr), port);
-
-	int rc = udp_sendto(ol->udp, packet, (ip_addr_t *)&addr, port);
-	if (rc != ERR_OK)
-	{
-		pbuf_free(packet);
-		inet_reply_error(ol->oid, reply_to, lwip_err_to_term(rc));
-		return 0;
-	}
-
-	pbuf_free(packet);
-	inet_reply(ol->oid, reply_to, A_OK);
 	return 0;
 }
 
@@ -252,7 +293,7 @@ static int udp_control_open(outlet_t *ol, int family)
 		return -1;
 
 	ol->family = family;
-	return uv_udp_recv_start(&ol->udp_conn, /* TODO : alloc */, uv_on_recv);
+	return uv_udp_recv_start(&ol->udp_conn, NULL /* TODO : alloc */, uv_on_recv);
 }
 
 static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
@@ -261,17 +302,19 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
     if (is_ipv6_outlet(ol))
     {
         struct sockaddr_in6 sa;
-        sa->sin6_family = AF_INET6;
-        sa->sin6_port = port;
-        memcpy(sa->sin6_addr.s6_addr, addr, 16);
+        sa.sin6_family = AF_INET6;
+        sa.sin6_port = port;
+        memcpy(sa.sin6_addr.s6_addr, addr, 16);
+
         saddr = (struct sockaddr *)&sa;
     }
     else
     {
         struct sockaddr_in sa;
-        sa->sin_family = AF_INET;
-        sa->sin_port = port;
-        sa->sin_addr.s_addr = addr.addr;
+        sa.sin_family = AF_INET;
+        sa.sin_port = port;
+        sa.sin_addr.s_addr = addr->ip4.addr;
+
         saddr = (struct sockaddr *)&sa;
     }
     return uv_udp_bind(&ol->udp_conn, saddr, 0);
@@ -282,7 +325,7 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 static term_t ol_udp_control(outlet_t *ol,
 		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp)
 {
-    assert(ol->vtab == &ol_udp_vtab);
+	assert(ol->vtab == &ol_udp_vtab);
 	char rbuf[4096];
 	char *reply = rbuf;
 	int sz;
@@ -318,7 +361,7 @@ static term_t ol_udp_control(outlet_t *ol,
 
 	case INET_REQ_NAME:
 	{
-        /* TODO : libuv */
+#if LING_WITH_LWIP
 		assert(ol->udp != 0);
 		*reply++ = INET_REP_OK;
 		uint16_t name_port = ol->udp->local_port;
@@ -339,24 +382,27 @@ static term_t ol_udp_control(outlet_t *ol,
 			goto error;
 #endif
 		}
+#else // LING_WITH_LWIP
+		REPLY_INET_ERROR("enotimpl");
+#endif  // LING_WITH_LWIP
 	}
 	break;
 
 	case INET_REQ_BIND:
 	{
 		uint16_t port = GET_UINT_16(data);
-        ipX_addr_t addr;
+		ipX_addr_t addr;
 
-        if (dlen != 2 + (is_ipv6_outlet(ol) ? 16 : 4))
-            goto error;
+		if (dlen != 2 + (is_ipv6_outlet(ol) ? 16 : 4))
+			goto error;
 
-        if (is_ipv6_outlet(ol)) {
-		    addr.addr[0] = ntohl(GET_UINT_32(data +2));
-		    addr.addr[1] = ntohl(GET_UINT_32(data +2 +4));
-		    addr.addr[2] = ntohl(GET_UINT_32(data +2 +8));
-		    addr.addr[3] = ntohl(GET_UINT_32(data +2 +12));
+		if (is_ipv6_outlet(ol)) {
+			addr.ip6.addr[0] = ntohl(GET_UINT_32(data +2));
+			addr.ip6.addr[1] = ntohl(GET_UINT_32(data +2 +4));
+			addr.ip6.addr[2] = ntohl(GET_UINT_32(data +2 +8));
+			addr.ip6.addr[3] = ntohl(GET_UINT_32(data +2 +12));
         } else {
-		    addr.addr = ntohl(GET_UINT_32(data +2));
+			addr.ip4.addr = ntohl(GET_UINT_32(data +2));
         }
 
 		if (udp_control_bind(ol, &addr, port))
@@ -366,6 +412,7 @@ static term_t ol_udp_control(outlet_t *ol,
 
 	case PACKET_REQ_RECV:
 	{
+#ifdef LING_WITH_LWIP
 		assert(ol->udp != 0);
 		if (dlen != 4 +4)
 			goto error;
@@ -390,6 +437,9 @@ static term_t ol_udp_control(outlet_t *ol,
 		uint16_t my_ref = 0; //ASYNC_REF;
 		PUT_UINT_16(reply, my_ref);
 		reply += 2;
+#else
+        REPLY_INET_ERROR("enotimpl");
+#endif
 		break;
 	}
 
@@ -473,8 +523,14 @@ error:
 static void ol_udp_destroy_private(outlet_t *ol)
 {
 	nfree(ol->send_buf_node);
+#if LING_WITH_LWIP
 	if (ol->udp != 0)
 		udp_remove(ol->udp);
+#elif LING_WITH_LIBUV
+    /* uv_udp_t is a "subclass" of uv_handle_t */
+	uv_close((uv_handle_t *)&ol->udp_conn, NULL);
+#endif
+
 }
 
 static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
@@ -498,9 +554,11 @@ static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 			//TODO
 			break;
 
+#ifdef LING_WITH_LWIP
 		case INET_OPT_TOS:
 			ol->udp->tos = (uint8_t)val;
 			break;
+#endif
 
 		default:
 			if (inet_set_opt(ol, opt, val) < 0)
@@ -529,9 +587,11 @@ static int ol_udp_get_opts(outlet_t *ol,
 			val = 0;
 			break;
 
+#ifdef LING_WITH_LWIP
 		case INET_OPT_TOS:
 			val = ol->udp->tos;
 			break;
+#endif
 
 		default:
 			if (inet_get_opt(ol, opt, &val) < 0)
@@ -552,6 +612,16 @@ static int ol_udp_get_opts(outlet_t *ol,
 
 //------------------------------------------------------------------------------
 
+#if LING_WITH_LIBUV
+static void uv_on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
+                       const struct sockaddr *addr, unsigned flags)
+{
+	/* handle to outlet_t - ? */
+}
+
+#endif //LING_WITH_LIBUV
+
+#if LING_WITH_LWIP
 static void recv_cb(void *arg,
 	struct udp_pcb *udp, struct pbuf *data, struct ip_addr *addr, uint16_t port)
 {
@@ -701,5 +771,7 @@ static void recv_timeout_cb(void *arg)
 	ol->cr_in_progress = 0;
 	inet_async_error(ol->oid, ol->cr_reply_to, 0 /*ASYNC_REF*/, A_TIMEOUT);
 }
+
+#endif // LING_WITH_LWIP
 
 //EOF

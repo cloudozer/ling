@@ -185,12 +185,14 @@ struct outlet_t {
 	term_t empty_queue_reply_to;
 	int peer_close_detected;
 
+#if LING_WITH_LWIP
 	// TCP - listening mode
 	int backlog;
 	acc_pend_t *free_pends;
 	memnode_t *pend_nodes;
 	acc_pend_t *accepting;
 	acc_pend_t *accepted;
+#endif
 
 	// Disk
 	disk_req_t *out_reqs; 
