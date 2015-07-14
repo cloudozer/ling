@@ -185,6 +185,9 @@ struct outlet_t {
 	// VIF
 	netfe_t *front_end;
 
+	// Tube
+	struct tube_t *tube;
+
 	// Xenstore
 	uint32_t xstore_pend_op;
 	uint32_t xstore_pend_req_id;

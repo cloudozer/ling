@@ -471,6 +471,7 @@ open_port(PortName, Opts) ->
 port_driver(echo)	  -> echo;
 port_driver(xenstore) -> xenstore;
 port_driver(vif)	  -> vif;
+port_driver(tube)	  -> tube;
 port_driver(disk)	  -> disk;
 port_driver({fd,2,2}) -> dumb_console;
 port_driver({spawn,'tty_sl -c -e'}) -> console;
