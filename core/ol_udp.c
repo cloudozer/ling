@@ -54,6 +54,10 @@
 
 #elif LING_WITH_LIBUV
 # include <uv.h>
+
+/* TODO : don't use malloc/free */
+void *malloc(size_t size);
+void free(void *ptr);
 #endif
 
 #include "atom_defs.h"
@@ -92,23 +96,33 @@ static void
 uv_on_recv(uv_udp_t *, ssize_t,
            const uv_buf_t *, const struct sockaddr *, unsigned);
 
-static int
+static void
+uv_on_send(uv_udp_send_t *udp, int status)
+{
+	debug("%s(status=%d)\n", __FUNCTION__, status);
+	free(udp);
+}
+
+static term_t
 send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint16_t len)
 {
-    //assert(!(ol->udp_conn.flags & UV_CLOSED));
-    int ret;
-    uv_buf_t buf = { .base = data, .len = (size_t)len };
+	int ret;
+	uv_buf_t buf = { .base = data, .len = (size_t)len };
 
-    struct sockaddr_in saddr;
-    saddr.sin_family = AF_INET;
-    saddr.sin_port = port;
-    saddr.sin_addr.s_addr = ipaddr->addr;
+	struct sockaddr_in saddr;
+	saddr.sin_family = AF_INET;
+	saddr.sin_port = htons(port);
+	saddr.sin_addr.s_addr = (ipaddr->addr);
 
-    uv_udp_send_t req;
-    ret = uv_udp_send(&req, &ol->udp_conn, &buf, 1, (struct sockaddr *)&saddr, NULL);
-    if (ret < 0)
-        return A_ERROR; /* TODO: better description */
-    return A_OK;
+	debug("%s(addr=0x%x, port=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, saddr.sin_port);
+
+	uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
+	ret = uv_udp_send(req, &ol->udp_conn, &buf, 1, (struct sockaddr *)&saddr, uv_on_send);
+	if (ret < 0) {
+		debug("%s: uv_udp_send failed(%d)\n", __FUNCTION__, ret);
+		return A_ERROR; /* TODO: better description */
+	}
+	return A_OK;
 }
 #endif
 
@@ -173,6 +187,7 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 {
 	// port[2] addr[4] data[n]
 	// port[2] addr[16] data[n]
+	debug("%s\n", __FUNCTION__);
 
 #ifdef LING_WITH_LWIP
 	assert(ol->udp != 0);
@@ -184,7 +199,7 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 	len -= 2;
 
 	ip_addr_t addr;
-	
+
 	if (is_ipv6_outlet(ol))
 	{
 #if 0
@@ -196,8 +211,8 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 		data += 16;
 		len -= 16;
 #else
-        inet_reply_error(ol->oid, reply_to, A_NOT_SUPPORTED);
-        return 0;
+	inet_reply_error(ol->oid, reply_to, A_NOT_SUPPORTED);
+		return 0;
 #endif
 	}
 	else
@@ -208,10 +223,10 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 		len -= 4;
 	}
 
-    term_t ret = send_udp_packet(ol, &addr, port, data, len);
+	term_t ret = send_udp_packet(ol, &addr, port, data, len);
 	if (ret == A_OK)
-        inet_reply(ol->oid, reply_to, A_OK);
-    else
+		inet_reply(ol->oid, reply_to, A_OK);
+	else
 		inet_reply_error(ol->oid, reply_to, ret);
 
 	return 0;
@@ -227,7 +242,7 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 
 static inline int is_ipv6_outlet(outlet_t *ol)
 {
-    return PCB_ISIPV6(ol->udp);
+	return PCB_ISIPV6(ol->udp);
 }
 
 static int udp_control_open(outlet_t *ol, int family)
@@ -250,6 +265,7 @@ static int udp_control_open(outlet_t *ol, int family)
 	return 0;
 }
 
+/* returns assigned local_port */
 static int udp_control_bind(outlet_t *ol, ipX_addr_t addr, uint16_t port)
 {
 	assert(ol->udp != 0);
@@ -269,55 +285,84 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t addr, uint16_t port)
 #endif
 	}
 
-	uint16_t local_port = ol->udp->local_port;
-	*reply++ = INET_REP_OK;
-	PUT_UINT_16(reply, local_port);
-	reply += 2; //DS: why does it return local_port?
-
-	return 0;
+	return ol->udp->local_port;
 }
 
 #endif
 
 #if LING_WITH_LIBUV
 
+static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
+{
+	debug("%s(%d)\n", __FUNCTION__, size);
+	buf->base = malloc(buf->len);
+}
+
 static inline int is_ipv6_outlet(outlet_t *ol)
 {
-    return ol->family == INET_AF_INET6;
+	return ol->family == INET_AF_INET6;
 }
 
 static int udp_control_open(outlet_t *ol, int family)
 {
+	debug("%s\n", __FUNCTION__);
 	int ret = uv_udp_init(uv_default_loop(), &ol->udp_conn);
 	if (ret)
 		return -1;
 
 	ol->family = family;
-	return uv_udp_recv_start(&ol->udp_conn, NULL /* TODO : alloc */, uv_on_recv);
+	return 0;
 }
 
 static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 {
-    struct sockaddr *saddr;
-    if (is_ipv6_outlet(ol))
-    {
-        struct sockaddr_in6 sa;
-        sa.sin6_family = AF_INET6;
-        sa.sin6_port = port;
-        memcpy(sa.sin6_addr.s6_addr, addr, 16);
+	int ret;
+	debug("%s(addr=0x%x, port=%d)\n", __FUNCTION__, addr->ip4.addr, (int)port);
+	struct sockaddr *saddr;
+	if (is_ipv6_outlet(ol))
+	{
+		struct sockaddr_in6 sa;
+		sa.sin6_family = AF_INET6;
+		sa.sin6_port = port;
+		memcpy(sa.sin6_addr.s6_addr, addr, 16);
 
-        saddr = (struct sockaddr *)&sa;
-    }
-    else
-    {
-        struct sockaddr_in sa;
-        sa.sin_family = AF_INET;
-        sa.sin_port = port;
-        sa.sin_addr.s_addr = addr->ip4.addr;
+		saddr = (struct sockaddr *)&sa;
+	}
+	else
+	{
+		struct sockaddr_in sa;
+		sa.sin_family = AF_INET;
+		sa.sin_port = htons(port);
+		sa.sin_addr.s_addr = htonl(addr->ip4.addr);
 
-        saddr = (struct sockaddr *)&sa;
-    }
-    return uv_udp_bind(&ol->udp_conn, saddr, 0);
+		saddr = (struct sockaddr *)&sa;
+	}
+	ret = uv_udp_bind(&ol->udp_conn, saddr, 0);
+	if (ret) return -1;
+
+	ret = uv_udp_recv_start(&ol->udp_conn, on_alloc, uv_on_recv);
+	if (ret) return -2;
+
+	union {
+		struct sockaddr_storage addr;
+		struct sockaddr         saddr;
+		struct sockaddr_in      v4;
+		struct sockaddr_in6     v6;
+	} ip;
+	int saddr_len = sizeof(ip);
+	ret = uv_udp_getsockname(&ol->udp_conn, &ip.saddr, &saddr_len);
+	if (ret) return -3;
+
+	switch (ip.addr.ss_family)
+	{
+	case AF_INET:
+		return ntohs(ip.v4.sin_port);
+	case AF_INET6:
+		return ntohs(ip.v6.sin6_port);
+	default:
+		debug("%s: getsockname returned unknown family\n", __FUNCTION__);
+		return -4;
+	}
 }
 
 #endif
@@ -326,6 +371,7 @@ static term_t ol_udp_control(outlet_t *ol,
 		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp)
 {
 	assert(ol->vtab == &ol_udp_vtab);
+	debug("%s(%d)\n", __FUNCTION__, op);
 	char rbuf[4096];
 	char *reply = rbuf;
 	int sz;
@@ -339,7 +385,7 @@ static term_t ol_udp_control(outlet_t *ol,
 			goto error;
 		uint8_t family = data[0];
 		switch (family)
-        {
+		{
 		case INET_AF_INET: case INET_AF_INET6:
 			break;
 		default:
@@ -401,12 +447,22 @@ static term_t ol_udp_control(outlet_t *ol,
 			addr.ip6.addr[1] = ntohl(GET_UINT_32(data +2 +4));
 			addr.ip6.addr[2] = ntohl(GET_UINT_32(data +2 +8));
 			addr.ip6.addr[3] = ntohl(GET_UINT_32(data +2 +12));
-        } else {
+		} else {
 			addr.ip4.addr = ntohl(GET_UINT_32(data +2));
-        }
+		}
 
-		if (udp_control_bind(ol, &addr, port))
+		debug("%s(BIND): udp_control_bind(0x%x)\n", __FUNCTION__, addr.ip4.addr);
+		int local_port = udp_control_bind(ol, &addr, port);
+		if (local_port < 0) {
+			debug("%s(BIND): udp_control_bind ERR=%d\n", __FUNCTION__, local_port);
 			goto error;
+		}
+		assert(local_port <= 65535);  /* TODO MAX_UINT16 */
+		debug("%s(BIND): local_port=%d\n", __FUNCTION__, local_port);
+
+		*reply++ = INET_REP_OK;
+		PUT_UINT_16(reply, (uint16_t)local_port);
+		reply += 2;
 	}
 	break;
 
@@ -438,15 +494,17 @@ static term_t ol_udp_control(outlet_t *ol,
 		PUT_UINT_16(reply, my_ref);
 		reply += 2;
 #else
-        REPLY_INET_ERROR("enotimpl");
+		REPLY_INET_ERROR("enotimpl");
 #endif
 		break;
 	}
 
 	case INET_REQ_SETOPTS:
 	{
-		if (ol_udp_set_opts(ol, data, dlen) < 0)
+		if (ol_udp_set_opts(ol, data, dlen) < 0) {
+			debug("%s: ol_udp_set_opts error\n", __FUNCTION__);
 			goto error;
+		}
 
 		*reply++ = INET_REP_OK;
 	}
@@ -483,8 +541,10 @@ static term_t ol_udp_control(outlet_t *ol,
 
 	case INET_REQ_SUBSCRIBE:
 	{
-		if (dlen != 1 && data[0] != INET_SUBS_EMPTY_OUT_Q)
+		if (dlen != 1 && data[0] != INET_SUBS_EMPTY_OUT_Q) {
+			debug("%s(SUBSCRIBE): dlen=%d, data[0]=%d\n", __FUNCTION__, dlen, (int)data[0]);
 			goto error;
+        }
 		//
 		// output queue is always empty
 		//
@@ -520,17 +580,29 @@ error:
 	return result;
 }
 
+#if LING_WITH_LIBUV
+static void uv_on_close(uv_handle_t *handle)
+{
+	debug("%s\n", __FUNCTION__);
+}
+#endif
+
 static void ol_udp_destroy_private(outlet_t *ol)
 {
-	nfree(ol->send_buf_node);
+	debug("%s\n", __FUNCTION__);
 #if LING_WITH_LWIP
 	if (ol->udp != 0)
 		udp_remove(ol->udp);
 #elif LING_WITH_LIBUV
-    /* uv_udp_t is a "subclass" of uv_handle_t */
-	uv_close((uv_handle_t *)&ol->udp_conn, NULL);
+	/* uv_udp_t is a "subclass" of uv_handle_t */
+	uv_handle_t *udp = (uv_handle_t *)&ol->udp_conn;
+	if (uv_is_active(udp) && !uv_is_closing(udp))
+		uv_close(udp, uv_on_close);
+	else {
+		debug("%s: already closed\n", __FUNCTION__);
+	}
 #endif
-
+	nfree(ol->send_buf_node);
 }
 
 static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
@@ -548,21 +620,24 @@ static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 		p += 4;
 		left -= 4;
 
+		debug("%s(opt=%d)\n", __FUNCTION__, opt);
 		switch (opt)
 		{
 		case INET_OPT_RCVBUF:
 			//TODO
 			break;
 
-#ifdef LING_WITH_LWIP
 		case INET_OPT_TOS:
+#ifdef LING_WITH_LWIP
 			ol->udp->tos = (uint8_t)val;
-			break;
 #endif
+			break;
 
 		default:
-			if (inet_set_opt(ol, opt, val) < 0)
+			if (inet_set_opt(ol, opt, val) < 0) {
+				debug("%s: inet_set_opt ERR\n",__FUNCTION__);
 				return -BAD_ARG;
+            }
 		}
 	}
 	return 0;
@@ -616,6 +691,8 @@ static int ol_udp_get_opts(outlet_t *ol,
 static void uv_on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                        const struct sockaddr *addr, unsigned flags)
 {
+	debug("%s(nread=%d, addr=0x%x\n", __FUNCTION__,
+	      nread, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
 	/* handle to outlet_t - ? */
 }
 
@@ -743,7 +820,7 @@ static void recv_cb(void *arg,
 
 		int x = scheduler_new_local_mail_N(cont_proc, tag_tuple(p));
 		if (x < 0)
-		{	
+		{
 			scheduler_signal_exit_N(cont_proc, ol->oid, err_to_term(x));
 			return;
 		}

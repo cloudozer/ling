@@ -19,6 +19,7 @@ ifdef LING_DEBUG
 CPPFLAGS += -DLING_DEBUG
 CPPFLAGS += -DDEBUG_UNUSED_MEM
 CPPFLAGS += -DTRACE_HARNESS
+CPPFLAGS += -g
 endif
 
 CFLAGS   := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3

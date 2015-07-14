@@ -76,9 +76,11 @@ int inet_set_opt(outlet_t *ol, int opt, uint32_t val)
 #ifdef LING_WITH_LWIP
 	assert(ol->ip != 0);
 	uint8_t *opts = &ol->ip->so_options;
+#endif
 
 	switch (opt)
 	{
+#ifdef LING_WITH_LWIP
 	case INET_OPT_REUSEADDR:
 		SET_SO_OPT(opts, SO_REUSEADDR, val);
 		break;
@@ -102,6 +104,7 @@ int inet_set_opt(outlet_t *ol, int opt, uint32_t val)
 	case INET_OPT_OOBINLINE:
 		SET_SO_OPT(opts, SO_OOBINLINE, val);
 		break;
+#endif
 
 	case INET_OPT_SNDBUF:
 	case INET_OPT_RCVBUF:
@@ -175,9 +178,6 @@ unsupported:
 	}
 
 	return 0;
-#else
-	return -1;
-#endif
 }
 
 int inet_get_opt(outlet_t *ol, int opt, uint32_t *val)

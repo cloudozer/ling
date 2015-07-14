@@ -72,3 +72,13 @@ console_do_pending(void)
 	}
 	return total;
 }
+
+#include <stdarg.h>
+
+int debug(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int ret = vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    return ret;
+}

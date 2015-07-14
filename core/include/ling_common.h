@@ -124,7 +124,8 @@ void __assert_fail(const char *assertion,
 #endif
 
 #ifdef LING_DEBUG
-#define debug(fmt, ...)		printk(fmt, ## __VA_ARGS__)
+//#define debug(fmt, ...)		printk(fmt, ## __VA_ARGS__)
+int debug(const char *fmt, ...);
 #else
 #define debug(fmt, ...)
 #endif
