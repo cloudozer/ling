@@ -33,7 +33,6 @@
 
 //
 //
-//
 
 #include "ling_common.h"
 
@@ -117,7 +116,7 @@ send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint
 	debug("%s(addr=0x%x, port=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, saddr.sin_port);
 
 	uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
-	ret = uv_udp_send(req, &ol->udp_conn, &buf, 1, (struct sockaddr *)&saddr, uv_on_send);
+	ret = uv_udp_send(req, ol->udp_conn, &buf, 1, (struct sockaddr *)&saddr, uv_on_send);
 	if (ret < 0) {
 		debug("%s: uv_udp_send failed(%d)\n", __FUNCTION__, ret);
 		return A_ERROR; /* TODO: better description */
@@ -306,10 +305,18 @@ static inline int is_ipv6_outlet(outlet_t *ol)
 static int udp_control_open(outlet_t *ol, int family)
 {
 	debug("%s\n", __FUNCTION__);
-	int ret = uv_udp_init(uv_default_loop(), &ol->udp_conn);
+
+	uv_udp_t *udp = malloc(sizeof(uv_udp_t));
+	if (!udp)
+		return -ENOMEM;
+
+	udp->data = ol;
+
+	int ret = uv_udp_init(uv_default_loop(), udp);
 	if (ret)
 		return -1;
 
+	ol->udp_conn = udp;
 	ol->family = family;
 	return 0;
 }
@@ -337,10 +344,10 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 
 		saddr = (struct sockaddr *)&sa;
 	}
-	ret = uv_udp_bind(&ol->udp_conn, saddr, 0);
+	ret = uv_udp_bind(ol->udp_conn, saddr, 0);
 	if (ret) return -1;
 
-	ret = uv_udp_recv_start(&ol->udp_conn, on_alloc, uv_on_recv);
+	ret = uv_udp_recv_start(ol->udp_conn, on_alloc, uv_on_recv);
 	if (ret) return -2;
 
 	union {
@@ -350,7 +357,7 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 		struct sockaddr_in6     v6;
 	} ip;
 	int saddr_len = sizeof(ip);
-	ret = uv_udp_getsockname(&ol->udp_conn, &ip.saddr, &saddr_len);
+	ret = uv_udp_getsockname(ol->udp_conn, &ip.saddr, &saddr_len);
 	if (ret) return -3;
 
 	switch (ip.addr.ss_family)
@@ -584,23 +591,27 @@ error:
 static void uv_on_close(uv_handle_t *handle)
 {
 	debug("%s\n", __FUNCTION__);
+
+	free(handle);
 }
 #endif
 
 static void ol_udp_destroy_private(outlet_t *ol)
 {
-	debug("%s\n", __FUNCTION__);
 #if LING_WITH_LWIP
 	if (ol->udp != 0)
 		udp_remove(ol->udp);
 #elif LING_WITH_LIBUV
 	/* uv_udp_t is a "subclass" of uv_handle_t */
-	uv_handle_t *udp = (uv_handle_t *)&ol->udp_conn;
-	if (uv_is_active(udp) && !uv_is_closing(udp))
-		uv_close(udp, uv_on_close);
-	else {
-		debug("%s: already closed\n", __FUNCTION__);
-	}
+	uv_handle_t *udp = (uv_handle_t *)ol->udp_conn;
+
+	uv_udp_recv_stop(ol->udp_conn);
+
+	debug("%s: uv_is_active=%d, uv_is_closing=%d\n", __FUNCTION__,
+		  uv_is_active(udp), uv_is_closing(udp));
+
+	uv_close(udp, uv_on_close);
+	debug("%s: uv_close()\n", __FUNCTION__);
 #endif
 	nfree(ol->send_buf_node);
 }
@@ -693,7 +704,6 @@ static void uv_on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 {
 	debug("%s(nread=%d, addr=0x%x\n", __FUNCTION__,
 	      nread, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
-	/* handle to outlet_t - ? */
 }
 
 #endif //LING_WITH_LIBUV

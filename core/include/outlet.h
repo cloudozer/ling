@@ -146,7 +146,7 @@ struct outlet_t {
 #elif LING_WITH_LIBUV
     int family;             // INET_AF_INET | INET_AF_INET6
     union {
-        uv_udp_t udp_conn;
+        uv_udp_t *udp_conn;
     };
 #endif
 

@@ -142,14 +142,10 @@ void __ih(heap_t *hp)
 	printk("total node size %d\n", total_size);
 }
 
-void gdb_break(void)
-{
-}
-
 // GDB needs malloc/free to prepare arguments for calls
 void *malloc(size_t size)
 {
-	printk("GDB malloc(%ld)\n", size);
+	debug("GDB malloc(%ld)\n", size);
 	memnode_t *node = nalloc(size);
 	return (void *)node + sizeof(memnode_t);
 }
@@ -164,5 +160,9 @@ void free(void *ptr)
 }
 
 #endif	//LING_DEBUG
+
+void gdb_break(void)
+{
+}
 
 //EOF
