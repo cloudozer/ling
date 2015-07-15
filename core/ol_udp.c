@@ -168,6 +168,111 @@ static inline void udp_recv_untimeout(outlet_t *ol)
 	free(ol->conn_timeout);
 	ol->conn_timeout = NULL;
 }
+
+
+static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
+{
+	debug("%s(%d)\n", __FUNCTION__, size);
+	buf->base = malloc(buf->len);
+}
+
+static void uv_on_close(uv_handle_t *handle)
+{
+	debug("%s\n", __FUNCTION__);
+
+	free(handle);
+}
+
+static void udp_destroy_private(outlet_t *ol)
+{
+	/* uv_udp_t is a "subclass" of uv_handle_t */
+	uv_handle_t *udp = (uv_handle_t *)ol->udp_conn;
+
+	/* TODO: is uv_is_active() ? */
+	uv_udp_recv_stop(ol->udp_conn);
+
+	debug("%s: uv_is_active=%d, uv_is_closing=%d\n", __FUNCTION__,
+		  uv_is_active(udp), uv_is_closing(udp));
+
+	uv_close(udp, uv_on_close);
+	debug("%s: uv_close()\n", __FUNCTION__);
+}
+
+static inline int is_ipv6_outlet(outlet_t *ol)
+{
+	return ol->family == INET_AF_INET6;
+}
+
+static int udp_control_open(outlet_t *ol, int family)
+{
+	debug("%s\n", __FUNCTION__);
+
+	uv_udp_t *udp = malloc(sizeof(uv_udp_t));
+	if (!udp)
+		return -ENOMEM;
+
+	udp->data = ol;
+
+	int ret = uv_udp_init(uv_default_loop(), udp);
+	if (ret)
+		return -1;
+
+	ol->udp_conn = udp;
+	ol->family = family;
+	return 0;
+}
+
+static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
+{
+	int ret;
+	debug("%s(addr=0x%x, port=%d)\n", __FUNCTION__, addr->ip4.addr, (int)port);
+	struct sockaddr *saddr;
+	if (is_ipv6_outlet(ol))
+	{
+		struct sockaddr_in6 sa;
+		sa.sin6_family = AF_INET6;
+		sa.sin6_port = port;
+		memcpy(sa.sin6_addr.s6_addr, addr, 16);
+
+		saddr = (struct sockaddr *)&sa;
+	}
+	else
+	{
+		struct sockaddr_in sa;
+		sa.sin_family = AF_INET;
+		sa.sin_port = htons(port);
+		sa.sin_addr.s_addr = htonl(addr->ip4.addr);
+
+		saddr = (struct sockaddr *)&sa;
+	}
+	ret = uv_udp_bind(ol->udp_conn, saddr, 0);
+	if (ret) return -1;
+
+	ret = uv_udp_recv_start(ol->udp_conn, on_alloc, uv_on_recv);
+	if (ret) return -2;
+
+	union {
+		struct sockaddr_storage addr;
+		struct sockaddr         saddr;
+		struct sockaddr_in      v4;
+		struct sockaddr_in6     v6;
+	} ip;
+	int saddr_len = sizeof(ip);
+	ret = uv_udp_getsockname(ol->udp_conn, &ip.saddr, &saddr_len);
+	if (ret) return -3;
+
+	switch (ip.addr.ss_family)
+	{
+	case AF_INET:
+		return ntohs(ip.v4.sin_port);
+	case AF_INET6:
+		return ntohs(ip.v6.sin6_port);
+	default:
+		debug("%s: getsockname returned unknown family\n", __FUNCTION__);
+		return -4;
+	}
+}
+
 #endif
 
 #ifdef LING_WITH_LWIP
@@ -211,7 +316,63 @@ static inline void udp_recv_untimeout(outlet_t *ol)
 {
 	sys_untimeout(lwip_recv_timeout_cb, ol);
 }
+
+
+static inline int is_ipv6_outlet(outlet_t *ol)
+{
+	return PCB_ISIPV6(ol->udp);
+}
+
+static int udp_control_open(outlet_t *ol, int family)
+{
+	assert(ol->udp == 0);
+
+#if LWIP_IPV6
+	ol->udp = (family == INET_AF_INET6)
+		?udp_new_ip6()
+		:udp_new();
+#else
+	if (family != INET_AF_INET)
+		return -1;
+	ol->udp = udp_new();
 #endif
+	assert(ol->udp != 0);
+
+	// set the callback that receives messages
+	udp_recv(ol->udp, lwip_recv_cb, ol);
+	return 0;
+}
+
+/* returns assigned local_port */
+static int udp_control_bind(outlet_t *ol, ipX_addr_t addr, uint16_t port)
+{
+	assert(ol->udp != 0);
+	int is_ipv6 = PCB_ISIPV6(ol->udp);
+	if (!is_ipv6)
+	{
+		//debug("UDP: binding %pt to %d.%d.%d.%d:%d\n",
+		//	T(ol->oid), data[2], data[3], data[4], data[5], port);
+		udp_bind(ol->udp, &addr, port); // always succeeds
+	}
+	else
+	{
+#if LWIP_IPV6
+		udp_bind_ip6(ol->udp, &addr, port); // always succeeds
+#else
+		return -1;
+#endif
+	}
+
+	return ol->udp->local_port;
+}
+
+static void udp_destroy_private(outlet_t *ol)
+{
+	if (ol->udp != 0)
+		udp_remove(ol->udp);
+}
+
+#endif //LING_WITH_LWIP
 
 outlet_t *ol_udp_factory(proc_t *cont_proc, uint32_t bit_opts)
 {
@@ -296,143 +457,6 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 	strcpy(reply, err); \
 	reply += strlen(err); \
 } while (0)
-
-#if LING_WITH_LWIP
-
-static inline int is_ipv6_outlet(outlet_t *ol)
-{
-	return PCB_ISIPV6(ol->udp);
-}
-
-static int udp_control_open(outlet_t *ol, int family)
-{
-	assert(ol->udp == 0);
-
-#if LWIP_IPV6
-	ol->udp = (family == INET_AF_INET6)
-		?udp_new_ip6()
-		:udp_new();
-#else
-	if (family != INET_AF_INET)
-		return -1;
-	ol->udp = udp_new();
-#endif
-	assert(ol->udp != 0);
-
-	// set the callback that receives messages
-	udp_recv(ol->udp, lwip_recv_cb, ol);
-	return 0;
-}
-
-/* returns assigned local_port */
-static int udp_control_bind(outlet_t *ol, ipX_addr_t addr, uint16_t port)
-{
-	assert(ol->udp != 0);
-	int is_ipv6 = PCB_ISIPV6(ol->udp);
-	if (!is_ipv6)
-	{
-		//debug("UDP: binding %pt to %d.%d.%d.%d:%d\n",
-		//	T(ol->oid), data[2], data[3], data[4], data[5], port);
-		udp_bind(ol->udp, &addr, port); // always succeeds
-	}
-	else
-	{
-#if LWIP_IPV6
-		udp_bind_ip6(ol->udp, &addr, port); // always succeeds
-#else
-		return -1;
-#endif
-	}
-
-	return ol->udp->local_port;
-}
-
-#endif
-
-#if LING_WITH_LIBUV
-
-static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
-{
-	debug("%s(%d)\n", __FUNCTION__, size);
-	buf->base = malloc(buf->len);
-}
-
-static inline int is_ipv6_outlet(outlet_t *ol)
-{
-	return ol->family == INET_AF_INET6;
-}
-
-static int udp_control_open(outlet_t *ol, int family)
-{
-	debug("%s\n", __FUNCTION__);
-
-	uv_udp_t *udp = malloc(sizeof(uv_udp_t));
-	if (!udp)
-		return -ENOMEM;
-
-	udp->data = ol;
-
-	int ret = uv_udp_init(uv_default_loop(), udp);
-	if (ret)
-		return -1;
-
-	ol->udp_conn = udp;
-	ol->family = family;
-	return 0;
-}
-
-static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
-{
-	int ret;
-	debug("%s(addr=0x%x, port=%d)\n", __FUNCTION__, addr->ip4.addr, (int)port);
-	struct sockaddr *saddr;
-	if (is_ipv6_outlet(ol))
-	{
-		struct sockaddr_in6 sa;
-		sa.sin6_family = AF_INET6;
-		sa.sin6_port = port;
-		memcpy(sa.sin6_addr.s6_addr, addr, 16);
-
-		saddr = (struct sockaddr *)&sa;
-	}
-	else
-	{
-		struct sockaddr_in sa;
-		sa.sin_family = AF_INET;
-		sa.sin_port = htons(port);
-		sa.sin_addr.s_addr = htonl(addr->ip4.addr);
-
-		saddr = (struct sockaddr *)&sa;
-	}
-	ret = uv_udp_bind(ol->udp_conn, saddr, 0);
-	if (ret) return -1;
-
-	ret = uv_udp_recv_start(ol->udp_conn, on_alloc, uv_on_recv);
-	if (ret) return -2;
-
-	union {
-		struct sockaddr_storage addr;
-		struct sockaddr         saddr;
-		struct sockaddr_in      v4;
-		struct sockaddr_in6     v6;
-	} ip;
-	int saddr_len = sizeof(ip);
-	ret = uv_udp_getsockname(ol->udp_conn, &ip.saddr, &saddr_len);
-	if (ret) return -3;
-
-	switch (ip.addr.ss_family)
-	{
-	case AF_INET:
-		return ntohs(ip.v4.sin_port);
-	case AF_INET6:
-		return ntohs(ip.v6.sin6_port);
-	default:
-		debug("%s: getsockname returned unknown family\n", __FUNCTION__);
-		return -4;
-	}
-}
-
-#endif
 
 static term_t ol_udp_control(outlet_t *ol,
 		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp)
@@ -645,33 +669,9 @@ error:
 	return result;
 }
 
-#if LING_WITH_LIBUV
-static void uv_on_close(uv_handle_t *handle)
-{
-	debug("%s\n", __FUNCTION__);
-
-	free(handle);
-}
-#endif
-
 static void ol_udp_destroy_private(outlet_t *ol)
 {
-#if LING_WITH_LWIP
-	if (ol->udp != 0)
-		udp_remove(ol->udp);
-#elif LING_WITH_LIBUV
-	/* uv_udp_t is a "subclass" of uv_handle_t */
-	uv_handle_t *udp = (uv_handle_t *)ol->udp_conn;
-
-	/* TODO: is uv_is_active() ? */
-	uv_udp_recv_stop(ol->udp_conn);
-
-	debug("%s: uv_is_active=%d, uv_is_closing=%d\n", __FUNCTION__,
-		  uv_is_active(udp), uv_is_closing(udp));
-
-	uv_close(udp, uv_on_close);
-	debug("%s: uv_close()\n", __FUNCTION__);
-#endif
+	udp_destroy_private(ol);
 	nfree(ol->send_buf_node);
 }
 
@@ -707,7 +707,7 @@ static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 			if (inet_set_opt(ol, opt, val) < 0) {
 				debug("%s: inet_set_opt ERR\n",__FUNCTION__);
 				return -BAD_ARG;
-	}
+			}
 		}
 	}
 	return 0;
