@@ -53,10 +53,6 @@
 
 #elif LING_WITH_LIBUV
 # include <uv.h>
-
-/* TODO : don't use malloc/free */
-void *malloc(size_t size);
-void free(void *ptr);
 #endif
 
 #include "atom_defs.h"
@@ -64,6 +60,23 @@ void free(void *ptr);
 
 #include <string.h>
 #include "term_util.h"
+
+static inline uint16_t sockaddr_port(const struct sockaddr *sa)
+{
+	switch (sa->sa_family)
+	{
+	case AF_INET: return ((const struct sockaddr_in *)sa)->sin_port;
+	case AF_INET6: return ((const struct sockaddr_in6 *)sa)->sin6_port;
+	default: return 0;	  /* TODO */
+	}
+}
+
+static inline uint16_t get_ipv6_nth(const uint8_t addr[16], unsigned nth)
+{
+	assert(nth < 8);
+	nth *= 2;
+	return ((uint16_t)addr[nth] << 8) | (uint16_t)addr[nth + 1];
+}
 
 static inline int is_ipv6_outlet(outlet_t *ol);
 static uint8_t *ol_udp_get_send_buffer(outlet_t *ol, int len);
@@ -79,21 +92,21 @@ static outlet_vtab_t ol_udp_vtab = {
 	.destroy_private = ol_udp_destroy_private,
 };
 
-#ifdef LING_WITH_LWIP
-static void recv_cb(void *arg,
-	struct udp_pcb *udp, struct pbuf *data, struct ip_addr *addr, uint16_t port);
-static void recv_timeout_cb(void *arg);
-#endif
-
 static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen);
 static int ol_udp_get_opts(outlet_t *ol,
 					uint8_t *data, int dlen, char *buf, int sz);
 
 #ifdef LING_WITH_LIBUV
 
+void *malloc(size_t len);
+void free(void *ptr);
+
 static void
 uv_on_recv(uv_udp_t *, ssize_t,
            const uv_buf_t *, const struct sockaddr *, unsigned);
+
+static void
+uv_on_recv_timeout(uv_timer_t *timeout);
 
 static void
 uv_on_send(uv_udp_send_t *udp, int status)
@@ -123,9 +136,45 @@ send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint
 	}
 	return A_OK;
 }
+
+static inline int udp_recv_set_timeout(outlet_t *ol, unsigned int msecs)
+{
+	int ret;
+	uv_timer_t *timeout = malloc(sizeof(uv_timer_t));
+	if (!timeout)
+		return -1;
+
+	timeout->data = ol;
+	ret = uv_timer_init(uv_default_loop(), timeout);
+	if (ret)
+		return -2;
+
+	ret = uv_timer_start(timeout, uv_on_recv_timeout, msecs, 0);
+	if (ret)
+		return -3;
+
+	ol->conn_timeout = timeout;
+	return 0;
+}
+
+static inline void udp_recv_untimeout(outlet_t *ol)
+{
+	debug("%s\n", __FUNCTION__);
+	assert(ol->conn_timeout);
+
+	/* it's ok, uv_timer_t is a "subclass" of uv_req_t */
+	uv_cancel((uv_req_t *)ol->conn_timeout);
+
+	free(ol->conn_timeout);
+	ol->conn_timeout = NULL;
+}
 #endif
 
 #ifdef LING_WITH_LWIP
+
+static void lwip_recv_cb(void *arg,
+	struct udp_pcb *udp, struct pbuf *data, struct ip_addr *addr, uint16_t port);
+static void lwip_recv_timeout_cb(void *arg);
 
 static term_t
 send_udp_packet(outlet_t *ol, ip_addr_t *addr, uint16_t port, void *data, uint16_t len)
@@ -150,6 +199,17 @@ send_udp_packet(outlet_t *ol, ip_addr_t *addr, uint16_t port, void *data, uint16
 	int rc = udp_sendto(ol->udp, packet, addr, port);
 	pbuf_free(packet);
 	return (rc ? lwip_err_to_term(rc) : A_OK);
+}
+
+static inline int udp_recv_set_timeout(outlet_t *ol, unsigned int msecs)
+{
+	sys_timeout_adj(msecs, lwip_recv_timeout_cb, ol);
+	return 0;
+}
+
+static inline void udp_recv_untimeout(outlet_t *ol)
+{
+	sys_untimeout(lwip_recv_timeout_cb, ol);
 }
 #endif
 
@@ -260,7 +320,7 @@ static int udp_control_open(outlet_t *ol, int family)
 	assert(ol->udp != 0);
 
 	// set the callback that receives messages
-	udp_recv(ol->udp, recv_cb, ol);
+	udp_recv(ol->udp, lwip_recv_cb, ol);
 	return 0;
 }
 
@@ -477,6 +537,7 @@ static term_t ol_udp_control(outlet_t *ol,
 	{
 #ifdef LING_WITH_LWIP
 		assert(ol->udp != 0);
+#endif
 		if (dlen != 4 +4)
 			goto error;
 
@@ -492,7 +553,7 @@ static term_t ol_udp_control(outlet_t *ol,
 		ol->cr_reply_to = reply_to;
 		if (msecs != INET_INFINITY)
 		{
-			sys_timeout_adj(msecs, recv_timeout_cb, ol);
+			udp_recv_set_timeout(ol, msecs);
 			ol->cr_timeout_set = 1;
 		}
 
@@ -500,9 +561,6 @@ static term_t ol_udp_control(outlet_t *ol,
 		uint16_t my_ref = 0; //ASYNC_REF;
 		PUT_UINT_16(reply, my_ref);
 		reply += 2;
-#else
-		REPLY_INET_ERROR("enotimpl");
-#endif
 		break;
 	}
 
@@ -551,7 +609,7 @@ static term_t ol_udp_control(outlet_t *ol,
 		if (dlen != 1 && data[0] != INET_SUBS_EMPTY_OUT_Q) {
 			debug("%s(SUBSCRIBE): dlen=%d, data[0]=%d\n", __FUNCTION__, dlen, (int)data[0]);
 			goto error;
-        }
+	}
 		//
 		// output queue is always empty
 		//
@@ -605,6 +663,7 @@ static void ol_udp_destroy_private(outlet_t *ol)
 	/* uv_udp_t is a "subclass" of uv_handle_t */
 	uv_handle_t *udp = (uv_handle_t *)ol->udp_conn;
 
+	/* TODO: is uv_is_active() ? */
 	uv_udp_recv_stop(ol->udp_conn);
 
 	debug("%s: uv_is_active=%d, uv_is_closing=%d\n", __FUNCTION__,
@@ -648,7 +707,7 @@ static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 			if (inet_set_opt(ol, opt, val) < 0) {
 				debug("%s: inet_set_opt ERR\n",__FUNCTION__);
 				return -BAD_ARG;
-            }
+	}
 		}
 	}
 	return 0;
@@ -698,18 +757,64 @@ static int ol_udp_get_opts(outlet_t *ol,
 
 //------------------------------------------------------------------------------
 
+
+static void udp_on_recv_timeout(outlet_t *ol)
+{
+	phase_expected(PHASE_EVENTS);
+
+	assert(ol != 0);
+	assert(ol->cr_timeout_set);
+	assert(ol->cr_in_progress);
+
+	ol->cr_timeout_set = 0;
+	ol->cr_in_progress = 0;
+	inet_async_error(ol->oid, ol->cr_reply_to, 0 /*ASYNC_REF*/, A_TIMEOUT);
+}
+
+static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *addr);
+
 #if LING_WITH_LIBUV
+#define RECV_PKT_T                uv_buf_t
+#define RECV_PKT_FREE(data)       do free((data)->base); while (0)
+#define RECV_PKT_LEN(data)        ((data)->len)
+#define RECV_PKT_COPY(ptr, data)  \
+	do memcpy((ptr), (data)->base, (data)->len); while (0)
+
 static void uv_on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                        const struct sockaddr *addr, unsigned flags)
 {
 	debug("%s(nread=%d, addr=0x%x\n", __FUNCTION__,
 	      nread, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
+	if (flags & UV_UDP_PARTIAL) {
+		debug("%s: buffer trunkated\n");
+	}
+
+	uv_buf_t data = { .base = buf->base, .len = nread };
+
+	outlet_t *ol = (outlet_t *)handle->data;
+	udp_on_recv(ol, (void *)&data, addr);
+}
+
+static void uv_on_recv_timeout(uv_timer_t *timeout)
+{
+	outlet_t *ol = (outlet_t *)timeout->data;
+	free(timeout);
+	ol->conn_timeout = NULL;
+
+	uv_udp_recv_stop(ol->udp_conn);
+	udp_on_recv_timeout(ol);
 }
 
 #endif //LING_WITH_LIBUV
 
 #if LING_WITH_LWIP
-static void recv_cb(void *arg,
+#define RECV_PKT_T                struct pbuf
+#define RECV_PKT_FREE(data)       do pbuf_free(data); while (0)
+#define RECV_PKT_LEN(data)        ((data)->tot_len)
+#define RECV_PKT_COPY(ptr, data)  \
+	do pbuf_copy_partial((data), ptr, (data)->tot_len, 0); while (0)
+
+static void lwip_recv_cb(void *arg,
 	struct udp_pcb *udp, struct pbuf *data, struct ip_addr *addr, uint16_t port)
 {
 	phase_expected(PHASE_EVENTS);
@@ -718,35 +823,67 @@ static void recv_cb(void *arg,
 		return;		// outlet has gone already
 
 	assert(data != 0);
-	//debug("UDP: recv_cb: tot_len %d\n", data->tot_len);
 	assert(ol->udp == udp);
-	int is_ipv6 = PCB_ISIPV6(ol->udp);
 
-	term_t pid = (ol->cr_in_progress) ?ol->cr_reply_to :ol->owner;
+	union {
+		struct sockaddr     saddr;
+		struct sockaddr_in  ipv4;
+		struct sockaddr_in6 ipv6;
+	} saddr;
+	if (PCB_ISIPV6(udp)) {
+		saddr.saddr.sa_family = AF_INET6;
+		saddr.ipv6.sin6_port = port;
+		saddr.ipv6.sin6_addr = /* TODO */;
+	} else {
+		saddr.saddr.sa_family = AF_INET;
+		saddr.ipv4.sin_port = port;
+		saddr.ipv4.sin_addr = addr->ipv4.addr;
+	}
+
+	udp_on_recv(ol, (void *)data, &saddr.saddr);
+}
+
+static void lwip_recv_timeout_cb(void *arg)
+{
+	udp_on_recv_timeout((outlet_t *)arg);
+}
+
+#endif  //LING_WITH_LWIP
+
+static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *addr)
+{
+	const RECV_PKT_T *data = (RECV_PKT_T *)pbuf;
+
+	term_t pid = (ol->cr_in_progress ? ol->cr_reply_to : ol->owner);
 	proc_t *cont_proc = scheduler_lookup(pid);
 	if (cont_proc == 0)
 	{
 		// nowhere to send
-		pbuf_free(data);
+		RECV_PKT_FREE(data);
 		return;
 	}
 
 	uint8_t *ptr;
-	term_t packet = heap_make_bin_N(&cont_proc->hp, data->tot_len, &ptr);
+	term_t packet = heap_make_bin_N(&cont_proc->hp, RECV_PKT_LEN(data), &ptr);
 	if (packet == noval)
 	{
-		pbuf_free(data);
+		RECV_PKT_FREE(data);
 		goto no_memory;
 	}
-	pbuf_copy_partial(data, ptr, data->tot_len, 0);
-	pbuf_free(data);
+	RECV_PKT_COPY(ptr, data);
+	RECV_PKT_FREE(data);
+
+	int is_ipv6 = is_ipv6_outlet(ol);
+	uint8_t *addrptr = (is_ipv6
+	            ? (uint8_t *)&((struct sockaddr_in6 *)addr)->sin6_addr
+	            : (uint8_t *)&((struct sockaddr_in *)addr)->sin_addr);
 
 	if (ol->cr_in_progress)
 	{
 		ol->cr_in_progress = 0;
 		if (ol->cr_timeout_set)
 		{
-			sys_untimeout(recv_timeout_cb, ol);
+			udp_recv_untimeout(ol);
 			ol->cr_timeout_set = 0;
 		}
 
@@ -755,12 +892,10 @@ static void recv_cb(void *arg,
 		uint8_t header[1 +2 +16];
 		int hdr_size;
 
-		header[0] = (is_ipv6)
-				?INET_AF_INET6
-				:INET_AF_INET;
-		PUT_UINT_16(header +1, port);
+		header[0] = (is_ipv6 ? INET_AF_INET6 : INET_AF_INET);
+		PUT_UINT_16(header +1, sockaddr_port(addr));
 		int addr_size = (is_ipv6) ?16 :4;
-		memcpy(header +1 +2, (uint8_t *)addr, addr_size);
+		memcpy(header +1 +2, addrptr, addr_size);
 		hdr_size = 1 +2 +addr_size;
 
 		uint32_t *p = heap_alloc_N(&cont_proc->hp, 2 *hdr_size);
@@ -783,34 +918,33 @@ static void recv_cb(void *arg,
 		term_t remote_addr;
 		if (is_ipv6)
 		{
-			ip6_addr_t *six = ip_2_ip6(addr);
 			uint32_t *p = heap_alloc_N(&cont_proc->hp, 1 +8);
 			if (p == 0)
 				goto no_memory;
 			p[0] = 8;
-			p[1] = tag_int(IP6_ADDR_BLOCK1(six));
-			p[2] = tag_int(IP6_ADDR_BLOCK2(six));
-			p[3] = tag_int(IP6_ADDR_BLOCK3(six));
-			p[4] = tag_int(IP6_ADDR_BLOCK4(six));
-			p[5] = tag_int(IP6_ADDR_BLOCK5(six));
-			p[6] = tag_int(IP6_ADDR_BLOCK6(six));
-			p[7] = tag_int(IP6_ADDR_BLOCK7(six));
-			p[8] = tag_int(IP6_ADDR_BLOCK8(six));
+			p[1] = tag_int(get_ipv6_nth(addrptr, 0));
+			p[2] = tag_int(get_ipv6_nth(addrptr, 1));
+			p[3] = tag_int(get_ipv6_nth(addrptr, 2));
+			p[4] = tag_int(get_ipv6_nth(addrptr, 3));
+			p[5] = tag_int(get_ipv6_nth(addrptr, 4));
+			p[6] = tag_int(get_ipv6_nth(addrptr, 5));
+			p[7] = tag_int(get_ipv6_nth(addrptr, 6));
+			p[8] = tag_int(get_ipv6_nth(addrptr, 7));
 			heap_set_top(&cont_proc->hp, p +1 +8);
 
 			remote_addr = tag_tuple(p);
 		}
 		else
 		{
-			ip_addr_t *four = addr;
 			uint32_t *p = heap_alloc_N(&cont_proc->hp, 1 +4);
 			if (p == 0)
 				goto no_memory;
 			p[0] = 4;
-			p[1] = ip4_addr1(four);
-			p[2] = ip4_addr2(four);
-			p[3] = ip4_addr3(four);
-			p[4] = ip4_addr4(four);
+			/* TODO: test endianness and such */
+			p[1] = addrptr[0];
+			p[2] = addrptr[1];
+			p[3] = addrptr[2];
+			p[4] = addrptr[3];
 			heap_set_top(&cont_proc->hp, p +1 +4);
 
 			remote_addr = tag_tuple(p);
@@ -824,7 +958,7 @@ static void recv_cb(void *arg,
 		p[1] = A_UDP;
 		p[2] = ol->oid;
 		p[3] = remote_addr;
-		p[4] = tag_int(port);
+		p[4] = tag_int(sockaddr_port(addr));
 		p[5] = packet;
 		heap_set_top(&cont_proc->hp, p +1 +5);
 
@@ -844,21 +978,5 @@ static void recv_cb(void *arg,
 no_memory:
 	scheduler_signal_exit_N(cont_proc, ol->oid, A_NO_MEMORY);
 }
-
-static void recv_timeout_cb(void *arg)
-{
-	phase_expected(PHASE_EVENTS);
-
-	outlet_t *ol = (outlet_t *)arg;
-	assert(ol != 0);
-	assert(ol->cr_timeout_set);
-	assert(ol->cr_in_progress);
-
-	ol->cr_timeout_set = 0;
-	ol->cr_in_progress = 0;
-	inet_async_error(ol->oid, ol->cr_reply_to, 0 /*ASYNC_REF*/, A_TIMEOUT);
-}
-
-#endif // LING_WITH_LWIP
 
 //EOF

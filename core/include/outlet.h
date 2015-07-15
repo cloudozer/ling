@@ -144,10 +144,11 @@ struct outlet_t {
 		struct tcp_pcb *tcp;
 	};
 #elif LING_WITH_LIBUV
-    int family;             // INET_AF_INET | INET_AF_INET6
-    union {
-        uv_udp_t *udp_conn;
-    };
+	int family;             // INET_AF_INET | INET_AF_INET6
+	union {
+	    uv_udp_t *udp_conn;
+	};
+	uv_timer_t *conn_timeout;
 #endif
 
 	// More options
