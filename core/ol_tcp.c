@@ -235,9 +235,8 @@ static int ol_tcp_send(outlet_t *ol, int len, term_t reply_to)
 	assert(buf_len <= ol->max_send_bufsize);
 
 	ol->send_buf_left = buf_len;
-	uint16_t write_len = (buf_len > TCP_SND_BUF)
-		?TCP_SND_BUF
-		:buf_len;
+	uint16_t max_len = tcp_sndbuf(ol->tcp);
+	uint16_t write_len = (buf_len > max_len) ?max_len :buf_len;
 	ol->send_buf_ack = 0;
 	ol->send_buf_off = write_len;
 
@@ -813,7 +812,7 @@ static err_t sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
 		return ERR_OK;		// outlet has gone already
 	assert(ol->tcp == tcp);
 
-	//debug("sent_cb: len %d\n", len);
+	//printk("sent_cb: len %d\n", len);
 	
 	// inet_reply() may close the outlet
 	term_t saved_oid = ol->oid;
@@ -832,10 +831,8 @@ static err_t sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
 		if (ol->send_buf_left > 0)
 		{
 			// write more
-			uint16_t write_len = (ol->send_buf_left > TCP_SND_BUF)
-				?TCP_SND_BUF
-				:ol->send_buf_left;
-
+			uint16_t max_len = tcp_sndbuf(ol->tcp);
+			uint16_t write_len = (ol->send_buf_left > max_len) ?max_len :ol->send_buf_left;
 			ol->send_buf_off += write_len;
 
 			//debug("ol_tcp_send: tcp_write(%d)\n", write_len);
@@ -900,7 +897,7 @@ static void error_cb(void *arg, err_t err)
 {
 	phase_expected(PHASE_EVENTS);
 
-	//debug("**** error_cb(arg 0x%pp, err %d)\n", arg, err);
+	//printk("**** error_cb(arg 0x%pp, err %d)\n", arg, err);
 	outlet_t *ol = (outlet_t *)arg;
 	if (ol == 0)
 		return;		// outlet already gone
