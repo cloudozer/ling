@@ -82,6 +82,14 @@ uint64_t wall_clock(void)
 	return 1000ull * t; // nanoseconds
 }
 
+void sleep_us(unsigned usec)
+{
+	struct timespec timeout;
+	timeout.tv_sec = usec / 1000000;
+	timeout.tv_nsec = 1000 * (usec % 1000000);
+	nanosleep(&timeout, NULL);
+}
+
 void expand_time(struct time_exp_t *xt, uint64_t wall_clock)
 {
 	memset(xt, 0, sizeof(*xt));
