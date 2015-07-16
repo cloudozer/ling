@@ -115,6 +115,12 @@ uv_on_send(uv_udp_send_t *udp, int status)
 	free(udp);
 }
 
+static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
+{
+	debug("%s(%d)\n", __FUNCTION__, size);
+	buf->base = malloc(buf->len);
+}
+
 static term_t
 send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint16_t len)
 {
@@ -135,6 +141,18 @@ send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint
 		return A_ERROR; /* TODO: better description */
 	}
 	return A_OK;
+}
+
+static inline int udp_recv_start(outlet_t *ol)
+{
+	assert(ol->udp_conn);
+	return uv_udp_recv_start(ol->udp_conn, on_alloc, uv_on_recv);
+}
+
+static inline int udp_recv_stop(outlet_t *ol)
+{
+	assert(ol->udp_conn);
+	return uv_udp_recv_stop(ol->udp_conn);
 }
 
 static inline int udp_recv_set_timeout(outlet_t *ol, unsigned int msecs)
@@ -162,25 +180,18 @@ static inline void udp_recv_untimeout(outlet_t *ol)
 	debug("%s\n", __FUNCTION__);
 	assert(ol->conn_timeout);
 
-	/* it's ok, uv_timer_t is a "subclass" of uv_req_t */
-	uv_cancel((uv_req_t *)ol->conn_timeout);
+	uv_timer_stop(ol->conn_timeout);
 
 	free(ol->conn_timeout);
 	ol->conn_timeout = NULL;
 }
 
 
-static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
-{
-	debug("%s(%d)\n", __FUNCTION__, size);
-	buf->base = malloc(buf->len);
-}
-
 static void uv_on_close(uv_handle_t *handle)
 {
 	debug("%s\n", __FUNCTION__);
-
 	free(handle);
+	/* don't use handle->data here, outlet may be freed already */
 }
 
 static void udp_destroy_private(outlet_t *ol)
@@ -188,8 +199,8 @@ static void udp_destroy_private(outlet_t *ol)
 	/* uv_udp_t is a "subclass" of uv_handle_t */
 	uv_handle_t *udp = (uv_handle_t *)ol->udp_conn;
 
-	/* TODO: is uv_is_active() ? */
-	uv_udp_recv_stop(ol->udp_conn);
+	if (ol->cr_in_progress)
+		udp_recv_stop(ol);
 
 	debug("%s: uv_is_active=%d, uv_is_closing=%d\n", __FUNCTION__,
 		  uv_is_active(udp), uv_is_closing(udp));
@@ -248,9 +259,6 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 	ret = uv_udp_bind(ol->udp_conn, saddr, 0);
 	if (ret) return -1;
 
-	ret = uv_udp_recv_start(ol->udp_conn, on_alloc, uv_on_recv);
-	if (ret) return -2;
-
 	union {
 		struct sockaddr_storage addr;
 		struct sockaddr         saddr;
@@ -304,6 +312,15 @@ send_udp_packet(outlet_t *ol, ip_addr_t *addr, uint16_t port, void *data, uint16
 	int rc = udp_sendto(ol->udp, packet, addr, port);
 	pbuf_free(packet);
 	return (rc ? lwip_err_to_term(rc) : A_OK);
+}
+
+static inline int udp_recv_start(outlet_t *ol)
+{
+	return 0;
+}
+static inline int udp_recv_stop(outlet_t *ol)
+{
+	return 0;
 }
 
 static inline int udp_recv_set_timeout(outlet_t *ol, unsigned int msecs)
@@ -573,7 +590,11 @@ static term_t ol_udp_control(outlet_t *ol,
 
 		assert(ol->cr_in_progress == 0);
 		assert(ol->cr_timeout_set == 0);
+
+		int ret = udp_recv_start(ol);
+		if (ret) goto error;
 		ol->cr_in_progress = 1;
+
 		ol->cr_reply_to = reply_to;
 		if (msecs != INET_INFINITY)
 		{
@@ -760,13 +781,15 @@ static int ol_udp_get_opts(outlet_t *ol,
 
 static void udp_on_recv_timeout(outlet_t *ol)
 {
-	phase_expected(PHASE_EVENTS);
+	phase_expected2(PHASE_EVENTS, PHASE_NEXT);
 
 	assert(ol != 0);
 	assert(ol->cr_timeout_set);
 	assert(ol->cr_in_progress);
 
 	ol->cr_timeout_set = 0;
+
+	udp_recv_stop(ol);
 	ol->cr_in_progress = 0;
 	inet_async_error(ol->oid, ol->cr_reply_to, 0 /*ASYNC_REF*/, A_TIMEOUT);
 }
@@ -783,11 +806,15 @@ static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *a
 static void uv_on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                        const struct sockaddr *addr, unsigned flags)
 {
-	debug("%s(nread=%d, addr=0x%x\n", __FUNCTION__,
-	      nread, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
+	if (addr == NULL) {
+		debug("%s(addr=NULL)\n", __FUNCTION__);
+		return;
+	}
 	if (flags & UV_UDP_PARTIAL) {
 		debug("%s: buffer trunkated\n");
 	}
+	debug("%s(nread=%d, addr=0x%x\n", __FUNCTION__,
+	      nread, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
 
 	uv_buf_t data = { .base = buf->base, .len = nread };
 
@@ -880,6 +907,7 @@ static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *a
 
 	if (ol->cr_in_progress)
 	{
+		udp_recv_stop(ol);
 		ol->cr_in_progress = 0;
 		if (ol->cr_timeout_set)
 		{

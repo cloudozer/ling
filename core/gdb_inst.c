@@ -145,14 +145,15 @@ void __ih(heap_t *hp)
 // GDB needs malloc/free to prepare arguments for calls
 void *malloc(size_t size)
 {
-	debug("GDB malloc(%ld)\n", size);
 	memnode_t *node = nalloc(size);
-	return (void *)node + sizeof(memnode_t);
+	void *ptr = (char *)node + sizeof(memnode_t);
+	debug("GDB malloc(%ld) -> %p\n", size, ptr);
+	return ptr;
 }
 
 void free(void *ptr)
 {
-	//printk("GDB free(%pp)\n", ptr);
+	debug("GDB free(%pp)\n", ptr);
 	if (ptr == 0)
 		return;
 	memnode_t *node = (memnode_t *)(ptr - sizeof(memnode_t));
