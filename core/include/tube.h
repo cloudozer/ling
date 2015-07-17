@@ -33,10 +33,18 @@
 
 #define TUBE_SLOTS	16
 
+#include "ling_common.h"
+
+typedef struct tube_t tube_t;
+
 static inline int tube_ring_next(int index)
 {
 	if (index == (TUBE_SLOTS-1))
 		return 0;
 	return index+1;
 }
+
+tube_t *tube_make(domid_t peer_domid);
+tube_t *tube_attach(domid_t peer_domid, uint32_t page_ref, uint32_t evtchn_rx, uint32_t evtchn_tx);
+void tube_destroy(tube_t *tb);
 

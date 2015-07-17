@@ -35,6 +35,13 @@
 
 #include "ling_common.h"
 
+#include <string.h>
+
+#include "xen/grant_table.h"
+#include "nalloc.h"
+#include "grant.h"
+#include "event.h"
+
 typedef struct tube_slot_t tube_slot_t;
 struct tube_slot_t {
 	uint32_t len;
@@ -56,90 +63,157 @@ struct tube_shared_t {
 	tube_ring_t rx;
 };
 
+typedef struct tube_t tube_t;
 struct tube_t {
+	memnode_t *node;
 	int active;
 	tube_shared_t *page;
 	uint8_t *tx_buffers[TUBE_SLOTS];
 	uint8_t *rx_buffers[TUBE_SLOTS];
+	uint32_t evtchn_tx;
+	uint32_t evtchn_rx;
+	//active only
 	uint32_t page_ref;
-	uint32_t evtchn;
+	//passive only
+	struct gnttab_map_grant_ref page_map;
+	struct gnttab_map_grant_ref bufs_map[2*TUBE_SLOTS];
 };
 
-tube_t *tube_make(void)
+static void tube_tx_int(uint32_t port, void *data);
+static void tube_rx_int(uint32_t port, void *data);
+
+static tube_t *alloc_tube(int active)
 {
-	tube_t *tb = nalloc_N(sizeof(tube_t));
+	// share page and tx/rx buffees must be page-aligned
+	int num_pages = 1 +				// tube_t
+					1 +				// shared page
+					TUBE_SLOTS +	// tx buffers
+					TUBE_SLOTS;		// rx buffers
+	memnode_t *node = nalloc_N(num_pages*PAGE_SIZE -sizeof(memnode_t));
+	if (node == 0)
+		return 0;
+	assert(sizeof(tube_t) <= PAGE_SIZE-sizeof(memnode_t));
+	tube_t *tb = (tube_t *)node->starts;
+	memset(tb, 0, sizeof(*tb));
+	tube_shared_t *page = (tube_shared_t *)((uint8_t *)node +PAGE_SIZE);
+	uint8_t *bufs1 = (uint8_t *)node +2*PAGE_SIZE;
+	uint8_t *bufs2 = bufs1 +TUBE_SLOTS*PAGE_SIZE;
+	assert(bufs2 +TUBE_SLOTS*PAGE_SIZE <= (uint8_t *)node->ends);
+
+	tb->node = node;
+	tb->active = active;
+	tb->page = page;
+	for (int i = 0; i < TUBE_SLOTS; i++)
+		tb->tx_buffers[i] = bufs1 +i*PAGE_SIZE;
+	for (int i = 0; i < TUBE_SLOTS; i++)
+		tb->rx_buffers[i] = bufs2 +i*PAGE_SIZE;
+
+	return tb;
+}
+
+
+tube_t *tube_make(domid_t peer_domid)
+{
+	tube_t *tb = alloc_tube(1);
 	if (tb == 0)
-		goto error0;
-	memset(tb, 0, sizeof(tb));
-	assert(sizeof(tube_shared_t) <= PAGE_SIZE);
-	tb->page  = mm_alloc_page();	//XXX cannot use mm_alloc_page()
-	if (tb->page == 0)
-		goto error1;
+		return 0;
+
+	tube_shared_t *page = tb->page;
+	memset(page, 0, PAGE_SIZE);
+	grants_allow_access(&tb->page_ref, peer_domid, virt_to_mfn(page));
+	tb->evtchn_tx = event_alloc_unbound(peer_domid);
+	tb->evtchn_rx = event_alloc_unbound(peer_domid);
+
+	for (int i = 0; i < TUBE_SLOTS; i++)
+		grants_allow_access(&page->tx.slots[i].gref, peer_domid, virt_to_mfn(tb->tx_buffers[i]));
+	for (int i = 0; i < TUBE_SLOTS; i++)
+		grants_allow_access(&page->rx.slots[i].gref, peer_domid, virt_to_mfn(tb->rx_buffers[i]));
+
+	event_bind(tb->evtchn_tx, tube_tx_int, tb);
+	event_bind(tb->evtchn_rx, tube_rx_int, tb);
+
+	return tb;
+}
+
+tube_t *tube_attach(domid_t peer_domid, uint32_t page_ref, uint32_t evtchn_rx, uint32_t evtchn_tx)
+{
+	tube_t *tb = alloc_tube(0);
+	if (tb == 0)
+		return 0;
+	tube_shared_t *page = tb->page;
+
+	tb->page_map.ref = page_ref;
+	tb->page_map.dom = peer_domid;
+	tb->page_map.flags = GNTMAP_host_map;
+	tb->page_map.host_addr = (uint64_t)page;
+	int rs = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, &tb->page_map, 1);
+	assert(rs == 0);
+	assert(tb->page_map.status == GNTST_okay);
+
 	for (int i = 0; i < TUBE_SLOTS; i++)
 	{
-		tb->tx_buffers[i] = mm_alloc_page();
-		if (tb->tx_buffers[i] == 0)
-			goto error2;
-		tb->rx_buffers[i] = mm_alloc_page();
-		if (tb->rx_buffers[i] == 0)
-			goto error2;
+		struct gnttab_map_grant_ref *m = &tb->bufs_map[i];
+		m->ref = page->tx.slots[i].gref;
+		m->dom = peer_domid;
+		m->flags = GNTMAP_host_map;
+		m->host_addr = (uint64_t)tb->tx_buffers[i];
+	}
+	for (int i = 0; i < TUBE_SLOTS; i++)
+	{
+		struct gnttab_map_grant_ref *m = &tb->bufs_map[i+TUBE_SLOTS];
+		m->ref = page->tx.slots[i].gref;
+		m->dom = peer_domid;
+		m->flags = GNTMAP_host_map;
+		m->host_addr = (uint64_t)tb->rx_buffers[i];
+	}
+	
+	rs = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, tb->bufs_map, 2*TUBE_SLOTS);
+	assert(rs == 0);
+	for (int i = 0; i < 2*TUBE_SLOTS; i++)
+	{
+		assert(tb->bufs_map[i].status == GNTST_okay);
+		rmb();	//dark
 	}
 
+	event_bind(evtchn_tx, tube_tx_int, tb);
+	event_bind(evtchn_rx, tube_rx_int, tb);
+	tb->evtchn_tx = evtchn_tx;
+	tb->evtchn_rx = evtchn_rx;
 
-	
-	
-	
-	
-
-
-	// allocate shared page
-	// allocate tx buffers
-	// allocate rx buffers
-	// grant shared page
-	// grant tx buffers
-	// grant rx buffers
-	// allocate event channel
-	// bind event
-
-	//TODO
-
-error2:
-	for (int i == 0; i < TUBE_SLOTS; i++)
-		if (tb->tx_buffers[i] != 0)
-			nfree XXX
-
-error1:
-	nfree(tb);
-error0:
-	return 0;
+	return tb;
 }
 
-tube_t *tube_attach(void)
+void tube_destroy(tube_t *tb)
 {
-	// map shared page
-	// map rx buffers
-	// map tx buffers
-	// bind event
+	event_unbind(tb->evtchn_tx);
+	event_unbind(tb->evtchn_rx);
 
-	//TODO
-	return 0;
+	if (tb->active)
+	{
+		for (int i = 0; i < TUBE_SLOTS; i++)
+			grants_end_access(tb->page->tx.slots[i].gref);
+		for (int i = 0; i < TUBE_SLOTS; i++)
+			grants_end_access(tb->page->rx.slots[i].gref);
+		grants_end_access(tb->page_ref);
+	}
+	else
+	{
+		int rs = HYPERVISOR_grant_table_op(GNTTABOP_unmap_grant_ref, tb->bufs_map, 2*TUBE_SLOTS);
+		assert(rs == 0);
+		rs = HYPERVISOR_grant_table_op(GNTTABOP_unmap_grant_ref, &tb->page_map, 1);
+		assert(rs == 0);
+	}
+
+	nfree(tb->node);
 }
 
-void tube_destroy(void)
+static void tube_tx_int(uint32_t port, void *data)
 {
-	// unbind event
-	// if active
-	// 		ungrant rx buffers
-	//		ungrant tx buffers
-	//		ungrant shared page
-	//		unallocate rx buffers
-	//		unallocate tx buffers
-	//		unallocate shared page
-	// if inactive
-	//		unmap rx buffers
-	//		unmap tx buffers
-	//		unmap shared page
+	//TODO
+}
 
+static void tube_rx_int(uint32_t port, void *data)
+{
 	//TODO
 }
 
