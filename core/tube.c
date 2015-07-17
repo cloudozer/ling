@@ -135,6 +135,14 @@ tube_t *tube_make(domid_t peer_domid)
 	return tb;
 }
 
+void tube_info(tube_t *tb, uint32_t *page_ref, uint32_t *evtchn_tx, uint32_t *evtchn_rx)
+{
+	assert(tb != 0);
+	*page_ref = tb->page_ref;
+	*evtchn_tx = tb->evtchn_tx;
+	*evtchn_rx = tb->evtchn_rx;
+}
+
 tube_t *tube_attach(domid_t peer_domid, uint32_t page_ref, uint32_t evtchn_rx, uint32_t evtchn_tx)
 {
 	tube_t *tb = alloc_tube(0);

@@ -56,12 +56,13 @@ tdone(TipState, NockDir) ->
 tevent(?STATE_INITIALISING, _, _) -> ok;
 
 tevent(?STATE_INITIALISED, TipDir, NockDir) ->
-	{ok,TxRingRef} = xenstore:read(lc(TipDir, "/tx-ring-ref")),
-	{ok,RxRingRef} = xenstore:read(lc(TipDir, "/rx-ring-ref")),
-	{ok,EventChannel} = xenstore:read(lc(TipDir, "/event-channel")),
+	{ok,RingRef} = xenstore:read(lc(TipDir, "/ring-ref")),
+	{ok,EventChannelTx} = xenstore:read(lc(TipDir, "/event-channel-tx")),
+	{ok,EventChannelRx} = xenstore:read(lc(TipDir, "/event-channel-rx")),
 
+	Tube = erlang:open_port(tube, []),
+	erlang:port_control(Tube, ?TUBE_REQ_ATTACH, %%XXX need peer_domid
 	%%TODO
-	io:format("START tube port: ~s/~s/~s\n", [TxRingRef,RxRingRef,EventChannel]),
 
 	ok = xenstore:write(lc(NockDir, "/state"), ?STATE_CONNECTED);
 
@@ -93,9 +94,9 @@ aevent(?STATE_INIT_WAIT, TipDir) ->
 	EventChannel = "3",
 
 	{ok,Tid} = xenstore:transaction(),
-	ok = xenstore:write(lc(TipDir, "/tx-ring-ref"), TxRingRef, Tid),
-	ok = xenstore:write(lc(TipDir, "/rx-ring-ref"), RxRingRef, Tid),
-	ok = xenstore:write(lc(TipDir, "/event-channel"), EventChannel, Tid),
+	ok = xenstore:write(lc(TipDir, "/ring-ref"), RingRef, Tid),
+	ok = xenstore:write(lc(TipDir, "/event-channel-tx"), EventChannelTx, Tid),
+	ok = xenstore:write(lc(TipDir, "/event-channel-rx"), EventChannelRx, Tid),
 	ok = xenstore:write(lc(TipDir, "/state"), ?STATE_INITIALISED, Tid),
 	ok = xenstore:commit(Tid);
 

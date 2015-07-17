@@ -35,11 +35,23 @@
 
 #include "ling_common.h"
 
+#include "tube.h"
+#include "getput.h"
+#include "atom_defs.h"
+
+#define TUBE_REQ_OPEN	1
+#define TUBE_REQ_ATTACH	2
+
+#define TUBE_REP_OK		0
+#define TUBE_REP_ERROR	1
+
 static term_t ol_tube_control(outlet_t *ol,
 		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp);
+static void ol_tube_destroy_private(outlet_t *ol);
 
 static outlet_vtab_t ol_tube_vtab = {
 	.control = ol_tube_control,
+	.destroy_private = ol_tube_destroy_private,
 };
 
 outlet_t *ol_tube_factory(proc_t *cont_proc, uint32_t bit_opts)
@@ -50,7 +62,61 @@ outlet_t *ol_tube_factory(proc_t *cont_proc, uint32_t bit_opts)
 static term_t ol_tube_control(outlet_t *ol,
 		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp)
 {
-	//TODO
-	return nil;
+	uint8_t rbuf[256];
+	uint8_t *reply = rbuf;
+
+	if (op == TUBE_REQ_OPEN)
+	{
+		// peer_domid[4]
+		if (dlen != 4)
+			goto error;
+		uint32_t peer_domid = GET_UINT_32(data);
+		assert(ol->tube == 0);
+		ol->tube = tube_make(peer_domid);
+		if (ol->tube == 0)
+			return A_NO_MEMORY;
+		// page_ref[4] evtchn_tx[4] evtchn_rx[4]
+		*reply++ = TUBE_REP_OK;
+		uint32_t page_ref, evtchn_tx, evtchn_rx;
+		tube_info(ol->tube, &page_ref, &evtchn_tx, &evtchn_rx);
+		PUT_UINT_32(reply, page_ref);
+		reply += 4;
+		PUT_UINT_32(reply, evtchn_tx);
+		reply += 4;
+		PUT_UINT_32(reply, evtchn_rx);
+		reply += 4;
+	}
+	else if (op == TUBE_REQ_ATTACH)
+	{
+		// peer_domid[4] page_ref[4] evtchn_tx[4] evtchn_rx[4]
+		if (dlen != 4 +4 +4 +4)
+			goto error;
+		uint32_t peer_domid = GET_UINT_32(data);
+		uint32_t page_ref   = GET_UINT_32(data +4);
+		uint32_t evtchn_tx  = GET_UINT_32(data +8);
+		uint32_t evtchn_rx  = GET_UINT_32(data +12);
+		assert(ol->tube == 0);
+		ol->tube = tube_attach(peer_domid, page_ref, evtchn_rx, evtchn_tx);
+		if (ol->tube == 0)
+			return A_NO_MEMORY;
+		*reply++ = TUBE_REP_OK;
+	}
+	else
+	{
+error:
+		*reply++ = TUBE_REP_ERROR;
+	}
+
+	int rlen = reply-rbuf;
+	assert(rlen >= 1 && rlen <= sizeof(rbuf));
+	term_t result = heap_str_N(hp, (char *)rbuf, rlen);
+	return (result == noval) ?A_NO_MEMORY :result;
+}
+
+static void ol_tube_destroy_private(outlet_t *ol)
+{
+	if (ol->tube == 0)
+		return;
+	tube_destroy(ol->tube);
 }
 

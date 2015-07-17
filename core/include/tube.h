@@ -45,6 +45,7 @@ static inline int tube_ring_next(int index)
 }
 
 tube_t *tube_make(domid_t peer_domid);
+void tube_info(tube_t *tb, uint32_t *page_ref, uint32_t *evtchn_tx, uint32_t *evtchn_rx);
 tube_t *tube_attach(domid_t peer_domid, uint32_t page_ref, uint32_t evtchn_rx, uint32_t evtchn_tx);
 void tube_destroy(tube_t *tb);
 
