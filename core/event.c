@@ -139,8 +139,19 @@ uint32_t event_alloc_unbound(domid_t remote_domid)
 	op.remote_dom = remote_domid;
 	int rs = HYPERVISOR_event_channel_op(EVTCHNOP_alloc_unbound, &op);
 	if (rs)
-		fatal_error("events_alloc_unbound failed: %d\n", rs);
+		fatal_error("events_alloc_unbound() failed: %d\n", rs);
 	return op.port;
+}
+
+uint32_t event_bind_interdomain(domid_t remote_domid, uint32_t remote_port)
+{
+	evtchn_bind_interdomain_t op;
+	op.remote_dom = remote_domid;
+	op.remote_port = remote_port;
+	int rs = HYPERVISOR_event_channel_op(EVTCHNOP_bind_interdomain, &op);
+	if (rs)
+		fatal_error("events_bind_interdomain() failed: %d\n", rs);
+	return op.local_port;
 }
 
 uint32_t event_bind_virq(uint32_t virq, event_entry_t entry, void *data)

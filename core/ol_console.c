@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "outlet.h"
 
 #include "ling_common.h"
@@ -180,4 +176,3 @@ static void ol_console_detach(outlet_t *ol)
 	console_detach(ol);
 }
 
-//EOF

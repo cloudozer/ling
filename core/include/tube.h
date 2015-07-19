@@ -31,11 +31,49 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define TUBE_SLOTS	16
-
 #include "ling_common.h"
 
+#include "nalloc.h"
+
+#include "xen/grant_table.h"
+
+#define TUBE_SLOTS	16
+
+typedef struct tube_slot_t tube_slot_t;
+struct tube_slot_t {
+	uint32_t len;
+	uint32_t gref;
+};
+
+typedef struct tube_ring_t tube_ring_t;
+struct tube_ring_t {
+	int head, tail;
+	// head == tail 	ring is empty
+	// head == tail+1	ring is full
+	tube_slot_t slots[TUBE_SLOTS];
+};
+
+typedef struct tube_shared_t tube_shared_t;
+struct tube_shared_t {
+	tube_ring_t tx;
+	tube_ring_t rx;
+};
+
 typedef struct tube_t tube_t;
+struct tube_t {
+	memnode_t *node;
+	int accepting;
+	tube_shared_t *page;
+	uint8_t *tx_buffers[TUBE_SLOTS];
+	uint8_t *rx_buffers[TUBE_SLOTS];
+	uint32_t evtchn_tx;
+	uint32_t evtchn_rx;
+	//accepting only
+	uint32_t page_ref;
+	//opening only
+	struct gnttab_map_grant_ref page_map;
+	struct gnttab_map_grant_ref bufs_map[2*TUBE_SLOTS];
+};
 
 static inline int tube_ring_next(int index)
 {
@@ -44,8 +82,9 @@ static inline int tube_ring_next(int index)
 	return index+1;
 }
 
-tube_t *tube_make(domid_t peer_domid);
+tube_t *tube_make(domid_t peer_domid, void *data);
 void tube_info(tube_t *tb, uint32_t *page_ref, uint32_t *evtchn_tx, uint32_t *evtchn_rx);
-tube_t *tube_attach(domid_t peer_domid, uint32_t page_ref, uint32_t evtchn_rx, uint32_t evtchn_tx);
+tube_t *tube_attach(domid_t peer_domid,
+		uint32_t page_ref, uint32_t evtchn_rx, uint32_t evtchn_tx, void *data);
 void tube_destroy(tube_t *tb);
 

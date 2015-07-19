@@ -37,52 +37,22 @@
 
 #include <string.h>
 
-#include "xen/grant_table.h"
-#include "nalloc.h"
 #include "grant.h"
 #include "event.h"
+#include "outlet.h"
 
-typedef struct tube_slot_t tube_slot_t;
-struct tube_slot_t {
-	uint32_t len;
-	uint32_t gref;
-	uint32_t off;
-};
+// origin:		accepting is 0
+// sink:		accepting is 1
+//
+// ring_tx:		origin -> sink
+// ring_rx:		sink -> origin
+//
+// evtchn_tx	controls ring_tx
+// evtchn_rx	controls ring_rx
 
-typedef struct tube_ring_t tube_ring_t;
-struct tube_ring_t {
-	int head, tail;
-	// head == tail 	ring is empty
-	// head == tail+1	ring is full
-	tube_slot_t slots[TUBE_SLOTS];
-};
+static void tube_int(uint32_t port, void *data);
 
-typedef struct tube_shared_t tube_shared_t;
-struct tube_shared_t {
-	tube_ring_t tx;
-	tube_ring_t rx;
-};
-
-typedef struct tube_t tube_t;
-struct tube_t {
-	memnode_t *node;
-	int active;
-	tube_shared_t *page;
-	uint8_t *tx_buffers[TUBE_SLOTS];
-	uint8_t *rx_buffers[TUBE_SLOTS];
-	uint32_t evtchn_tx;
-	uint32_t evtchn_rx;
-	//active only
-	uint32_t page_ref;
-	//passive only
-	struct gnttab_map_grant_ref page_map;
-	struct gnttab_map_grant_ref bufs_map[2*TUBE_SLOTS];
-};
-
-static void tube_tx_int(uint32_t port, void *data);
-static void tube_rx_int(uint32_t port, void *data);
-
-static tube_t *alloc_tube(int active)
+static tube_t *alloc_tube(int accepting)
 {
 	// share page and tx/rx buffees must be page-aligned
 	int num_pages = 1 +				// tube_t
@@ -101,7 +71,7 @@ static tube_t *alloc_tube(int active)
 	assert(bufs2 +TUBE_SLOTS*PAGE_SIZE <= (uint8_t *)node->ends);
 
 	tb->node = node;
-	tb->active = active;
+	tb->accepting = accepting;
 	tb->page = page;
 	for (int i = 0; i < TUBE_SLOTS; i++)
 		tb->tx_buffers[i] = bufs1 +i*PAGE_SIZE;
@@ -111,8 +81,7 @@ static tube_t *alloc_tube(int active)
 	return tb;
 }
 
-
-tube_t *tube_make(domid_t peer_domid)
+tube_t *tube_make(domid_t peer_domid, void *data)
 {
 	tube_t *tb = alloc_tube(1);
 	if (tb == 0)
@@ -129,8 +98,7 @@ tube_t *tube_make(domid_t peer_domid)
 	for (int i = 0; i < TUBE_SLOTS; i++)
 		grants_allow_access(&page->rx.slots[i].gref, peer_domid, virt_to_mfn(tb->rx_buffers[i]));
 
-	event_bind(tb->evtchn_tx, tube_tx_int, tb);
-	event_bind(tb->evtchn_rx, tube_rx_int, tb);
+	event_bind(tb->evtchn_tx, tube_int, data);
 
 	return tb;
 }
@@ -143,7 +111,8 @@ void tube_info(tube_t *tb, uint32_t *page_ref, uint32_t *evtchn_tx, uint32_t *ev
 	*evtchn_rx = tb->evtchn_rx;
 }
 
-tube_t *tube_attach(domid_t peer_domid, uint32_t page_ref, uint32_t evtchn_rx, uint32_t evtchn_tx)
+tube_t *tube_attach(domid_t peer_domid,
+		uint32_t page_ref, uint32_t peer_port_rx, uint32_t peer_port_tx, void *data)
 {
 	tube_t *tb = alloc_tube(0);
 	if (tb == 0)
@@ -183,21 +152,19 @@ tube_t *tube_attach(domid_t peer_domid, uint32_t page_ref, uint32_t evtchn_rx, u
 		rmb();	//dark
 	}
 
-	event_bind(evtchn_tx, tube_tx_int, tb);
-	event_bind(evtchn_rx, tube_rx_int, tb);
-	tb->evtchn_tx = evtchn_tx;
-	tb->evtchn_rx = evtchn_rx;
+	tb->evtchn_tx = event_bind_interdomain(peer_domid, peer_port_tx);
+	tb->evtchn_rx = event_bind_interdomain(peer_domid, peer_port_rx);
+
+	event_bind(tb->evtchn_rx, tube_int, data);
 
 	return tb;
 }
 
 void tube_destroy(tube_t *tb)
 {
-	event_unbind(tb->evtchn_tx);
-	event_unbind(tb->evtchn_rx);
-
-	if (tb->active)
+	if (tb->accepting)
 	{
+		event_unbind(tb->evtchn_tx);
 		for (int i = 0; i < TUBE_SLOTS; i++)
 			grants_end_access(tb->page->tx.slots[i].gref);
 		for (int i = 0; i < TUBE_SLOTS; i++)
@@ -206,6 +173,7 @@ void tube_destroy(tube_t *tb)
 	}
 	else
 	{
+		event_unbind(tb->evtchn_rx);
 		int rs = HYPERVISOR_grant_table_op(GNTTABOP_unmap_grant_ref, tb->bufs_map, 2*TUBE_SLOTS);
 		assert(rs == 0);
 		rs = HYPERVISOR_grant_table_op(GNTTABOP_unmap_grant_ref, &tb->page_map, 1);
@@ -215,13 +183,32 @@ void tube_destroy(tube_t *tb)
 	nfree(tb->node);
 }
 
-static void tube_tx_int(uint32_t port, void *data)
+static void incoming(tube_ring_t *ring, uint8_t *bufs[TUBE_SLOTS], uint32_t kickme, outlet_t *ol)
 {
-	//TODO
+	int head = ring->head;
+	if (head == ring->tail)
+		return;
+	do {
+		uint8_t *packet = bufs[head];
+		int pkt_len = ring->slots[head].len;
+		printk("incoming pkt: len %d dest %pt\n", pkt_len, T(ol->owner));
+		outlet_new_data(ol, packet, pkt_len);
+		head = tube_ring_next(head);
+	} while (head != ring->tail);
+	ring->head = head;
+	event_kick(kickme);
 }
 
-static void tube_rx_int(uint32_t port, void *data)
+static void tube_int(uint32_t port, void *data)
 {
-	//TODO
+	printk("tube_int\n");
+	outlet_t *ol = (outlet_t *)data;
+	assert(ol != 0);
+	tube_t *tube = ol->tube;
+	assert(tube != 0);
+	if (tube->accepting)
+		incoming(&tube->page->tx, tube->tx_buffers, tube->evtchn_tx, ol);
+	else
+		incoming(&tube->page->rx, tube->rx_buffers, tube->evtchn_rx, ol);
 }
 

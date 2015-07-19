@@ -42,7 +42,7 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/0]).
--export([read/1,write/2,write/3,mkdir/1,mkdir/2,delete/1,delete/2,list/1]).
+-export([read/1,read_integer/1,write/2,write/3,mkdir/1,mkdir/2,delete/1,delete/2,list/1]).
 -export([get_perms/1,set_perms/2,set_perms/3,watch/1,unwatch/1]).
 -export([transaction/0,commit/1,rollback/1]).
 -export([domid/0]).
@@ -65,7 +65,14 @@ read(Key) when is_list(Key) ->
 	gen_server:call(?SERVER, {?XS_READ,Key,0});
 read(_) -> {error,badarg}.
 
+read_integer(Key) ->
+	case read(Key) of {ok,S} -> try {ok,list_to_integer(S)}
+							    catch _:_ -> {error,not_integer} end;
+					  Error  -> Error end.
+
 write(Key, Value) -> write(Key, Value, 0).
+write(Key, Value, Tid) when is_integer(Value) ->
+	write(Key, integer_to_list(Value), Tid);
 write(Key, Value, Tid) when is_list(Key), is_list(Value), is_integer(Tid) ->
 	gen_server:call(?SERVER, {?XS_WRITE,[Key,Value],Tid});
 write(_, _, _) -> {error,badarg}.

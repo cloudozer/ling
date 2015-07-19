@@ -38,6 +38,7 @@
 #include "tube.h"
 #include "getput.h"
 #include "atom_defs.h"
+#include "event.h"
 
 #define TUBE_REQ_OPEN	1
 #define TUBE_REQ_ATTACH	2
@@ -45,14 +46,56 @@
 #define TUBE_REP_OK		0
 #define TUBE_REP_ERROR	1
 
+static uint8_t *ol_tube_get_send_buffer(outlet_t *ol, int len);
+static int ol_tube_send(outlet_t *ol, int len, term_t reply_to);
 static term_t ol_tube_control(outlet_t *ol,
 		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp);
+static void ol_tube_new_data(outlet_t *ol, uint8_t *data, int dlen);
 static void ol_tube_destroy_private(outlet_t *ol);
 
 static outlet_vtab_t ol_tube_vtab = {
+	.get_send_buffer = ol_tube_get_send_buffer,
+	.send = ol_tube_send,
+	.new_data = ol_tube_new_data,
 	.control = ol_tube_control,
 	.destroy_private = ol_tube_destroy_private,
 };
+
+static uint8_t *ol_tube_get_send_buffer(outlet_t *ol, int len)
+{
+	assert(ol->tube != 0);
+	assert(len <= PAGE_SIZE);
+	tube_t *tb = ol->tube;
+	tube_ring_t *ring = (tb->accepting) ?&tb->page->rx :&tb->page->tx;
+	int tail = ring->tail;
+	if (tube_ring_next(tail) == ring->head)
+		return 0;	// tx ring full
+	printk("ol_tube_get_send_buffer: enqueueing\n");
+	return (tb->accepting) ? tb->rx_buffers[tail] :tb->tx_buffers[tail];
+}
+
+static int ol_tube_send(outlet_t *ol, int len, term_t reply_to)
+{
+	assert(ol->tube != 0);
+	tube_t *tb = ol->tube;
+	tube_ring_t *ring = (tb->accepting) ?&tb->page->rx :&tb->page->tx;
+	int tail = ring->tail;
+	int tail1 = tube_ring_next(tail);
+	assert(tail1 != ring->head);
+	ring->slots[tail].len = len;
+	ring->tail = tail1;
+	if (tb->accepting)
+		event_kick(tb->evtchn_rx);
+	else
+		event_kick(tb->evtchn_tx);
+	printk("ol_tube_send: kicked\n");
+	return 0;
+}
+
+static void ol_tube_new_data(outlet_t *ol, uint8_t *data, int dlen)
+{
+	outlet_pass_new_data(ol, data, dlen);
+}
 
 outlet_t *ol_tube_factory(proc_t *cont_proc, uint32_t bit_opts)
 {
@@ -72,7 +115,7 @@ static term_t ol_tube_control(outlet_t *ol,
 			goto error;
 		uint32_t peer_domid = GET_UINT_32(data);
 		assert(ol->tube == 0);
-		ol->tube = tube_make(peer_domid);
+		ol->tube = tube_make(peer_domid, (void *)ol);
 		if (ol->tube == 0)
 			return A_NO_MEMORY;
 		// page_ref[4] evtchn_tx[4] evtchn_rx[4]
@@ -96,7 +139,7 @@ static term_t ol_tube_control(outlet_t *ol,
 		uint32_t evtchn_tx  = GET_UINT_32(data +8);
 		uint32_t evtchn_rx  = GET_UINT_32(data +12);
 		assert(ol->tube == 0);
-		ol->tube = tube_attach(peer_domid, page_ref, evtchn_rx, evtchn_tx);
+		ol->tube = tube_attach(peer_domid, page_ref, evtchn_rx, evtchn_tx, (void *)ol);
 		if (ol->tube == 0)
 			return A_NO_MEMORY;
 		*reply++ = TUBE_REP_OK;
