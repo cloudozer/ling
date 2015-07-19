@@ -47,7 +47,7 @@ init(_Args) ->
 	xenstore:watch(TipTop),
 	{ok,#ts{top =TipTop}}.
 
-handle_call(accept, From, #ts{pend =[Tube|Pend]} =St) ->
+handle_call(accept, _From, #ts{pend =[Tube|Pend]} =St) ->
 	{reply,{ok,Tube},St#ts{pend =Pend}};
 
 handle_call(accept, From, #ts{acc =Acc} =St) ->
@@ -98,14 +98,15 @@ watch_event(WatchKey, #ts{top =TipTop, tubes =TI} =St) ->
 			{value,{Tube,StatePath,DataDir},TI1} = lists:keytake(WatchKey, 2, TI),
 			case xenstore:read(StatePath) of
 				{ok,?STATE_CONNECTED} -> St;
-				_ ->
-					?g("Destroying tube ~w\n", [Tube]),
+				{error,eacces} ->
+					ok = xenstore:unwatch(StatePath),
 					true = unlink(Tube),
 					true = port_close(Tube),
 					?g("Port ~w closed\n", [Tube]),
 					ok = xenstore:delete(DataDir),
 					?g("Tube data ~s deleted\n", [DataDir]),
-					St#ts{tubes =TI1} end end.
+					Pend1 = lists:delete(Tube, St#ts.pend),
+					St#ts{pend =Pend1,tubes =TI1} end end.
 
 knock_knock(Domid, NockDir, TipDir, St) ->
 	?g("Accepting tube request from ~w, nock = ~s\n", [Domid,NockDir]),
@@ -120,7 +121,7 @@ knock_knock(Domid, NockDir, TipDir, St) ->
 			?g("Tip data deleted\n", []),
 			St;
 		ok ->
-			Tube = erlang:open_port(tube, []),
+			Tube = erlang:open_port(tube, ?TUBE_PORT_OPTS),
 			?g("Port ~w open\n", [Tube]),
 			Info = binary_to_list(<<Domid:32>>),
 			[?TUBE_REP_OK|Data] = erlang:port_control(Tube, ?TUBE_REQ_OPEN, Info),
@@ -162,7 +163,7 @@ accepted(Tube, #ts{acc =[From|Acc]} =St) ->
 
 accepted(Tube, #ts{pend =Pend} =St) ->
 	St#ts{pend =[Tube|Pend]}.
-	
+
 lc(X) -> lists:concat(X).
 lc(X, Y) -> lists:concat([X,Y]).
 

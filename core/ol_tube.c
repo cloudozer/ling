@@ -70,7 +70,6 @@ static uint8_t *ol_tube_get_send_buffer(outlet_t *ol, int len)
 	int tail = ring->tail;
 	if (tube_ring_next(tail) == ring->head)
 		return 0;	// tx ring full
-	printk("ol_tube_get_send_buffer: enqueueing\n");
 	return (tb->accepting) ? tb->rx_buffers[tail] :tb->tx_buffers[tail];
 }
 
@@ -88,7 +87,6 @@ static int ol_tube_send(outlet_t *ol, int len, term_t reply_to)
 		event_kick(tb->evtchn_rx);
 	else
 		event_kick(tb->evtchn_tx);
-	printk("ol_tube_send: kicked\n");
 	return 0;
 }
 

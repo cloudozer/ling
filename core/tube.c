@@ -165,11 +165,11 @@ void tube_destroy(tube_t *tb)
 	if (tb->accepting)
 	{
 		event_unbind(tb->evtchn_tx);
-		for (int i = 0; i < TUBE_SLOTS; i++)
-			grants_end_access(tb->page->tx.slots[i].gref);
-		for (int i = 0; i < TUBE_SLOTS; i++)
-			grants_end_access(tb->page->rx.slots[i].gref);
-		grants_end_access(tb->page_ref);
+//		for (int i = 0; i < TUBE_SLOTS; i++)
+//			grants_end_access(tb->page->tx.slots[i].gref);
+//		for (int i = 0; i < TUBE_SLOTS; i++)
+//			grants_end_access(tb->page->rx.slots[i].gref);
+//		grants_end_access(tb->page_ref);
 	}
 	else
 	{
@@ -191,7 +191,6 @@ static void incoming(tube_ring_t *ring, uint8_t *bufs[TUBE_SLOTS], uint32_t kick
 	do {
 		uint8_t *packet = bufs[head];
 		int pkt_len = ring->slots[head].len;
-		printk("incoming pkt: len %d dest %pt\n", pkt_len, T(ol->owner));
 		outlet_new_data(ol, packet, pkt_len);
 		head = tube_ring_next(head);
 	} while (head != ring->tail);
@@ -201,7 +200,6 @@ static void incoming(tube_ring_t *ring, uint8_t *bufs[TUBE_SLOTS], uint32_t kick
 
 static void tube_int(uint32_t port, void *data)
 {
-	printk("tube_int\n");
 	outlet_t *ol = (outlet_t *)data;
 	assert(ol != 0);
 	tube_t *tube = ol->tube;

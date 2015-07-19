@@ -7,8 +7,6 @@
 
 -include("tube.hrl").
 
--define(PORT_OPTS, [binary]).
-
 open(Domid) -> open(Domid, 0).
 open(Domid, Tid) when is_integer(Domid), is_integer(Tid) ->
 	Me = xenstore:domid(),
@@ -45,7 +43,7 @@ open1(Domid, NockDir, TipDir) ->
 			?g("Tip: event-channel-tx = ~w\n", [ChanTx]),
 			?g("Tip: event-channel-rx = ~w\n", [ChanRx]),
 
-			Tube = erlang:open_port(tube, ?PORT_OPTS),
+			Tube = erlang:open_port(tube, ?TUBE_PORT_OPTS),
 			?g("Port ~w open\n", [Tube]),
 			Info = binary_to_list(<<Domid:32,RingRef:32,ChanTx:32,ChanRx:32>>),
 			[?TUBE_REP_OK] = erlang:port_control(Tube, ?TUBE_REQ_ATTACH, Info),
