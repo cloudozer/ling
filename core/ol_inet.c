@@ -430,6 +430,19 @@ term_t lwip_err_to_term(err_t err)
 		return A_LWIP_IF;
 	}
 }
+
+term_t termerror(int err)
+{
+    return lwip_err_to_term(err);
+}
+#endif
+
+#if LING_WITH_LIBUV
+term_t termerror(int err)
+{
+    debug("%s(%d)\n", __FUNCTION__, err);
+    return A_ERROR; /* TODO */
+}
 #endif
 
 //EOF

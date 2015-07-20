@@ -33,10 +33,18 @@
 
 #pragma once
 
+#include "ling_common.h"
 #include "outlet.h"
+#include "netif.h"
 
 #ifdef LING_WITH_LWIP
-#include "lwip/err.h"
+# include "lwip/err.h"
+# include "lwip/udp.h"
+# include "lwip/timers.h"
+#endif //LING_WITH_LWIP
+
+#if LING_WITH_LIBUV
+# include <uv.h>
 #endif
 
 #include "decode.h"
@@ -205,11 +213,25 @@ void inet_async_error(term_t oid, term_t reply_to, uint16_t ref, term_t err);
 void inet_reply(term_t oid, term_t reply_ty, term_t reply);
 void inet_reply_error(term_t oid, term_t reply_to, term_t reason);
 
+term_t termerror(int err);
+
 #if LING_WITH_LWIP
 term_t lwip_err_to_term(err_t err);
-#endif
+
+static inline int is_ipv6_outlet(outlet_t *ol)
+{
+	return PCB_ISIPV6(ol->udp);
+}
+#endif //LING_WITH_LWIP
 
 #if LING_WITH_LIBUV
-#endif
+void *malloc(size_t len);
+void free(void *ptr);
+
+static inline int is_ipv6_outlet(outlet_t *ol)
+{
+	return ol->family == INET_AF_INET6;
+}
+#endif //LING_WITH_LIBUV
 
 //EOF

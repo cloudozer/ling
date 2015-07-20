@@ -36,6 +36,7 @@
 
 #include "ling_common.h"
 
+#if 1
 #ifdef LING_WITH_LWIP
 
 #include "lwip/def.h"
@@ -46,12 +47,20 @@
 #include "lwip/sockets.h"
 #undef LWIP_SOCKET
 
+#endif //LING_WITH_LWIP
+
+#if LING_WITH_LIBUV
+# include <uv.h>
+const char * strerror(int);
+#endif //LING_WITH_LIBUV
+
 #include "getput.h"
 #include "bits.h"
 #include "atom_defs.h"
 #include "scheduler.h"
 #include "term_util.h"
 
+#include <stdbool.h>
 #include <string.h>
 
 #define ASYNC_REF	0
@@ -81,25 +90,6 @@ static outlet_vtab_t ol_tcp_vtab = {
 	.destroy_private = ol_tcp_destroy_private,
 };
 
-static void cr_timeout_cb(void *arg);
-static void cr_defer_reply(outlet_t *ol, term_t reply_to, uint32_t millis);
-static void cr_cancel_deferred(outlet_t *ol);
-static void send_timeout_cb(void *arg);
-static void send_defer_reply(outlet_t *ol, term_t reply_to);
-static void send_cancel_deferred(outlet_t *ol);
-
-static err_t connected_cb(void *arg, struct tcp_pcb *tcp, err_t err);
-static err_t recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err);
-static err_t sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len);
-static void error_cb(void *arg, err_t err);
-
-static int recv_bake_packets(outlet_t *ol, proc_t *cont_proc);
-static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen);
-static int ol_tcp_get_opts(outlet_t *ol,
-					uint8_t *data, int dlen, char *buf, int sz);
-
-void ol_tcp_acc_promote(outlet_t *ol, struct tcp_pcb *old_pcb, int backlog);
-
 outlet_t *ol_tcp_factory(proc_t *cont_proc, uint32_t bit_opts)
 {
 	int extra = TCP_MIN_SEND_BUF +TCP_MIN_RECV_BUF;
@@ -108,42 +98,73 @@ outlet_t *ol_tcp_factory(proc_t *cont_proc, uint32_t bit_opts)
 		return 0;
 
 	inet_set_default_opts(new_ol);
-	//new_ol->tcp = 0;
-	
-	//new_ol->cr_in_progress = 0;
-	new_ol->cr_reply_to = noval;
-	//new_ol->cr_timeout_set = 0;
 
-	// Split the unoccupied space in home_node between send_buffer and
-	// recv_buffer.
-	
-	//new_ol->send_in_progress = 0;
+	/* Split the unoccupied space in home_node between send_buffer and recv_buffer */
 	new_ol->max_send_bufsize = TCP_MIN_SEND_BUF;
 	new_ol->send_buffer = (uint8_t *)(new_ol +1);
-	//new_ol->send_buf_node = 0;
-	//new_ol->send_buf_ack = 0;
-	//new_ol->send_buf_off = 0;
 	new_ol->send_buf_left = 0;
 	new_ol->send_reply_to = noval;
-	//new_ol->send_timeout_set = 0;
 	new_ol->send_timeout = INET_INFINITY;
-
-	//new_ol->recv_expected_size = 0;
 
 	new_ol->recv_buffer = new_ol->send_buffer +new_ol->max_send_bufsize;
 	uint32_t init_size = (uint8_t *)new_ol->home_node->ends -new_ol->recv_buffer;
 	assert(init_size >= TCP_MIN_RECV_BUF);
 	new_ol->recv_bufsize = new_ol->max_recv_bufsize = init_size;
-	//new_ol->recv_buf_node = 0;
-	//new_ol->recv_buf_off = 0;
-
-	//new_ol->empty_queue_in_progress = 0;
 	new_ol->empty_queue_reply_to = noval;
-	
-	//new_ol->peer_close_detected = 0;
+	new_ol->cr_reply_to = noval;
+
+	/*
+	new_ol->tcp = 0;
+	new_ol->cr_in_progress = 0;
+	new_ol->cr_timeout_set = 0;
+	new_ol->peer_close_detected = 0;
+	new_ol->recv_buf_node = 0;
+	new_ol->recv_buf_off = 0;
+	new_ol->recv_expected_size = 0;
+	new_ol->empty_queue_in_progress = 0;
+	new_ol->send_timeout_set = 0;
+	new_ol->send_buf_node = 0;
+	new_ol->send_buf_ack = 0;
+	new_ol->send_buf_off = 0;
+	new_ol->send_in_progress = 0;
+	*/
 
 	return new_ol;
 }
+
+/*
+ *   recv-send status control
+ */
+static void cr_defer_reply(outlet_t *ol, term_t reply_to, uint32_t millis);
+static void cr_cancel_deferred(outlet_t *ol);
+static void send_defer_reply(outlet_t *ol, term_t reply_to);
+static void send_cancel_deferred(outlet_t *ol);
+
+/*
+ *   Generic callbacks
+ */
+static void cr_timeout_cb(void *arg);
+static void send_timeout_cb(void *arg);
+
+static int tcp_on_connected(outlet_t *ol);
+static int tcp_on_send(outlet_t *ol);
+static void tcp_on_error(outlet_t *ol, term_t reason);
+
+static int recv_bake_packets(outlet_t *ol, proc_t *cont_proc);
+static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen);
+static int ol_tcp_get_opts(outlet_t *ol,
+					uint8_t *data, int dlen, char *buf, int sz);
+
+#if ERR_NOTIMPL
+void ol_tcp_acc_promote(outlet_t *ol, struct tcp_pcb *old_pcb, int backlog);
+#endif
+
+
+#if LING_WITH_LWIP
+
+static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err);
+static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len);
+static void lwip_error_cb(void *arg, err_t err);
 
 void ol_tcp_animate(outlet_t *new_ol, struct tcp_pcb *pcb, struct pbuf *ante)
 {
@@ -158,9 +179,9 @@ void ol_tcp_animate(outlet_t *new_ol, struct tcp_pcb *pcb, struct pbuf *ante)
 	tcp_setprio(pcb, TCP_PRIO_MAX +1);
 
 	tcp_arg(pcb, new_ol);	// callback arg
-	tcp_recv(pcb, recv_cb);
-	tcp_sent(pcb, sent_cb);
-	tcp_err(pcb, error_cb);
+	tcp_recv(pcb, lwip_recv_cb);
+	tcp_sent(pcb, lwip_sent_cb);
+	tcp_err(pcb, lwip_error_cb);
 
 	new_ol->tcp = pcb;
 	if (ante != 0)	// data receive while enqueued
@@ -178,9 +199,383 @@ void ol_tcp_animate(outlet_t *new_ol, struct tcp_pcb *pcb, struct pbuf *ante)
 	}
 }
 
+static int tcp_set_nodelay(outlet_t *ol, bool nodelay)
+{
+	if (nodelay)
+		tcp_nagle_disable(ol->tcp);
+	else
+		tcp_nagle_enable(ol->tcp);
+	return 0;
+}
+
+static inline bool
+is_outlet_listening(outlet_t *ol)
+{
+	return ol->tcp->state == LISTEN;
+}
+
+static inline bool
+is_outlet_connected(outlet_t *ol)
+{
+	return ol->tcp->state == ESTABLISHED;
+}
+
+static inline bool
+is_outlet_closed(outlet_t *ol)
+{
+	return ol->tcp->state == CLOSED;
+}
+
+static void
+tcp_set_recv_timeout(outlet_t *ol, uint32_t millis)
+{
+	debug("%s(millis=%d)\n", __FUNCTION__, millis);
+	sys_timeout_adj(millis, cr_timeout_cb, ol);
+}
+
+static void
+tcp_set_send_timeout(outlet_t *ol, uint32_t millis)
+{
+	debug("%s(millis=%d)\n", __FUNCTION__, millis);
+	sys_timeout_adj(millis, send_timeout_cb, ol);
+}
+
+static void
+tcp_recv_untimeout(outlet_t *ol)
+{
+	debug("%s()\n", __FUNCTION__);
+	sys_untimeout(cr_timeout_cb, ol);
+}
+
+static void
+tcp_send_untimeout(outlet_t *ol)
+{
+	debug("%s()\n", __FUNCTION__);
+	sys_untimeout(send_timeout_cb, ol);
+}
+
+static err_t connected_cb(void *arg, struct tcp_pcb *tcp, err_t err)
+{
+	assert(err == ERR_OK);	// argument kept for backward compatibility?
+	outlet_t *ol = (outlet_t *)arg;
+	tcp_on_connected(ol);
+	return ERR_OK;
+}
+
+static int tcp_control_open(outlet_t *ol, int family)
+{
+#if LWIP_IPV6
+	ol->tcp = (family == INET_AF_INET6)
+		?tcp_new_ip6()
+		:tcp_new();
+#else
+	if (family != INET_AF_INET)
+		return -1;
+	ol->tcp = tcp_new();
+#endif
+	assert(ol->tcp != 0);
+
+	// see comment in ol_tcp_animate()
+	tcp_setprio(ol->tcp, TCP_PRIO_MAX +1);
+
+	tcp_arg(ol->tcp, ol);	// callback arg
+	tcp_recv(ol->tcp, lwip_recv_cb);
+	tcp_sent(ol->tcp, lwip_sent_cb);
+	tcp_err(ol->tcp, lwip_error_cb);
+	return 0;
+}
+
+/*
+ *   returns the bound local port on success;
+ *            negative error on failure; 
+ */
+static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
+{
+	if (saddr->saddr.sa_family == AF_INET)
+	{
+		assert(ol->family == INET_AF_INET;
+		ip_addr_t addr;
+		sockaddrin_to_ipaddr(&saddr->in, &addr);
+		tcp_bind(ol->tcp, &addr, port); // always succeeds
+	}
+	else
+	{
+#if LWIP_IPV6
+		ip6_addr_t addr;
+		sockaddrin6_to_ip6addr(&saddr->in6, &addr);
+		tcp_bind_ip6(ol->tcp, &addr, port); // always succeeds
+#else
+		return -1;
+#endif
+	}
+
+	return ol->tcp->local_port;
+}
+
+static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
+{
+	err_t err;
+	int is_ipv6 = is_ipv6_outlet(ol);
+	if (!is_ipv6)
+	{
+		assert(saddr->saddr.sa_family == AF_INET);
+		ip_addr_t where_to;
+		sockaddrin_to_ipaddr(&saddr->in, &where_to);
+		err = tcp_connect(ol->tcp, &where_to, remote_port, connected_cb);
+	}
+	else
+	{
+		assert(saddr->saddr.sa_family == AF_INET6);
+#if LWIP_IPV6
+		ip6_addr_t where_to;
+		sockaddrin6_to_ip6addr(&saddr->in6, &where_to);
+		err = tcp_connect_ip6(ol->tcp, &where_to, remote_port, connected_cb);
+#else
+		return -1;
+#endif
+	}
+
+	// Does it make connections faster?
+	tcp_output(ol->tcp);
+	return err;
+}
+
+static int tcp_send_buffer(outlet_t *ol)
+{
+	uint16_t write_len = ol->send_buf_left;
+	if (write_len > TCP_SND_BUF)
+		write_len = TCP_SND_BUF;
+
+	ol->send_buf_off += write_len;
+
+	//debug("ol_tcp_send: tcp_write(%d)\n", write_len);
+	int rc = tcp_write(ol->tcp, ol->send_buffer + ol->send_buf_ack,
+	                   write_len, TCP_WRITE_FLAG_COPY);
+	if (rc != ERR_OK)
+		return rc;
+
+	// Otherwise, the data are buffered until the next tcp_tmr timeout
+	return tcp_output(ol->tcp);
+}
+#endif //LING_WITH_LWIP
+
+#if LING_WITH_LIBUV
+
+#define tcp_sndqueuelen(tcp)    (((outlet_t*)tcp->data)->send_buf_left)
+
+static int tcp_set_nodelay(outlet_t *ol, bool nodelay)
+{
+	return uv_tcp_nodelay(ol->tcp, nodelay);
+}
+
+#if 0
+static inline bool is_outlet_listening(outlet_t *ol)
+{
+	return uv_is_active((uv_handle_t *)ol->tcp)
+	     && (ol->active == INET_PASSIVE);
+}
+
+static inline bool is_outlet_connected(outlet_t *ol)
+{
+	return uv_is_active((uv_handle_t *)ol->tcp)
+	       && (ol->active == INET_ACTIVE);
+}
+#endif
+
+static inline bool is_outlet_closed(outlet_t *ol)
+{
+	return !uv_is_active((uv_handle_t *)ol->tcp);
+}
+
+static void uv_on_tcp_connect(uv_connect_t *req, int status)
+{
+	outlet_t *ol = (outlet_t *)req->data;
+
+	debug("%s(status: %s)\n", __FUNCTION__, strerror(status));
+	tcp_on_connected(ol);
+
+	free(req);
+}
+
+#if 0
+static void uv_on_tcp_recv(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf)
+{
+	debug("%s(*%p, nread=%d, dlen=%d)\n", __FUNCTION__, tcp, nread, buf->len);
+}
+#endif
+
+static void uv_on_tcp_send(uv_write_t *req, int status)
+{
+	debug("%s(*%p, status=%d)\n", __FUNCTION__, req, status);
+
+	outlet_t *ol = req->data;
+	if (status == 0)
+	{
+		ol->send_buf_left = 0;
+		ol->send_buf_ack = ol->send_buf_off;
+		tcp_on_send(ol);
+	}
+	else
+	{
+		tcp_on_error(ol, termerror(status));
+	}
+
+	free(req);
+}
+
+static void uv_on_tcp_recv_timeout(uv_timer_t *timer)
+{
+	debug("%s(*%p)\n", __FUNCTION__, timer);
+	assert(timer->data);
+
+	cr_timeout_cb(timer->data);
+	timer->data = NULL;
+}
+
+static void uv_on_tcp_send_timeout(uv_timer_t *timer)
+{
+	debug("%s(*%p)\n", __FUNCTION__, timer);
+	assert(timer->data);
+
+	send_timeout_cb(timer->data);
+	timer->data = NULL;
+}
+
+static inline void
+set_uv_timeout(outlet_t *ol, uv_timer_t *timer, uv_timer_cb cb, uint32_t timeout)
+{
+	assert(timer->data == NULL);
+	int ret;
+
+	ret = uv_timer_init(uv_default_loop(), timer);
+	if (ret) return;
+
+	ret = uv_timer_start(timer, cb, (uint64_t)timeout, 0);
+	if (ret) return;
+
+	timer->data = ol;
+}
+
+static inline void
+unset_uv_timeout(outlet_t *ol, uv_timer_t *timer)
+{
+	uv_timer_stop(timer);
+	timer->data = NULL;
+}
+
+static void tcp_set_recv_timeout(outlet_t *ol, uint32_t millis)
+{
+	set_uv_timeout(ol, &ol->conn_timer, uv_on_tcp_recv_timeout, millis);
+}
+
+static void tcp_set_send_timeout(outlet_t *ol, uint32_t millis)
+{
+	set_uv_timeout(ol, &ol->send_timer, uv_on_tcp_send_timeout, millis);
+}
+
+static void tcp_recv_untimeout(outlet_t *ol)
+{
+	unset_uv_timeout(ol, &ol->conn_timer);
+}
+
+static void tcp_send_untimeout(outlet_t *ol)
+{
+	unset_uv_timeout(ol, &ol->send_timer);
+}
+
+static int tcp_control_open(outlet_t *ol, int family)
+{
+	int ret;
+	uv_tcp_t *tcp = malloc(sizeof(uv_tcp_t));
+	if (!tcp)
+		return -ENOMEM;
+
+	tcp->data = ol;
+
+	ret = uv_tcp_init(uv_default_loop(), tcp);
+	if (ret) {
+		free(tcp);
+		return ret;
+	}
+
+	ol->tcp = tcp;
+	ol->family = family;
+	return 0;
+}
+
+static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
+{
+	assert(ol->tcp);
+	assert((saddr->saddr.sa_family == AF_INET6 && ol->family == INET_AF_INET6)
+	    || (saddr->saddr.sa_family == AF_INET && ol->family == INET_AF_INET));
+	int ret;
+
+	ret = uv_tcp_bind(ol->tcp, &saddr->saddr, 0); // UV_TCP_IPV6ONLY
+	if (ret) return -1;
+
+#if LING_DEBUG
+	char showbuf[64];
+	if (saddr->saddr.sa_family == AF_INET6) {
+		uv_ip6_name(&saddr->in6, showbuf, 64);
+	} else if (saddr->saddr.sa_family == AF_INET) {
+		uv_ip4_name(&saddr->in, showbuf, 64);
+	};
+	debug("%s(addr=%s : %d)\n", __FUNCTION__, showbuf, sockaddr_port(&saddr->saddr));
+#endif
+ 
+	/* get local port */
+	inet_sockaddr srcaddr = { .saddr.sa_family = AF_INET };
+	int slen = 0;
+	ret = uv_tcp_getsockname(ol->tcp, &srcaddr.saddr, &slen);
+	if (ret) return -2;
+
+	return sockaddr_port(&srcaddr.saddr);
+}
+
+static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
+{
+	int ret;
+	uv_connect_t *conn_req = malloc(sizeof(uv_connect_t));
+	if (!conn_req)
+		return -ENOMEM;
+
+	conn_req->data = ol;
+
+#if LING_DEBUG
+	char showbuf[64];
+	if (saddr->saddr.sa_family == AF_INET6) {
+		uv_ip6_name(&saddr->in6, showbuf, 64);
+	} else if (saddr->saddr.sa_family == AF_INET) {
+		uv_ip4_name(&saddr->in, showbuf, 64);
+	};
+	debug("%s(addr=%s : %d)\n", __FUNCTION__, showbuf, sockaddr_port(&saddr->saddr));
+#endif
+ 
+	ret = uv_tcp_connect(conn_req, ol->tcp, &saddr->saddr, uv_on_tcp_connect);
+	if (ret) {
+		free(conn_req);
+		return ret;
+	}
+	return 0;
+}
+
+static int tcp_send_buffer(outlet_t *ol)
+{
+	uv_write_t *req = malloc(sizeof(uv_write_t));
+	if (!req) return -1;
+	req->data = ol;
+
+	uv_buf_t buf = { .base = (char *)ol->send_buffer, .len = ol->send_buf_left };
+
+	return uv_write(req, (uv_stream_t *)ol->tcp, &buf, 1, uv_on_tcp_send);
+}
+#endif //LING_WITH_LIBUV
+
 static uint8_t *ol_tcp_get_send_buffer(outlet_t *ol, int len)
 {
+	assert(ol->vtab == &ol_tcp_vtab);
 	int buf_len = len;
+
 	switch (ol->packet)
 	{
 	case TCP_PB_1: buf_len = len +1; break;
@@ -212,6 +607,8 @@ static uint8_t *ol_tcp_get_send_buffer(outlet_t *ol, int len)
 
 static int ol_tcp_send(outlet_t *ol, int len, term_t reply_to)
 {
+	debug("%s(len=%d)\n", __FUNCTION__, len);
+	assert(ol->vtab == &ol_tcp_vtab);
 	assert(ol->send_in_progress == 0);
 	assert(ol->send_buf_left == 0);
 	//debug("ol_tcp_send: len %d\n", len);
@@ -245,23 +642,15 @@ static int ol_tcp_send(outlet_t *ol, int len, term_t reply_to)
 	assert(buf_len <= ol->max_send_bufsize);
 
 	ol->send_buf_left = buf_len;
-	uint16_t write_len = (buf_len > TCP_SND_BUF)
-		?TCP_SND_BUF
-		:buf_len;
-	ol->send_buf_ack = 0;
-	ol->send_buf_off = write_len;
+	ol->send_buf_ack = 0;       // start transmission from the start of the buffer
 
-	//debug("ol_tcp_send: tcp_write(%d)\n", write_len);
-	int rc = tcp_write(ol->tcp, ol->send_buffer, write_len, TCP_WRITE_FLAG_COPY);
-	if (rc != ERR_OK)
+	int ret = tcp_send_buffer(ol);
+	if (ret)
 	{
-		//debug("ol_tcp_send: tcp_write() returns error %d\n", rc);
-		inet_reply_error(ol->oid, reply_to, lwip_err_to_term(rc));
+		debug("%s(): tcp_send_buffer() failed(%d)\n", __FUNCTION__, ret);
+		inet_reply_error(ol->oid, reply_to, termerror(ret));
 		return 0;
 	}
-
-	// Otherwise, the data are buffered until the next tcp_tmr timeout
-	tcp_output(ol->tcp);
 
 	// may set a timeout
 	send_defer_reply(ol, reply_to);
@@ -280,39 +669,29 @@ static term_t ol_tcp_control(outlet_t *ol,
 	char rbuf[256];
 	char *reply = rbuf;
 	int sz;
+	int ret;
 
+	debug("%s(op=%d)\n", __FUNCTION__, op);
 	assert(ol != 0);
-	assert(ol->tcp != 0 || op == INET_REQ_OPEN || op == INET_REQ_SUBSCRIBE || op == INET_REQ_SETOPTS);
+	assert(ol->vtab == &ol_tcp_vtab);
+	assert(ol->tcp != 0 || op == INET_REQ_OPEN
+	       || op == INET_REQ_SUBSCRIBE || op == INET_REQ_SETOPTS);
 
 	switch (op)
 	{
 	case INET_REQ_OPEN:
 	{
+		assert(ol->tcp == 0);
+
 		if (dlen != 2 || data[1] != INET_TYPE_STREAM)
 			goto error;
 		uint8_t family = data[0];
 		if (family != INET_AF_INET && family != INET_AF_INET6)
 			goto error;
-		assert(ol->tcp == 0);
 
-#if LWIP_IPV6
-		ol->tcp = (family == INET_AF_INET6)
-			?tcp_new_ip6()
-			:tcp_new();
-#else
-		if (family != INET_AF_INET)
-			goto error;
-		ol->tcp = tcp_new();
-#endif
-		assert(ol->tcp != 0);
-
-		// see comment in ol_tcp_animate()
-		tcp_setprio(ol->tcp, TCP_PRIO_MAX +1);
-
-		tcp_arg(ol->tcp, ol);	// callback arg
-		tcp_recv(ol->tcp, recv_cb);
-		tcp_sent(ol->tcp, sent_cb);
-		tcp_err(ol->tcp, error_cb);
+	ret = tcp_control_open(ol, family);
+	if (ret)
+		goto error;
 
 		*reply++ = INET_REP_OK;
 	}
@@ -320,61 +699,60 @@ static term_t ol_tcp_control(outlet_t *ol,
 
 	case INET_REQ_CONNECT:
 	{
-		int is_ipv6 = PCB_ISIPV6(ol->tcp);
+		int is_ipv6 = is_ipv6_outlet(ol);
 		if ((is_ipv6 && dlen != 4 +2 +16) || (!is_ipv6 && dlen != 4 +2 +4))
 			goto error;
 
 		uint32_t timeout = GET_UINT_32(data);
 		uint16_t remote_port = GET_UINT_16(data +4);
-	
-		err_t err;
-		if (!is_ipv6)
-		{
-			ip_addr_t where_to;
-			where_to.addr = ntohl(GET_UINT_32(data +4 +2));
-			err = tcp_connect(ol->tcp, &where_to, remote_port, connected_cb);
-		}
-		else
-		{
-#if LWIP_IPV6
-			ip6_addr_t where_to;
-			where_to.addr[0] = ntohl(GET_UINT_32(data +4 +2));
-			where_to.addr[1] = ntohl(GET_UINT_32(data +4 +2 +4));
-			where_to.addr[2] = ntohl(GET_UINT_32(data +4 +2 +8));
-			where_to.addr[3] = ntohl(GET_UINT_32(data +4 +2 +12));
-			err = tcp_connect_ip6(ol->tcp, &where_to, remote_port, connected_cb);
-#else
-			goto error;
-#endif
+
+		inet_sockaddr saddr;
+		if (is_ipv6) {
+			saddr.saddr.sa_family = AF_INET6;
+			saddr.in6.sin6_port = remote_port;
+			uint32_t *in6addr = (uint32_t *)saddr.in6.sin6_addr.s6_addr;
+			in6addr[0] = ntohl(GET_UINT_32(data +4 +2));
+			in6addr[1] = ntohl(GET_UINT_32(data +4 +2 +4));
+			in6addr[2] = ntohl(GET_UINT_32(data +4 +2 +8));
+			in6addr[3] = ntohl(GET_UINT_32(data +4 +2 +12));
+		} else {
+			saddr.saddr.sa_family = AF_INET;
+			saddr.in.sin_port = remote_port;
+			saddr.in.sin_addr.s_addr = ntohl(GET_UINT_32(data +4 +2));
 		}
 
-		// Does it make connections faster?
-		tcp_output(ol->tcp);
-
-		if (err == ERR_OK)
+		ret = tcp_control_connect(ol, &saddr);
+		if (ret == 0)
 		{
 			cr_defer_reply(ol, reply_to, timeout);
 
 			*reply++ = INET_REP_OK;
-			uint16_t ref = ASYNC_REF;	// Why this is needed? A constant will do.
+			uint16_t ref = ASYNC_REF;
 			PUT_UINT_16(reply, ref);
 			reply += 2;
 		}
-		else if (err == ERR_RTE)
+#if LING_WITH_LWIP
+		else if (ret == ERR_RTE)
 			REPLY_INET_ERROR("eunreach");
 		else
 		{
-			assert(err == ERR_MEM);
+			assert(ret == ERR_MEM);
 			REPLY_INET_ERROR("enomem");
 		}
+#endif
+#if LING_WITH_LIBUV
+		else
+			goto error;
+#endif
 	}
 	break;
 
 	case INET_REQ_PEER:
-	if (ol->tcp->state == CLOSED)
+	if (is_outlet_closed(ol))
 		REPLY_INET_ERROR("enotconn");
 	else
 	{
+#if LING_WITH_LWIP
 		*reply++ = INET_REP_OK;
 		*reply++ = INET_AF_INET;
 		uint16_t peer_port = ol->tcp->remote_port;
@@ -394,21 +772,25 @@ static term_t ol_tcp_control(outlet_t *ol,
 			goto error;
 #endif
 		}
+#else //!LING_WITH_LWIP
+		REPLY_INET_ERROR("enotimpl");
+#endif
 	}
 	break;
 
 	case INET_REQ_NAME:
-	if (ol->tcp->state == CLOSED)
+#if LING_WITH_LWIP
+	if (is_outlet_closed(ol))
 		REPLY_INET_ERROR("enotconn");
 	else
 	{
 		*reply++ = INET_REP_OK;
-		int is_ipv6 = PCB_ISIPV6(ol->tcp);
+		int is_ipv6 = is_ipv6_outlet(ol);
 		*reply++ = (is_ipv6) ?INET_AF_INET6 :INET_AF_INET;
 		uint16_t name_port = ol->tcp->local_port;
 		PUT_UINT_16(reply, name_port);
 		reply += 2;
-		if (PCB_ISIPV6(ol->tcp))
+		if (is_ipv6)
 		{
 			ip_addr_set_hton((ip_addr_t *)reply, (ip_addr_t *)&ol->tcp->local_ip);
 			reply += 4;
@@ -423,35 +805,41 @@ static term_t ol_tcp_control(outlet_t *ol,
 #endif
 		}
 	}
+#else  //!LING_WITH_LWIP
+	REPLY_INET_ERROR("enotimpl");
+#endif
 	break;
 
 	case INET_REQ_BIND:
 	{
-		int is_ipv6 = PCB_ISIPV6(ol->tcp);
+		inet_sockaddr saddr;
+		int is_ipv6 = is_ipv6_outlet(ol);
 		if ((is_ipv6 && dlen != 2 +16) || (!is_ipv6 && dlen != 2 +4))
 			goto error;
 		uint16_t port = GET_UINT_16(data);
+
 		if (!is_ipv6)
 		{
-			ip_addr_t addr;
-			addr.addr = ntohl(GET_UINT_32(data +2));
-			tcp_bind(ol->tcp, &addr, port); // always succeeds
+			saddr.saddr.sa_family = AF_INET;
+			saddr.in.sin_port = port;
+			saddr.in.sin_addr.s_addr = ntohl(GET_UINT_32(data +2));
 		}
 		else
 		{
-#if LWIP_IPV6
-			ip6_addr_t addr;
-			addr.addr[0] = ntohl(GET_UINT_32(data +2));
-			addr.addr[1] = ntohl(GET_UINT_32(data +2 +4));
-			addr.addr[2] = ntohl(GET_UINT_32(data +2 +8));
-			addr.addr[3] = ntohl(GET_UINT_32(data +2 +12));
-			tcp_bind_ip6(ol->tcp, &addr, port); // always succeeds
-#else
-			goto error;
-#endif
-		}
+			saddr.saddr.sa_family = AF_INET6;
+			saddr.in6.sin6_port = port;
+			uint32_t *sin6addr = (uint32_t *)saddr.in6.sin6_addr.s6_addr;
+			sin6addr[0] = ntohl(GET_UINT_32(data +2));
+			sin6addr[1] = ntohl(GET_UINT_32(data +2 +4));
+			sin6addr[2] = ntohl(GET_UINT_32(data +2 +8));
+			sin6addr[3] = ntohl(GET_UINT_32(data +2 +12));
 
-		uint16_t local_port = ol->tcp->local_port;
+		}
+		int ret = tcp_control_bind(ol, &saddr);
+		if (ret < 0)
+			goto error;
+
+		uint16_t local_port = (uint16_t)port;
 		*reply++ = INET_REP_OK;
 		PUT_UINT_16(reply, local_port);
 		reply += 2;
@@ -459,12 +847,16 @@ static term_t ol_tcp_control(outlet_t *ol,
 	break;
 
 	case INET_REQ_LISTEN:
+#if ERR_NOTIMPL
 	{
 		assert(ol->recv_buf_node == 0);	// or use destroy_private()
 		int backlog = GET_UINT_16(data);
 		ol_tcp_acc_promote(ol, ol->tcp, backlog);
 		*reply++ = INET_REP_OK;
 	}
+#else //!LING_WITH_LWIP
+	REPLY_INET_ERROR("enotimpl");
+#endif
 	break;
 
 	case INET_REQ_SETOPTS:
@@ -543,6 +935,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 	reply += 2;
 	break;
 
+#if LING_WITH_LWIP
 	case TCP_REQ_SHUTDOWN:
 	if (dlen != 1)
 		goto error;
@@ -555,7 +948,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 	int shut_rx = (what == 0) || (what == 2);
 	int shut_tx = (what == 1) || (what == 2);
 
-	if (ol->tcp->state == LISTEN)
+	if (is_outlet_listening(ol))
 		REPLY_INET_ERROR("enotconn");
 	else
 	{
@@ -565,6 +958,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 		*reply++ = INET_REP_OK;
 	}
 	break;
+#endif
 
 	default:
 error:
@@ -582,12 +976,15 @@ error:
 
 static int ol_tcp_attach(outlet_t *ol)
 {
-	// The outlet's lwIP PCB gets created upon INET_REQ_OPEN
+	assert(ol->vtab == &ol_tcp_vtab);
 	return 0;
 }
 
 static void ol_tcp_detach(outlet_t *ol)
 {
+	debug("%s(*%p)\n", __FUNCTION__, ol);
+	assert(ol->vtab == &ol_tcp_vtab);
+#if LING_WITH_LWIP
 	//
 	// Sever all outstanding relationships with processes and subsystems
 	//
@@ -636,6 +1033,7 @@ static void ol_tcp_detach(outlet_t *ol)
 
 	if (cr_reply_to != noval)
 		inet_async_error(saved_oid, cr_reply_to, ASYNC_REF, A_CLOSED);
+#endif //LING_WITH_LWIP
 }
 
 static void ol_tcp_destroy_private(outlet_t *ol)
@@ -646,13 +1044,12 @@ static void ol_tcp_destroy_private(outlet_t *ol)
 
 static void cr_timeout_cb(void *arg)
 {
-	phase_expected(PHASE_EVENTS);
+	phase_expected2(PHASE_EVENTS, PHASE_NEXT);
 
 	outlet_t *ol = (outlet_t *)arg;
 	assert(ol != 0);
 	assert(ol->cr_timeout_set);
 	assert(ol->cr_in_progress);
-	//debug("cr_timeout_cb: %pt\n", T(ol->oid));
 	ol->cr_timeout_set = 0;
 	ol->cr_in_progress = 0;
 	inet_async_error(ol->oid, ol->cr_reply_to, ASYNC_REF, A_TIMEOUT);
@@ -660,13 +1057,12 @@ static void cr_timeout_cb(void *arg)
 
 static void send_timeout_cb(void *arg)
 {
-	phase_expected(PHASE_EVENTS);
+	phase_expected2(PHASE_EVENTS, PHASE_NEXT);
 
 	outlet_t *ol = (outlet_t *)arg;
 	assert(ol != 0);
 	assert(ol->send_timeout_set);
 	assert(ol->send_in_progress);
-	//debug("send_timeout_cb: %pt\n", T(ol->oid));
 	ol->send_timeout_set = 0;
 	ol->send_in_progress = 0;
 	inet_async_error(ol->oid, ol->send_reply_to, ASYNC_REF, A_TIMEOUT);
@@ -680,7 +1076,7 @@ static void cr_defer_reply(outlet_t *ol, term_t reply_to, uint32_t millis)
 	ol->cr_reply_to = reply_to;
 	if (millis != INET_INFINITY)
 	{
-		sys_timeout_adj(millis, cr_timeout_cb, ol);
+		tcp_set_recv_timeout(ol, millis);
 		ol->cr_timeout_set = 1;
 	}
 }
@@ -693,7 +1089,7 @@ static void send_defer_reply(outlet_t *ol, term_t reply_to)
 	ol->send_reply_to = reply_to;
 	if (ol->send_timeout != INET_INFINITY)
 	{
-		sys_timeout_adj(ol->send_timeout, send_timeout_cb, ol);
+		tcp_set_send_timeout(ol, ol->send_timeout);
 		ol->send_timeout_set = 1;
 	}
 }
@@ -704,7 +1100,7 @@ static void cr_cancel_deferred(outlet_t *ol)
 	ol->cr_in_progress = 0;
 	if (ol->cr_timeout_set)
 	{
-		sys_untimeout(cr_timeout_cb, ol);
+		tcp_recv_untimeout(ol);
 		ol->cr_timeout_set = 0;
 	}
 }
@@ -715,29 +1111,27 @@ static void send_cancel_deferred(outlet_t *ol)
 	ol->send_in_progress = 0;
 	if (ol->send_timeout_set)
 	{
-		sys_untimeout(send_timeout_cb, ol);
+		tcp_send_untimeout(ol);
 		ol->send_timeout_set = 0;
 	}
 }
 
-static err_t connected_cb(void *arg, struct tcp_pcb *tcp, err_t err)
+static int tcp_on_connected(outlet_t *ol)
 {
-	phase_expected(PHASE_EVENTS);
+	phase_expected2(PHASE_EVENTS, PHASE_NEXT);
 
-	outlet_t *ol = (outlet_t *)arg;
 	assert(ol != 0);
-	assert(err == ERR_OK);	// argument kept for backward compatibility?
 
 	//debug("connected_cb: %pt\n", T(ol->oid));
-	assert(ol->tcp == tcp);
 	assert(ol->cr_in_progress);
 
 	cr_cancel_deferred(ol);
 	inet_async(ol->oid, ol->cr_reply_to, ASYNC_REF, A_OK);
-	return ERR_OK;
+	return 0;
 }
 
-static err_t recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err)
+#if LING_WITH_LWIP
+static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err)
 {
 	phase_expected(PHASE_EVENTS);
 
@@ -819,17 +1213,53 @@ static err_t recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t er
 	return ERR_OK;
 }
 
-static err_t sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
+
+static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
+{
+	//debug("sent_cb: len %d\n", len);
+	outlet_t *ol = (outlet_t *)arg;
+	if (!ol)
+		return ERR_OK; // outlet has gone already
+
+	assert(ol->tcp == tcp);
+
+	ol->send_buf_left -= len;
+	ol->send_buf_ack += len;
+	assert(ol->send_buf_ack <= ol->send_buf_off);
+	assert(ol->send_buf_left >= len);
+
+	return tcp_on_send(ol);
+}
+
+static void lwip_error_cb(void *arg, err_t err)
 {
 	phase_expected(PHASE_EVENTS);
 
+	//debug("**** error_cb(arg 0x%pp, err %d)\n", arg, err);
 	outlet_t *ol = (outlet_t *)arg;
 	if (ol == 0)
-		return ERR_OK;		// outlet has gone already
-	assert(ol->tcp == tcp);
+		return;		// outlet already gone
 
-	//debug("sent_cb: len %d\n", len);
-	
+	// from lwIP documentation:
+	//
+	// The error callback function does not get the pcb passed to it as a
+	// parameter since the pcb may already have been deallocated.
+	//
+	ol->tcp = 0;
+
+	// Do not throw an exception if there is an outstanding request - return an
+	// error instead.
+	//
+	term_t reason = lwip_err_to_term(err);
+
+	tcp_on_error(ol, reason);
+}
+#endif //LING_WITH_LWIP
+
+static int tcp_on_send(outlet_t *ol)
+{
+	phase_expected2(PHASE_EVENTS, PHASE_NEXT);
+
 	// inet_reply() may close the outlet
 	term_t saved_oid = ol->oid;
 	term_t send_reply_to = noval;
@@ -837,33 +1267,19 @@ static err_t sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
 	term_t empty_queue_reply_to = noval;
 
 	assert(ol->send_in_progress);
-	assert(ol->send_buf_left >= len);
-	ol->send_buf_left -= len;
-	ol->send_buf_ack += len;
-	assert(ol->send_buf_ack <= ol->send_buf_off);
 
 	if (ol->send_buf_ack == ol->send_buf_off)
 	{
 		if (ol->send_buf_left > 0)
 		{
-			// write more
-			uint16_t write_len = (ol->send_buf_left > TCP_SND_BUF)
-				?TCP_SND_BUF
-				:ol->send_buf_left;
-
-			ol->send_buf_off += write_len;
-
-			//debug("ol_tcp_send: tcp_write(%d)\n", write_len);
-			int rc = tcp_write(ol->tcp, ol->send_buffer +ol->send_buf_ack, write_len, TCP_WRITE_FLAG_COPY);
-			if (rc != ERR_OK)
+			// transmit the next slice of the buffer
+			int rc = tcp_send_buffer(ol);
+			if (rc)
 			{
 				send_cancel_deferred(ol);
 				send_reply_to = ol->send_reply_to;
-				send_error = lwip_err_to_term(rc);
+				send_error = termerror(rc);
 			}
-
-			// Kick the TCP/IP stack
-			tcp_output(ol->tcp);
 		}
 		else
 		{
@@ -872,7 +1288,7 @@ static err_t sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
 		}
 	}
 
-	if (ol->empty_queue_in_progress && tcp_sndqueuelen(tcp) == 0)
+	if (ol->empty_queue_in_progress && tcp_sndqueuelen(ol->tcp) == 0)
 	{
 		ol->empty_queue_in_progress = 0;
 		empty_queue_reply_to = ol->empty_queue_reply_to;
@@ -908,35 +1324,17 @@ static err_t sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
 		}
 	}
 
-	return ERR_OK;
+	return 0;
 }
 
-static void error_cb(void *arg, err_t err)
+static void tcp_on_error(outlet_t *ol, term_t reason)
 {
-	phase_expected(PHASE_EVENTS);
-
-	//debug("**** error_cb(arg 0x%pp, err %d)\n", arg, err);
-	outlet_t *ol = (outlet_t *)arg;
-	if (ol == 0)
-		return;		// outlet already gone
-
-	// from lwIP documentation:
-	//
-	// The error callback function does not get the pcb passed to it as a
-	// parameter since the pcb may already have been deallocated.
-	//
-	ol->tcp = 0;
-
-    // Do not throw an exception if there is an outstanding request - return an
-    // error instead.
-    //
-    term_t reason = lwip_err_to_term(err);
-    if (ol->cr_in_progress)
-    {
+	if (ol->cr_in_progress)
+	{
 		cr_cancel_deferred(ol);
 		inet_async_error(ol->oid, ol->cr_reply_to, ASYNC_REF, reason);
 	}
-    else
+	else
 		outlet_signal_exit_N(ol, ol->oid, reason);
 }
 
@@ -1038,6 +1436,7 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 	while (left > 0)
 	{
 		int opt = *p++;
+		debug("%s(ol=*%p, opt=%d)\n", __FUNCTION__, ol, opt);
 		left--;
 		if (left < 4)
 			return -BAD_ARG;
@@ -1082,12 +1481,14 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 			//printk("tcp_set_opts: unsupported option SO_PRIORITY ignored\n");
 			break;
 
+#if LING_WITH_LWIP
 		case INET_OPT_TOS:
 			if (ol->tcp)
 				ol->tcp->tos = (uint8_t)val;
 			else
 				printk("tcp_set_opts: INET_OPT_TOS ignored\n");
 			break;
+#endif
 
 		case TCP_OPT_NODELAY:
 
@@ -1096,10 +1497,7 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 			// relationship to not delaying send?
 			//
 			if (ol->tcp)
-				if (val)
-					tcp_nagle_disable(ol->tcp);
-				else
-					tcp_nagle_enable(ol->tcp);
+				tcp_set_nodelay(ol, val);
 			else
 				printk("tcp_set_opts: TCP_OPT_NODELAY ignored\n");
 			break;
@@ -1136,6 +1534,7 @@ static int ol_tcp_get_opts(outlet_t *ol,
 	{
 		int opt = *p++;
 		uint32_t val;
+		debug("%s(opt=%d)\n", __FUNCTION__, opt);
 
 		switch (opt)
 		{
@@ -1143,6 +1542,7 @@ static int ol_tcp_get_opts(outlet_t *ol,
 			val = ol->recv_bufsize;
 			break;
 
+#if LING_WITH_LWIP
 		case INET_OPT_PRIORITY:
 			//
 			// See comment in ol_tcp_animate()
@@ -1157,6 +1557,7 @@ static int ol_tcp_get_opts(outlet_t *ol,
 		case TCP_OPT_NODELAY:
 			val = tcp_nagle_disabled(ol->tcp);
 			break;
+#endif
 
 		default:
 			if (inet_get_opt(ol, opt, &val) < 0)
@@ -1174,6 +1575,6 @@ static int ol_tcp_get_opts(outlet_t *ol,
 
 	return q -buf;
 }
-#endif // LING_WITH_LWIP
+#endif
 
 //EOF

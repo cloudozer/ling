@@ -144,11 +144,13 @@ struct outlet_t {
 		struct tcp_pcb *tcp;
 	};
 #elif LING_WITH_LIBUV
-	int family;             // INET_AF_INET | INET_AF_INET6
 	union {
-	    uv_udp_t *udp_conn;
+	    uv_udp_t *udp;
+        uv_tcp_t *tcp;
 	};
-	uv_timer_t *conn_timeout;
+	uv_timer_t conn_timer;  // udp|tcp (may be used as recv_timer
+    uv_timer_t send_timer;  // tcp
+	int family;             // INET_AF_INET | INET_AF_INET6
 #endif
 
 	// More options
@@ -159,29 +161,34 @@ struct outlet_t {
 	int packet_size;		//
 	int exit_on_close;		// 1* | 0
 
-	// Non-standard option
-	int max_mq_len;			// maximum message queue length
-
 	// TCP - connection mode
 	int cr_in_progress;
-	term_t cr_reply_to;
 	int cr_timeout_set;
+	term_t cr_reply_to;
+	memnode_t *recv_buf_node;
+	uint8_t *recv_buffer;
+	uint32_t max_recv_bufsize;
+	uint32_t recv_bufsize;
+	uint32_t recv_expected_size;
+	int recv_buf_off;
+
 	int send_in_progress;
-	uint32_t max_send_bufsize;	// ol_console, ol_dns
-	uint8_t *send_buffer;		// ol_console, ol_dns
-	memnode_t *send_buf_node;
-	int send_buf_ack;
-	int send_buf_off;
-	int send_buf_left;			// ol_console, ol_dns
 	term_t send_reply_to;
 	int send_timeout_set;
 	uint32_t send_timeout;		// SO_SNDTIMEO
-	uint32_t recv_expected_size;
-	uint32_t recv_bufsize;
-	uint32_t max_recv_bufsize;
-	uint8_t *recv_buffer;
-	memnode_t *recv_buf_node;
-	int recv_buf_off;
+	memnode_t *send_buf_node;
+	uint8_t *send_buffer;		// ol_console, ol_dns
+	uint32_t max_send_bufsize;	// ol_console, ol_dns
+
+    /*
+     *  LWIP: since we can't send more than TCP_SND_BUF with one callback,
+     *    we have to keep track of remaining buffer and re-run TX again
+     *    until the initial send_buf_left is transmitted;
+     */
+	int send_buf_off;
+	int send_buf_ack;
+	int send_buf_left;			// ol_console, ol_dns
+
 	term_t empty_queue_in_progress;
 	term_t empty_queue_reply_to;
 	int peer_close_detected;
@@ -204,6 +211,9 @@ struct outlet_t {
 
 	// VIF
 	netfe_t *front_end;
+
+	// Non-standard option
+	int max_mq_len;			// maximum message queue length
 };
 
 typedef outlet_t *(*outlet_factory_func_t)(proc_t *cont_proc, uint32_t bit_opts);
