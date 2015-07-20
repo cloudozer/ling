@@ -166,3 +166,10 @@ static void collect_cohort(heap_t *hp, int ch, region_t *root_regs, int nr_regs)
 			hp->gc_cohorts[i] = *ref;
 }
 
+void gc_age_at_spawn(heap_t *hp)
+{
+	// Marks arguments copied to the heap when the process is spawned as (semi-)old
+	for (int i = 0; i < GC_COHORTS/2; i++)
+		hp->gc_cohorts[i] = hp->nodes;
+}
+

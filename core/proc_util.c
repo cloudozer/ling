@@ -58,6 +58,7 @@ int proc_spawn_N(proc_t *new_proc, term_t m, term_t f, term_t args)
 	int x = heap_copy_terms_N(&new_proc->hp, new_regs, arity);
 	if (x < 0)
 		return x;
+	gc_age_at_spawn(&new_proc->hp);
 
 	// save the initial call
 	new_proc->init_call_mod = m;
@@ -99,6 +100,7 @@ int proc_spawn_fun0_N(proc_t *new_proc, t_fun_t *f)
 	int x = heap_copy_terms_N(&new_proc->hp, new_proc->cap.regs, num_free);
 	if (x < 0)
 		return x;
+	gc_age_at_spawn(&new_proc->hp);
 	new_proc->cap.live = num_free;
 
 	assert(f->fe->entry != 0);

@@ -200,6 +200,7 @@ void proc_fill_root_regs(proc_t *proc, region_t *root_regs, term_t *rs, int live
 void proc_burn_fat(int gc_loc, proc_t *proc, term_t *rs, int live);
 void proc_destroy(proc_t *proc);
 
+void gc_age_at_spawn(heap_t *hp);
 int gc_skip_idle(heap_t *hp);
 void gc_hook(int gc_loc, proc_t *proc, region_t *root_regs, int nr_regs);
 
