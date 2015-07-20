@@ -59,8 +59,8 @@ sockaddr_port(const struct sockaddr *sa)
 {
 	switch (sa->sa_family)
 	{
-	case AF_INET: return ((const struct sockaddr_in *)sa)->sin_port;
-	case AF_INET6: return ((const struct sockaddr_in6 *)sa)->sin6_port;
+	case AF_INET: return ntohs(((const struct sockaddr_in *)sa)->sin_port);
+	case AF_INET6: return ntohs(((const struct sockaddr_in6 *)sa)->sin6_port);
 	default: return 0;	  /* TODO */
 	}
 }

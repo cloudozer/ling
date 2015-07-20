@@ -97,7 +97,7 @@ send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint
 	saddr.sin_port = htons(port);
 	saddr.sin_addr.s_addr = ipaddr->addr;
 
-	debug("%s(addr=0x%x, port=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, saddr.sin_port);
+	debug("%s(addr=0x%x, port=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, port);
 
 	uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
 	ret = uv_udp_send(req, ol->udp, &buf, 1, (struct sockaddr *)&saddr, uv_on_send);
@@ -199,7 +199,7 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 	if (is_ipv6_outlet(ol))
 	{
 		saddr.saddr.sa_family = AF_INET6;
-		saddr.in6.sin6_port = port;
+		saddr.in6.sin6_port = htons(port);
 		memcpy(saddr.in6.sin6_addr.s6_addr, addr, 16);
 	}
 	else

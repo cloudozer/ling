@@ -391,7 +391,7 @@ static void uv_on_tcp_connect(uv_connect_t *req, int status)
 {
 	outlet_t *ol = (outlet_t *)req->data;
 
-	debug("%s(status: %s)\n", __FUNCTION__, strerror(status));
+	debug("%s(status: %s)\n", __FUNCTION__, strerror(-status));
 	tcp_on_connected(ol);
 
 	free(req);
@@ -406,7 +406,7 @@ static void uv_on_tcp_recv(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf)
 
 static void uv_on_tcp_send(uv_write_t *req, int status)
 {
-	debug("%s(*%p, status=%d)\n", __FUNCTION__, req, status);
+	debug("%s(*%p, status: %s)\n", __FUNCTION__, req, strerror(-status));
 
 	outlet_t *ol = req->data;
 	if (status == 0)
@@ -704,7 +704,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 			goto error;
 
 		uint32_t timeout = GET_UINT_32(data);
-		uint16_t remote_port = GET_UINT_16(data +4);
+		uint16_t remote_port = htons(GET_UINT_16(data +4));
 
 		inet_sockaddr saddr;
 		if (is_ipv6) {
@@ -821,13 +821,13 @@ static term_t ol_tcp_control(outlet_t *ol,
 		if (!is_ipv6)
 		{
 			saddr.saddr.sa_family = AF_INET;
-			saddr.in.sin_port = port;
+			saddr.in.sin_port = htons(port);
 			saddr.in.sin_addr.s_addr = ntohl(GET_UINT_32(data +2));
 		}
 		else
 		{
 			saddr.saddr.sa_family = AF_INET6;
-			saddr.in6.sin6_port = port;
+			saddr.in6.sin6_port = htons(port);
 			uint32_t *sin6addr = (uint32_t *)saddr.in6.sin6_addr.s6_addr;
 			sin6addr[0] = ntohl(GET_UINT_32(data +2));
 			sin6addr[1] = ntohl(GET_UINT_32(data +2 +4));
