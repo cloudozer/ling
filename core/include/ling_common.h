@@ -40,6 +40,7 @@
 // likely()/unlikely()
 #include "os.h"
 
+#include "lassert.h"
 #include "limits.h"
 #include "sys_stats.h"
 
@@ -108,20 +109,6 @@ extern char my_domain_name[];
 void printk(const char *fmt, ...); // __attribute__ ((format (printf, 1, 2)));
 
 void fatal_error(const char *fmt, ...) __attribute__ ((noreturn)); // __attribute__ ((format (printf, 1, 2)))
-
-void __assert_fail(const char *assertion,
-	const char *file, unsigned int line, const char * function) __attribute__ ((noreturn));
-
-#ifndef SUPPRESS_ASSERTS
-#define assert(x) \
-	do { \
-		if (!(x)) { \
-			__assert_fail(#x, __FILE__, __LINE__, __FUNCTION__); \
-		} \
-	} while (0)
-#else
-#define assert(x)
-#endif
 
 #ifdef LING_DEBUG
 int debug(const char *fmt, ...);
