@@ -205,7 +205,7 @@ void scheduler_runtime_update(void)
 
 uint64_t scheduler_runtime_get(void)
 {
-	return runtime;
+	return runtime + (monotonic_clock() - rt_start);
 }
 
 // For the first born process only
