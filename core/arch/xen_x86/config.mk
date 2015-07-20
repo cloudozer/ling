@@ -1,3 +1,6 @@
+LING_PLATFORM := xen
+LING_OS       := ling
+
 ifeq ($(shell uname),Darwin)
 CC           := x86_64-pc-linux-gcc
 NETTLE_FLAGS += --host=x86_64-pc-linux

@@ -566,7 +566,7 @@ system_monitor(Pid, Opts) ->
 	erlang:display({not_implemented,system_monitor,Pid,Opts}),
 	undefined. %%TODO
 
-system_info(os_type) -> {xen,ling};
+system_info(os_type) -> {?LING_PLATFORM,?LING_OS};
 system_info(os_version) -> {7,7,7};
 system_info(version) -> "6.3";	%% Eshell version?
 

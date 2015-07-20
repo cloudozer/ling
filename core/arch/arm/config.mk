@@ -1,3 +1,6 @@
+LING_PLATFORM  := rpi
+LING_OS        := ling
+
 #HOST_TOOLCHAIN ?= arm-unknown-eabi
 HOST_TOOLCHAIN ?= arm-none-eabi
 CC             := $(HOST_TOOLCHAIN)-gcc
