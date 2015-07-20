@@ -37,7 +37,7 @@
 
 #include "xen/grant_table.h"
 
-#define TUBE_SLOTS	16
+#define TUBE_SLOTS	32
 
 typedef struct tube_slot_t tube_slot_t;
 struct tube_slot_t {
@@ -66,6 +66,8 @@ struct tube_t {
 	tube_shared_t *page;
 	uint8_t *tx_buffers[TUBE_SLOTS];
 	uint8_t *rx_buffers[TUBE_SLOTS];
+	uint8_t *temp_send_buffer;
+	int temp_buffer_used;
 	uint32_t evtchn_tx;
 	uint32_t evtchn_rx;
 	//accepting only

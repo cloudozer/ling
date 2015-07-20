@@ -27,7 +27,6 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 enlist(Tube, StatePath, DataDir) ->
-	true = unlink(Tube),
 	gen_server:call(?SERVER, {enlist,Tube,StatePath,DataDir}).
 
 %% ------------------------------------------------------------------
@@ -37,6 +36,7 @@ enlist(Tube, StatePath, DataDir) ->
 -record(ts, {top,pend =[],acc =[],tubes =[]}).
 
 init(_Args) ->
+	process_flag(trap_exit, true),
 	Me = xenstore:domid(),
 	TipTop = "data/tip",
 	ok = xenstore:mkdir(TipTop),
@@ -80,8 +80,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 do_enlist(Tube, StatePath, DataDir, #ts{tubes =TI} =St) ->
 	ok = xenstore:watch(StatePath),
-	true = port_connect(Tube, self()),	%% temporary
-	true = link(Tube),					%% permanent
+	true = link(Tube),	%% catch exit signal
 	St#ts{tubes =[{Tube,StatePath,DataDir}|TI]}.
 
 watch_event(WatchKey, #ts{top =TipTop, tubes =TI} =St) ->

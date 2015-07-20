@@ -66,7 +66,7 @@ open1(Domid, NockDir, TipDir) ->
 					{ok,Tube} end end.
 
 accept() -> case gen_server:call(tube_server, accept, infinity) of
-				{ok,Tube} =X -> port_connect(Tube, self()), X;
+				{ok,Tube} =X -> true = port_connect(Tube, self()), X;
 					Error -> Error end.
 					
 close(_Tube) -> throw(todo).

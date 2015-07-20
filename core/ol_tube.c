@@ -36,6 +36,7 @@
 #include "ling_common.h"
 
 #include "tube.h"
+#include "string.h"
 #include "getput.h"
 #include "atom_defs.h"
 #include "event.h"
@@ -69,7 +70,12 @@ static uint8_t *ol_tube_get_send_buffer(outlet_t *ol, int len)
 	tube_ring_t *ring = (tb->accepting) ?&tb->page->rx :&tb->page->tx;
 	int tail = ring->tail;
 	if (tube_ring_next(tail) == ring->head)
-		return 0;	// tx ring full
+	{
+		// ring full - use temp_send_buffer
+		tb->temp_buffer_used = 1;
+		return tb->temp_send_buffer;
+	}
+
 	return (tb->accepting) ? tb->rx_buffers[tail] :tb->tx_buffers[tail];
 }
 
@@ -80,7 +86,14 @@ static int ol_tube_send(outlet_t *ol, int len, term_t reply_to)
 	tube_ring_t *ring = (tb->accepting) ?&tb->page->rx :&tb->page->tx;
 	int tail = ring->tail;
 	int tail1 = tube_ring_next(tail);
-	assert(tail1 != ring->head);
+	if (tail1 == ring->head)
+		return 0;	// packet dropped
+	if (tb->temp_buffer_used)
+	{
+		uint8_t *buf = (tb->accepting) ? tb->rx_buffers[tail] :tb->tx_buffers[tail];
+		memcpy(buf, tb->temp_send_buffer, len);
+		tb->temp_buffer_used = 0;
+	}
 	ring->slots[tail].len = len;
 	ring->tail = tail1;
 	if (tb->accepting)

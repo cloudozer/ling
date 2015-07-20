@@ -58,7 +58,8 @@ static tube_t *alloc_tube(int accepting)
 	int num_pages = 1 +				// tube_t
 					1 +				// shared page
 					TUBE_SLOTS +	// tx buffers
-					TUBE_SLOTS;		// rx buffers
+					TUBE_SLOTS +	// rx buffers
+					1;				// temp send buffer
 	memnode_t *node = nalloc_N(num_pages*PAGE_SIZE -sizeof(memnode_t));
 	if (node == 0)
 		return 0;
@@ -68,7 +69,8 @@ static tube_t *alloc_tube(int accepting)
 	tube_shared_t *page = (tube_shared_t *)((uint8_t *)node +PAGE_SIZE);
 	uint8_t *bufs1 = (uint8_t *)node +2*PAGE_SIZE;
 	uint8_t *bufs2 = bufs1 +TUBE_SLOTS*PAGE_SIZE;
-	assert(bufs2 +TUBE_SLOTS*PAGE_SIZE <= (uint8_t *)node->ends);
+	uint8_t *bufs3 = bufs2 +TUBE_SLOTS*PAGE_SIZE;
+	assert(bufs3 +PAGE_SIZE <= (uint8_t *)node->ends);
 
 	tb->node = node;
 	tb->accepting = accepting;
@@ -77,6 +79,7 @@ static tube_t *alloc_tube(int accepting)
 		tb->tx_buffers[i] = bufs1 +i*PAGE_SIZE;
 	for (int i = 0; i < TUBE_SLOTS; i++)
 		tb->rx_buffers[i] = bufs2 +i*PAGE_SIZE;
+	tb->temp_send_buffer = bufs3;
 
 	return tb;
 }
@@ -138,7 +141,7 @@ tube_t *tube_attach(domid_t peer_domid,
 	for (int i = 0; i < TUBE_SLOTS; i++)
 	{
 		struct gnttab_map_grant_ref *m = &tb->bufs_map[i+TUBE_SLOTS];
-		m->ref = page->tx.slots[i].gref;
+		m->ref = page->rx.slots[i].gref;
 		m->dom = peer_domid;
 		m->flags = GNTMAP_host_map;
 		m->host_addr = (uint64_t)tb->rx_buffers[i];
