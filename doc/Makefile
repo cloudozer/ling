@@ -4,7 +4,7 @@
 PDFs := $(patsubst %.md,%.pdf,$(wildcard *.md))
 
 #default: $(PDFs)
-default: xenstore.pdf
+default: tubes.pdf
 
 %.tex: %.md
 	multimarkdown -b -t latex $<
