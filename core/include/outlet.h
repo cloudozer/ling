@@ -187,6 +187,8 @@ struct outlet_t {
 
 	// Tube
 	struct tube_t *tube;
+	int slots_in_progress;
+	int slots_reply_to;
 
 	// Xenstore
 	uint32_t xstore_pend_op;

@@ -31,10 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//
-//
-//
-
 #include "ling_common.h"
 
 #include "ol_inet.h"
@@ -422,4 +418,3 @@ term_t lwip_err_to_term(err_t err)
 	}
 }
 
-//EOF

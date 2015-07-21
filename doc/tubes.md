@@ -75,8 +75,10 @@ following format:
 
 Tubes are packet-oriented. The size of packets may vary from 1 to 4096 bytes.
 
-In the current implementation the delivery of packets is not guaranteed. The sender never blocks and
-if it is too fast the tube will drop packets.
+In the current implementation the sender never blocks and if it is too fast the tube will drop
+packets. It is possible to temper the sender using `tube:can_send()` call that returns the number of
+packets that can be sent without dropping any. The call blocks until at least one such slot is
+available.
 
 The memory footprint of a tube is 256K.
 

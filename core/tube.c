@@ -40,6 +40,9 @@
 #include "grant.h"
 #include "event.h"
 #include "outlet.h"
+#include "scheduler.h"
+#include "atom_defs.h"
+#include "term_util.h"
 
 // origin:		accepting is 0
 // sink:		accepting is 1
@@ -51,6 +54,7 @@
 // evtchn_rx	controls ring_rx
 
 static void tube_int(uint32_t port, void *data);
+static void tube_send_int(uint32_t port, void *data);
 
 static tube_t *alloc_tube(int accepting)
 {
@@ -102,6 +106,7 @@ tube_t *tube_make(domid_t peer_domid, void *data)
 		grants_allow_access(&page->rx.slots[i].gref, peer_domid, virt_to_mfn(tb->rx_buffers[i]));
 
 	event_bind(tb->evtchn_tx, tube_int, data);
+	event_bind(tb->evtchn_rx, tube_send_int, data);
 
 	return tb;
 }
@@ -159,6 +164,7 @@ tube_t *tube_attach(domid_t peer_domid,
 	tb->evtchn_rx = event_bind_interdomain(peer_domid, peer_port_rx);
 
 	event_bind(tb->evtchn_rx, tube_int, data);
+	event_bind(tb->evtchn_tx, tube_send_int, data);
 
 	return tb;
 }
@@ -211,5 +217,63 @@ static void tube_int(uint32_t port, void *data)
 		incoming(&tube->page->tx, tube->tx_buffers, tube->evtchn_tx, ol);
 	else
 		incoming(&tube->page->rx, tube->rx_buffers, tube->evtchn_rx, ol);
+}
+
+static void tube_send_int(uint32_t port, void *data)
+{
+	// peer read packets - slots available for sending
+	outlet_t *ol = (outlet_t *)data;
+	assert(ol != 0);
+	tube_t *tube = ol->tube;
+	assert(tube != 0);
+	if (ol->slots_in_progress)
+	{
+		int avail = (tube->accepting)
+			?available_slots(&tube->page->rx)
+			:available_slots(&tube->page->tx);
+		if (avail > 0)
+		{
+			ol->slots_in_progress = 0;
+			slots_reply(ol->oid, ol->slots_reply_to, tag_int(avail));
+		}
+	}
+}
+
+int available_slots(tube_ring_t *ring)
+{
+	int tail1 = tube_ring_next(ring->tail);
+	int avail = 0;
+	while (tail1 != ring->head)
+	{
+		avail++;
+		tail1 = tube_ring_next(tail1);
+	}
+	return avail;
+}
+
+void slots_reply(term_t oid, term_t reply_to, term_t avail)
+{
+	proc_t *caller = scheduler_lookup(reply_to);
+	if (caller == 0)
+		return;
+
+	// {can_send,Tube,Avail}
+	uint32_t *p = heap_alloc_N(&caller->hp, 1 +3);
+	if (p == 0)
+		goto nomem;
+	heap_set_top(&caller->hp, p +1 +3);
+	p[0] = 3;
+	p[1] = A_CAN_SEND;
+	p[2] = oid;
+	p[3] = avail;
+	term_t msg = tag_tuple(p);
+
+	int x = scheduler_new_local_mail_N(caller, msg);
+	if (x < 0)
+		scheduler_signal_exit_N(caller, oid, err_to_term(x));
+
+	return;
+nomem:
+	scheduler_signal_exit_N(caller, oid, A_NO_MEMORY);
 }
 

@@ -41,8 +41,9 @@
 #include "atom_defs.h"
 #include "event.h"
 
-#define TUBE_REQ_OPEN	1
-#define TUBE_REQ_ATTACH	2
+#define TUBE_REQ_OPEN 		1
+#define TUBE_REQ_ATTACH 	2
+#define TUBE_REQ_SEND_SLOTS 3
 
 #define TUBE_REP_OK		0
 #define TUBE_REP_ERROR	1
@@ -52,13 +53,19 @@ static int ol_tube_send(outlet_t *ol, int len, term_t reply_to);
 static term_t ol_tube_control(outlet_t *ol,
 		uint32_t op, uint8_t *data, int dlen, term_t reply_to, heap_t *hp);
 static void ol_tube_new_data(outlet_t *ol, uint8_t *data, int dlen);
+static int ol_tube_attach(outlet_t *ol);
+static void ol_tube_detach(outlet_t *ol);
 static void ol_tube_destroy_private(outlet_t *ol);
+
+static void avail_send_slots(outlet_t *ol, term_t reply_to);
 
 static outlet_vtab_t ol_tube_vtab = {
 	.get_send_buffer = ol_tube_get_send_buffer,
 	.send = ol_tube_send,
 	.new_data = ol_tube_new_data,
 	.control = ol_tube_control,
+	.attach = ol_tube_attach,
+	.detach = ol_tube_detach,
 	.destroy_private = ol_tube_destroy_private,
 };
 
@@ -110,7 +117,11 @@ static void ol_tube_new_data(outlet_t *ol, uint8_t *data, int dlen)
 
 outlet_t *ol_tube_factory(proc_t *cont_proc, uint32_t bit_opts)
 {
-	return outlet_make_N(&ol_tube_vtab, cont_proc, bit_opts, 0);
+	outlet_t *new_ol = outlet_make_N(&ol_tube_vtab, cont_proc, bit_opts, 0);
+	//new_ol->tube = 0;
+	//new_ol->slots_in_progress = 0;
+	new_ol->slots_reply_to = noval;
+	return new_ol;
 }
 
 static term_t ol_tube_control(outlet_t *ol,
@@ -155,6 +166,13 @@ static term_t ol_tube_control(outlet_t *ol,
 			return A_NO_MEMORY;
 		*reply++ = TUBE_REP_OK;
 	}
+	else if (op == TUBE_REQ_SEND_SLOTS)
+	{
+		if (dlen != 0)
+			goto error;
+		avail_send_slots(ol, reply_to);
+		*reply++ = TUBE_REP_OK;
+	}
 	else
 	{
 error:
@@ -167,10 +185,39 @@ error:
 	return (result == noval) ?A_NO_MEMORY :result;
 }
 
+static int ol_tube_attach(outlet_t *ol)
+{
+	return 0;
+}
+
+static void ol_tube_detach(outlet_t *ol)
+{
+	if (ol->slots_in_progress)
+		slots_reply(ol->oid, ol->slots_reply_to, A_CLOSED);
+}
+
 static void ol_tube_destroy_private(outlet_t *ol)
 {
 	if (ol->tube == 0)
 		return;
 	tube_destroy(ol->tube);
+}
+
+static void avail_send_slots(outlet_t *ol, term_t reply_to)
+{
+	assert(ol != 0);
+	tube_t *tube = ol->tube;
+	assert(tube != 0);
+	int avail = (tube->accepting)
+		?available_slots(&tube->page->rx)
+		:available_slots(&tube->page->tx);
+	assert(ol->slots_in_progress == 0);
+	if (avail == 0)
+	{
+		ol->slots_in_progress = 1;
+		ol->slots_reply_to = reply_to;
+	}
+	else
+		slots_reply(ol->oid, reply_to, tag_int(avail));
 }
 

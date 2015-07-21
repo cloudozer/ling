@@ -293,6 +293,7 @@ watch_event
 unwatch
 transaction_start
 transaction_end
+can_send
 
 #ETS tables
 set

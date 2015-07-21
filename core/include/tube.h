@@ -90,3 +90,7 @@ tube_t *tube_attach(domid_t peer_domid,
 		uint32_t page_ref, uint32_t evtchn_rx, uint32_t evtchn_tx, void *data);
 void tube_destroy(tube_t *tb);
 
+// for reliable sends
+int available_slots(tube_ring_t *ring);
+void slots_reply(term_t oid, term_t reply_to, term_t avail);
+
