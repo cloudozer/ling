@@ -83,6 +83,7 @@ uv_on_send(uv_udp_send_t *udp, int status)
 static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
 {
 	debug("%s(%d)\n", __FUNCTION__, size);
+	buf->len = size;
 	buf->base = malloc(buf->len);
 }
 

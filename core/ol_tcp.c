@@ -148,6 +148,7 @@ static void send_timeout_cb(void *arg);
 
 static int tcp_on_connected(outlet_t *ol);
 static int tcp_on_send(outlet_t *ol);
+static int tcp_on_recv(outlet_t *ol, const void *packet);
 static void tcp_on_error(outlet_t *ol, term_t reason);
 
 static int recv_bake_packets(outlet_t *ol, proc_t *cont_proc);
@@ -161,6 +162,13 @@ void ol_tcp_acc_promote(outlet_t *ol, struct tcp_pcb *old_pcb, int backlog);
 
 
 #if LING_WITH_LWIP
+
+#define RECV_PKT_T                struct pbuf
+#define RECV_PKT_FREE(data)       do pbuf_free(data); while (0)
+#define RECV_PKT_LEN(data)        ((data)->tot_len)
+#define RECV_PKT_COPY(ptr, data, len)  \
+	do pbuf_copy_partial((data), (ptr), (len), 0); while (0)
+#define RECV_ACKNOWLEDGE(tcp, len) do tcp_recved((len), (tcp)); while(0)
 
 static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err);
 static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len);
@@ -224,6 +232,58 @@ static inline bool
 is_outlet_closed(outlet_t *ol)
 {
 	return ol->tcp->state == CLOSED;
+}
+
+static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err)
+{
+	phase_expected(PHASE_EVENTS);
+
+	outlet_t *ol = (outlet_t *)arg;
+	if (ol == 0)
+		return ERR_OK;		// outlet has gone already
+	//debug("---> recv_cb(arg 0x%pp, tcp 0x%pp, %d, err %d)\n",
+	//				arg, tcp, (data == 0) ?0: data->tot_len, err);
+	assert(ol->tcp == tcp);
+
+	return tcp_on_recv(ol, data);
+}
+
+static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
+{
+	//debug("sent_cb: len %d\n", len);
+	outlet_t *ol = (outlet_t *)arg;
+	if (!ol)
+		return ERR_OK; // outlet has gone already
+
+	assert(ol->tcp == tcp);
+
+	ol->send_buf_left -= len;
+	ol->send_buf_ack += len;
+	assert(ol->send_buf_ack <= ol->send_buf_off);
+	assert(ol->send_buf_left >= len);
+
+	return tcp_on_send(ol);
+}
+
+static void lwip_error_cb(void *arg, err_t err)
+{
+	phase_expected(PHASE_EVENTS);
+
+	//debug("**** error_cb(arg 0x%pp, err %d)\n", arg, err);
+	outlet_t *ol = (outlet_t *)arg;
+	if (ol == 0)
+		return;		// outlet already gone
+
+	// from lwIP documentation:
+	//
+	// The error callback function does not get the pcb passed to it as a
+	// parameter since the pcb may already have been deallocated.
+	//
+	ol->tcp = 0;
+
+	// Do not throw an exception if there is an outstanding request - return an
+	// error instead.
+	tcp_on_error(ol, lwip_err_to_term(err));
 }
 
 static void
@@ -357,9 +417,33 @@ static int tcp_send_buffer(outlet_t *ol)
 	// Otherwise, the data are buffered until the next tcp_tmr timeout
 	return tcp_output(ol->tcp);
 }
+
+static void tcp_close_connection(outlet_t *ol)
+{
+	if (ol->tcp == NULL)
+		return;
+
+	// Sever all outstanding relationships with processes and subsystems
+	// - a lwIP PCB
+	// - a process waiting for an empty send queue
+	// - a process waits until data is sent
+	// - a process waiting of a connection or data (optionally, with timeout)
+
+	tcp_arg(ol->tcp, 0);	// quench last lwIP callback calls
+	tcp_close(ol->tcp);
+	ol->tcp = 0;
+}
+
 #endif //LING_WITH_LWIP
 
 #if LING_WITH_LIBUV
+
+#define RECV_PKT_T                uv_buf_t
+#define RECV_PKT_FREE(data)       do free((data)->base); while (0)
+#define RECV_PKT_LEN(data)        ((data)->len)
+#define RECV_ACKNOWLEDGE(tcp, len)
+#define RECV_PKT_COPY(ptr, data, len)  \
+	do memcpy((ptr), (data)->base, (len)); while (0)
 
 #define tcp_sndqueuelen(tcp)    (((outlet_t*)tcp->data)->send_buf_left)
 
@@ -387,22 +471,16 @@ static inline bool is_outlet_closed(outlet_t *ol)
 	return !uv_is_active((uv_handle_t *)ol->tcp);
 }
 
-static void uv_on_tcp_connect(uv_connect_t *req, int status)
-{
-	outlet_t *ol = (outlet_t *)req->data;
-
-	debug("%s(status: %s)\n", __FUNCTION__, strerror(-status));
-	tcp_on_connected(ol);
-
-	free(req);
-}
-
-#if 0
 static void uv_on_tcp_recv(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf)
 {
 	debug("%s(*%p, nread=%d, dlen=%d)\n", __FUNCTION__, tcp, nread, buf->len);
+
+	outlet_t *ol = (outlet_t *)tcp->data;
+
+	uv_buf_t rcvbuf = { .base = buf->base, .len = nread };
+	tcp_on_recv(ol, (nread >= 0 ? &rcvbuf : NULL));
+	free(buf->base);
 }
-#endif
 
 static void uv_on_tcp_send(uv_write_t *req, int status)
 {
@@ -439,6 +517,41 @@ static void uv_on_tcp_send_timeout(uv_timer_t *timer)
 
 	send_timeout_cb(timer->data);
 	timer->data = NULL;
+}
+
+static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
+{
+	debug("%s(%d)\n", __FUNCTION__, size);
+	buf->len = size;
+	buf->base = malloc(buf->len);
+}
+
+static void uv_on_tcp_connect(uv_connect_t *req, int status)
+{
+	outlet_t *ol = (outlet_t *)req->data;
+	assert(ol);
+	assert(ol->tcp);
+	int ret;
+
+	debug("%s(status: %s)\n", __FUNCTION__, strerror(-status));
+	if (status)
+	{
+		tcp_on_error(ol, A_LWIP_CONN);
+		return;
+	}
+	tcp_on_connected(ol);
+
+	/* start recv */
+	ret = uv_read_start((uv_stream_t *)ol->tcp, on_alloc, uv_on_tcp_recv);
+	if (ret) debug("%s: uv_read_start failed(%s)\n", __FUNCTION__, strerror(-ret));
+
+	free(req);
+}
+
+static void uv_on_tcp_closed(uv_handle_t *tcp)
+{
+	debug("%s(*%p)\n", __FUNCTION__, tcp);
+	free(tcp);
 }
 
 static inline void
@@ -569,6 +682,12 @@ static int tcp_send_buffer(outlet_t *ol)
 
 	return uv_write(req, (uv_stream_t *)ol->tcp, &buf, 1, uv_on_tcp_send);
 }
+
+static void tcp_close_connection(outlet_t *ol)
+{
+	uv_close((uv_handle_t *)ol->tcp, uv_on_tcp_closed);
+}
+
 #endif //LING_WITH_LIBUV
 
 static uint8_t *ol_tcp_get_send_buffer(outlet_t *ol, int len)
@@ -908,10 +1027,15 @@ static term_t ol_tcp_control(outlet_t *ol,
 	uint32_t msecs = GET_UINT_32(data);
 	uint32_t recv_num = GET_UINT_32(data +4);
 
-	if (ol->active != INET_PASSIVE)
+	if (ol->active != INET_PASSIVE) {
+		debug("%s(RECV): ol->active is not INET_PASSIVE\n", __FUNCTION__);
 		goto error;
-	if (ol->packet == TCP_PB_RAW && recv_num > ol->recv_bufsize)
+	}
+	if (ol->packet == TCP_PB_RAW && recv_num > ol->recv_bufsize) {
+		debug("%s(RECV): ol->packet, recv_num=%d, ol->recv_bufsize=%d\n", __FUNCTION__,
+			  recv_num, ol->recv_bufsize);
 		goto error;
+	}
 	
 	if (ol->peer_close_detected)
 		inet_async_error(ol->oid, reply_to, ASYNC_REF, A_CLOSED);
@@ -925,8 +1049,10 @@ static term_t ol_tcp_control(outlet_t *ol,
 		// Enough data may have already been buffered
 		proc_t *cont_proc = scheduler_lookup(reply_to);
 		assert(cont_proc != 0);
-		if (recv_bake_packets(ol, cont_proc) < 0)
+		if (recv_bake_packets(ol, cont_proc) < 0) {
+			debug("%s(RECV): recv_bake_packets() failed\n");
 			goto error;
+		}
 	}
 
 	*reply++ = INET_REP_OK;
@@ -984,28 +1110,13 @@ static void ol_tcp_detach(outlet_t *ol)
 {
 	debug("%s(*%p)\n", __FUNCTION__, ol);
 	assert(ol->vtab == &ol_tcp_vtab);
-#if LING_WITH_LWIP
-	//
-	// Sever all outstanding relationships with processes and subsystems
-	//
-	// - a lwIP PCB
-	// - a process waiting for an empty send queue
-	// - a process waits until data is sent
-	// - a process waiting of a connection or data (optionally, with timeout)
-	//
-	
-	if (ol->tcp != 0)
-	{
-		tcp_arg(ol->tcp, 0);	// quench last lwIP callback calls
-		tcp_close(ol->tcp);
-		ol->tcp = 0;
-	}
 
 	//
 	// Take care as the oultet may be closed by
 	// inet_reply_error/inet_async_error() if the memory is tight.
 	//
-	
+	tcp_close_connection(ol);
+
 	//
 	// Outstanding empty queue subscriptions ignored - prim_inet:close() exits
 	// after a timeout.
@@ -1033,11 +1144,12 @@ static void ol_tcp_detach(outlet_t *ol)
 
 	if (cr_reply_to != noval)
 		inet_async_error(saved_oid, cr_reply_to, ASYNC_REF, A_CLOSED);
-#endif //LING_WITH_LWIP
 }
 
 static void ol_tcp_destroy_private(outlet_t *ol)
 {
+	assert(ol->vtab == &ol_tcp_vtab);
+
 	nfree(ol->send_buf_node);
 	nfree(ol->recv_buf_node);
 }
@@ -1130,132 +1242,6 @@ static int tcp_on_connected(outlet_t *ol)
 	return 0;
 }
 
-#if LING_WITH_LWIP
-static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err)
-{
-	phase_expected(PHASE_EVENTS);
-
-	outlet_t *ol = (outlet_t *)arg;
-	if (ol == 0)
-		return ERR_OK;		// outlet has gone already
-	//debug("---> recv_cb(arg 0x%pp, tcp 0x%pp, %d, err %d)\n",
-	//				arg, tcp, (data == 0) ?0: data->tot_len, err);
-	assert(ol->tcp == tcp);
-
-	term_t pid = (ol->cr_in_progress) ?ol->cr_reply_to :ol->owner;
-	proc_t *cont_proc = scheduler_lookup(pid);
-	if (cont_proc == 0)
-	{
-		//debug("recv_cb: nowhere to send - discard\n");
-		if (data != 0)
-			pbuf_free(data);
-		return ERR_OK;
-	}
-
-	if (data == 0)
-	{
-		if (ol->active != INET_PASSIVE)
-		{
-			// deliver {tcp_closed,Sock}
-			uint32_t *p = heap_alloc_N(&cont_proc->hp, 1 +2);
-			if (p == 0)
-				scheduler_signal_exit_N(cont_proc, ol->oid, A_NO_MEMORY);
-			else
-			{
-				p[0] = 2;
-				p[1] = A_TCP_CLOSED;
-				p[2] = ol->oid;
-				heap_set_top(&cont_proc->hp, p +1 +2);
-				int x = scheduler_new_local_mail_N(cont_proc, tag_tuple(p));
-				if (x < 0)
-					scheduler_signal_exit_N(cont_proc, ol->oid, err_to_term(x));
-			}
-
-			if (ol->active == INET_ONCE)
-				ol->active = INET_PASSIVE;
-		}
-		else if (ol->cr_in_progress)
-		{
-			cr_cancel_deferred(ol);
-			inet_async2(ol->oid, ol->cr_reply_to, ASYNC_REF, A_ERROR, A_CLOSED);
-		}
-
-		// No more data will be received, otherwise it is a normal connection.
-		// No need to do tcp_close() or anything.
-		ol->peer_close_detected = 1;
-	}
-	else
-	{
-		uint16_t len = data->tot_len;
-		if (len > ol->recv_bufsize -ol->recv_buf_off)
-		{
-			debug("recv_cb: len %d recv_bufsize %d recv_buf_off %d\n",
-									len, ol->recv_bufsize, ol->recv_buf_off);
-			debug("recv_cb: received data do not fit recv_buffer - truncated\n");
-			len = ol->recv_bufsize -ol->recv_buf_off;	// truncation
-		}
-
-		//debug("---> recv_cb: recv_bufsize %d recv_buf_off %d\n\t\ttot_len %d len %d\n", 
-		//		ol->recv_bufsize, ol->recv_buf_off, data->tot_len, len);
-		pbuf_copy_partial(data, ol->recv_buffer +ol->recv_buf_off, len, 0);
-		ol->recv_buf_off += len;
-
-		// A more natural place to acknowledge the data when complete packets
-		// are baked. No.
-		tcp_recved(ol->tcp, len);
-
-		pbuf_free(data);
-		int x = recv_bake_packets(ol, cont_proc);
-		if (x < 0)
-			scheduler_signal_exit_N(cont_proc, ol->oid, err_to_term(x));
-	}
-
-	return ERR_OK;
-}
-
-
-static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
-{
-	//debug("sent_cb: len %d\n", len);
-	outlet_t *ol = (outlet_t *)arg;
-	if (!ol)
-		return ERR_OK; // outlet has gone already
-
-	assert(ol->tcp == tcp);
-
-	ol->send_buf_left -= len;
-	ol->send_buf_ack += len;
-	assert(ol->send_buf_ack <= ol->send_buf_off);
-	assert(ol->send_buf_left >= len);
-
-	return tcp_on_send(ol);
-}
-
-static void lwip_error_cb(void *arg, err_t err)
-{
-	phase_expected(PHASE_EVENTS);
-
-	//debug("**** error_cb(arg 0x%pp, err %d)\n", arg, err);
-	outlet_t *ol = (outlet_t *)arg;
-	if (ol == 0)
-		return;		// outlet already gone
-
-	// from lwIP documentation:
-	//
-	// The error callback function does not get the pcb passed to it as a
-	// parameter since the pcb may already have been deallocated.
-	//
-	ol->tcp = 0;
-
-	// Do not throw an exception if there is an outstanding request - return an
-	// error instead.
-	//
-	term_t reason = lwip_err_to_term(err);
-
-	tcp_on_error(ol, reason);
-}
-#endif //LING_WITH_LWIP
-
 static int tcp_on_send(outlet_t *ol)
 {
 	phase_expected2(PHASE_EVENTS, PHASE_NEXT);
@@ -1322,6 +1308,81 @@ static int tcp_on_send(outlet_t *ol)
 					scheduler_signal_exit_N(caller, saved_oid, err_to_term(x));
 			}
 		}
+	}
+
+	return 0;
+}
+
+static int tcp_on_recv(outlet_t *ol, const void *packet)
+{
+	const RECV_PKT_T *data = (const RECV_PKT_T *)packet;
+	debug("%s(len=%d)\n", __FUNCTION__, RECV_PKT_LEN(data));
+
+	term_t pid = (ol->cr_in_progress) ?ol->cr_reply_to :ol->owner;
+	proc_t *cont_proc = scheduler_lookup(pid);
+	if (cont_proc == 0)
+	{
+		debug("recv_cb: nowhere to send - discard\n");
+		if (data != 0)
+			RECV_PKT_FREE(data);
+		return 0;
+	}
+
+	if (data == 0)
+	{
+		if (ol->active != INET_PASSIVE)
+		{
+			// deliver {tcp_closed,Sock}
+			uint32_t *p = heap_alloc_N(&cont_proc->hp, 1 +2);
+			if (p == 0)
+				scheduler_signal_exit_N(cont_proc, ol->oid, A_NO_MEMORY);
+			else
+			{
+				p[0] = 2;
+				p[1] = A_TCP_CLOSED;
+				p[2] = ol->oid;
+				heap_set_top(&cont_proc->hp, p +1 +2);
+				int x = scheduler_new_local_mail_N(cont_proc, tag_tuple(p));
+				if (x < 0)
+					scheduler_signal_exit_N(cont_proc, ol->oid, err_to_term(x));
+			}
+
+			if (ol->active == INET_ONCE)
+				ol->active = INET_PASSIVE;
+		}
+		else if (ol->cr_in_progress)
+		{
+			cr_cancel_deferred(ol);
+			inet_async2(ol->oid, ol->cr_reply_to, ASYNC_REF, A_ERROR, A_CLOSED);
+		}
+
+		// No more data will be received, otherwise it is a normal connection.
+		// No need to do tcp_close() or anything.
+		ol->peer_close_detected = 1;
+	}
+	else
+	{
+		uint16_t len = RECV_PKT_LEN(data);
+		if (len > ol->recv_bufsize -ol->recv_buf_off)
+		{
+			debug("recv_cb: len %d recv_bufsize %d recv_buf_off %d\n",
+									len, ol->recv_bufsize, ol->recv_buf_off);
+			debug("recv_cb: received data do not fit recv_buffer - truncated\n");
+			len = ol->recv_bufsize -ol->recv_buf_off;	// truncation
+		}
+
+		debug("---> recv_cb: recv_bufsize=%d, recv_buf_off=%d\n\t\ttot_len=%d, len=%d\n", 
+				ol->recv_bufsize, ol->recv_buf_off, RECV_PKT_LEN(data), len);
+		RECV_PKT_COPY(ol->recv_buffer + ol->recv_buf_off, data, len);
+		ol->recv_buf_off += len;
+
+		// A more natural place to acknowledge the data when complete packets are baked. No.
+		RECV_ACKNOWLEDGE(ol->tcp, len);
+
+		RECV_PKT_FREE(data);
+		int x = recv_bake_packets(ol, cont_proc);
+		if (x < 0)
+			scheduler_signal_exit_N(cont_proc, ol->oid, err_to_term(x));
 	}
 
 	return 0;
