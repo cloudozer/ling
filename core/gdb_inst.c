@@ -153,7 +153,7 @@ void *malloc(size_t size)
 
 void free(void *ptr)
 {
-	debug("GDB free(%pp)\n", ptr);
+	debug("GDB free(*%p)\n", ptr);
 	if (ptr == 0)
 		return;
 	memnode_t *node = (memnode_t *)(ptr - sizeof(memnode_t));

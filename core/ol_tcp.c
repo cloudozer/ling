@@ -36,7 +36,6 @@
 
 #include "ling_common.h"
 
-#if 1
 #ifdef LING_WITH_LWIP
 
 #include "lwip/def.h"
@@ -51,7 +50,6 @@
 
 #if LING_WITH_LIBUV
 # include <uv.h>
-const char * strerror(int);
 #endif //LING_WITH_LIBUV
 
 #include "getput.h"
@@ -156,9 +154,7 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen);
 static int ol_tcp_get_opts(outlet_t *ol,
 					uint8_t *data, int dlen, char *buf, int sz);
 
-#if ERR_NOTIMPL
-void ol_tcp_acc_promote(outlet_t *ol, struct tcp_pcb *old_pcb, int backlog);
-#endif
+void ol_tcp_acc_promote(outlet_t *ol, int backlog);
 
 
 #if LING_WITH_LWIP
@@ -174,48 +170,9 @@ static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err
 static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len);
 static void lwip_error_cb(void *arg, err_t err);
 
-void ol_tcp_animate(outlet_t *new_ol, struct tcp_pcb *pcb, struct pbuf *ante)
-{
-	//
-	// lwIP tries hard to allocate a new PCB. If there is not enough memory it
-	// first kills TIME-WAIT connections and then active connections. The
-	// error_cb callback is used along the way. The callback may sent an exit
-	// signal to an outlet and the chain of exit signal may reach the current
-	// outlet. To avoid this the priority of all PCBs is set to TCP_PRIO_MAX+1.
-	//
-
-	tcp_setprio(pcb, TCP_PRIO_MAX +1);
-
-	tcp_arg(pcb, new_ol);	// callback arg
-	tcp_recv(pcb, lwip_recv_cb);
-	tcp_sent(pcb, lwip_sent_cb);
-	tcp_err(pcb, lwip_error_cb);
-
-	new_ol->tcp = pcb;
-	if (ante != 0)	// data receive while enqueued
-	{
-		uint16_t len = ante->tot_len;
-		if (len > new_ol->recv_bufsize)
-		{
-			debug("ol_tcp_animate: tot_len=%d, recv_bufsize=%d, truncating\n",
-				  ante->tot_len, new_ol->recv_bufsize);
-			len = new_ol->recv_bufsize;	
-		}
-		pbuf_copy_partial(ante, new_ol->recv_buffer, len, 0);
-		new_ol->recv_buf_off = len;
-		pbuf_free(ante);
-	}
-}
-
-static int tcp_set_nodelay(outlet_t *ol, bool nodelay)
-{
-	if (nodelay)
-		tcp_nagle_disable(ol->tcp);
-	else
-		tcp_nagle_enable(ol->tcp);
-	return 0;
-}
-
+/*
+ *    LWIP connection state
+ */
 static inline bool
 is_outlet_listening(outlet_t *ol)
 {
@@ -232,6 +189,62 @@ static inline bool
 is_outlet_closed(outlet_t *ol)
 {
 	return ol->tcp->state == CLOSED;
+}
+
+/*
+ *    LWIP connection properties
+ */
+int ol_tcp_set_nodelay(outlet_t *ol, bool nodelay)
+{
+	if (nodelay)
+		tcp_nagle_disable(ol->tcp);
+	else
+		tcp_nagle_enable(ol->tcp);
+	return 0;
+}
+
+/*
+ *    LWIP timeouts
+ */
+static void
+tcp_set_recv_timeout(outlet_t *ol, uint32_t millis)
+{
+	debug("%s(millis=%d)\n", __FUNCTION__, millis);
+	sys_timeout_adj(millis, cr_timeout_cb, ol);
+}
+
+static void
+tcp_set_send_timeout(outlet_t *ol, uint32_t millis)
+{
+	debug("%s(millis=%d)\n", __FUNCTION__, millis);
+	sys_timeout_adj(millis, send_timeout_cb, ol);
+}
+
+static void
+tcp_recv_untimeout(outlet_t *ol)
+{
+	debug("%s()\n", __FUNCTION__);
+	sys_untimeout(cr_timeout_cb, ol);
+}
+
+static void
+tcp_send_untimeout(outlet_t *ol)
+{
+	debug("%s()\n", __FUNCTION__);
+	sys_untimeout(send_timeout_cb, ol);
+}
+
+
+/*
+ *    LWIP callbacks
+ */
+
+static err_t connected_cb(void *arg, struct tcp_pcb *tcp, err_t err)
+{
+	assert(err == ERR_OK);	// argument kept for backward compatibility?
+	outlet_t *ol = (outlet_t *)arg;
+	tcp_on_connected(ol);
+	return ERR_OK;
 }
 
 static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err)
@@ -286,40 +299,43 @@ static void lwip_error_cb(void *arg, err_t err)
 	tcp_on_error(ol, lwip_err_to_term(err));
 }
 
-static void
-tcp_set_recv_timeout(outlet_t *ol, uint32_t millis)
-{
-	debug("%s(millis=%d)\n", __FUNCTION__, millis);
-	sys_timeout_adj(millis, cr_timeout_cb, ol);
-}
 
-static void
-tcp_set_send_timeout(outlet_t *ol, uint32_t millis)
-{
-	debug("%s(millis=%d)\n", __FUNCTION__, millis);
-	sys_timeout_adj(millis, send_timeout_cb, ol);
-}
+/*
+ *    LWIP-specific actions
+ */
 
-static void
-tcp_recv_untimeout(outlet_t *ol)
+void ol_tcp_animate(outlet_t *new_ol, acc_pend_t *pend)
 {
-	debug("%s()\n", __FUNCTION__);
-	sys_untimeout(cr_timeout_cb, ol);
-}
+	// lwIP tries hard to allocate a new PCB. If there is not enough memory it
+	// first kills TIME-WAIT connections and then active connections. The
+	// error_cb callback is used along the way. The callback may sent an exit
+	// signal to an outlet and the chain of exit signal may reach the current
+	// outlet. To avoid this the priority of all PCBs is set to TCP_PRIO_MAX+1.
 
-static void
-tcp_send_untimeout(outlet_t *ol)
-{
-	debug("%s()\n", __FUNCTION__);
-	sys_untimeout(send_timeout_cb, ol);
-}
+	struct tcp_pcb *pcb = pend->pcb;
+	struct pbuf *ante = pend->ante;
 
-static err_t connected_cb(void *arg, struct tcp_pcb *tcp, err_t err)
-{
-	assert(err == ERR_OK);	// argument kept for backward compatibility?
-	outlet_t *ol = (outlet_t *)arg;
-	tcp_on_connected(ol);
-	return ERR_OK;
+	tcp_setprio(pcb, TCP_PRIO_MAX +1);
+
+	tcp_arg(pcb, new_ol);	// callback arg
+	tcp_recv(pcb, lwip_recv_cb);
+	tcp_sent(pcb, lwip_sent_cb);
+	tcp_err(pcb, lwip_error_cb);
+
+	new_ol->tcp = pcb;
+	if (ante != 0)	// data receive while enqueued
+	{
+		uint16_t len = ante->tot_len;
+		if (len > new_ol->recv_bufsize)
+		{
+			debug("%s: tot_len=%d, recv_bufsize=%d, truncating\n",
+				  __FUNCTION__, ante->tot_len, new_ol->recv_bufsize);
+			len = new_ol->recv_bufsize;	
+		}
+		pbuf_copy_partial(ante, new_ol->recv_buffer, len, 0);
+		new_ol->recv_buf_off = len;
+		pbuf_free(ante);
+	}
 }
 
 static int tcp_control_open(outlet_t *ol, int family)
@@ -347,7 +363,7 @@ static int tcp_control_open(outlet_t *ol, int family)
 
 /*
  *   returns the bound local port on success;
- *            negative error on failure; 
+ *            negative error on failure;
  */
 static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
 {
@@ -418,7 +434,7 @@ static int tcp_send_buffer(outlet_t *ol)
 	return tcp_output(ol->tcp);
 }
 
-static void tcp_close_connection(outlet_t *ol)
+void ol_tcp_close(outlet_t *ol)
 {
 	if (ol->tcp == NULL)
 		return;
@@ -428,8 +444,15 @@ static void tcp_close_connection(outlet_t *ol)
 	// - a process waiting for an empty send queue
 	// - a process waits until data is sent
 	// - a process waiting of a connection or data (optionally, with timeout)
-
 	tcp_arg(ol->tcp, 0);	// quench last lwIP callback calls
+
+	// from lwIP documentation:
+	//
+	// Closes the connection. The function may return ERR_MEM if no memory was
+	// available for closing the connection. If so, the application should wait
+	// and try again either by using the acknowledgment callback or the polling
+	// functionality. If the close succeeds, the function returns ERR_OK.
+	//
 	tcp_close(ol->tcp);
 	ol->tcp = 0;
 }
@@ -438,18 +461,15 @@ static void tcp_close_connection(outlet_t *ol)
 
 #if LING_WITH_LIBUV
 
-#define RECV_PKT_T                uv_buf_t
-#define RECV_PKT_FREE(data)       do free((data)->base); while (0)
-#define RECV_PKT_LEN(data)        ((data)->len)
-#define RECV_ACKNOWLEDGE(tcp, len)
-#define RECV_PKT_COPY(ptr, data, len)  \
-	do memcpy((ptr), (data)->base, (len)); while (0)
-
 #define tcp_sndqueuelen(tcp)    (((outlet_t*)tcp->data)->send_buf_left)
 
-static int tcp_set_nodelay(outlet_t *ol, bool nodelay)
+/*
+ *    libuv connection state
+ */
+
+static inline bool is_outlet_closed(outlet_t *ol)
 {
-	return uv_tcp_nodelay(ol->tcp, nodelay);
+	return !uv_is_active((uv_handle_t *)ol->tcp);
 }
 
 #if 0
@@ -466,10 +486,19 @@ static inline bool is_outlet_connected(outlet_t *ol)
 }
 #endif
 
-static inline bool is_outlet_closed(outlet_t *ol)
+/*
+ *    libuv connection properties
+ */
+int ol_tcp_set_nodelay(outlet_t *ol, bool nodelay)
 {
-	return !uv_is_active((uv_handle_t *)ol->tcp);
+	ol->nodelay = nodelay;
+	return uv_tcp_nodelay(ol->tcp, nodelay);
 }
+
+
+/*
+ *    libuv callbacks
+ */
 
 static void uv_on_tcp_recv(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf)
 {
@@ -484,7 +513,7 @@ static void uv_on_tcp_recv(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf)
 
 static void uv_on_tcp_send(uv_write_t *req, int status)
 {
-	debug("%s(*%p, status: %s)\n", __FUNCTION__, req, strerror(-status));
+	debug("%s(*%p, status: %s)\n", __FUNCTION__, req, uv_strerror(status));
 
 	outlet_t *ol = req->data;
 	if (status == 0)
@@ -519,13 +548,6 @@ static void uv_on_tcp_send_timeout(uv_timer_t *timer)
 	timer->data = NULL;
 }
 
-static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
-{
-	debug("%s(%d)\n", __FUNCTION__, size);
-	buf->len = size;
-	buf->base = malloc(buf->len);
-}
-
 static void uv_on_tcp_connect(uv_connect_t *req, int status)
 {
 	outlet_t *ol = (outlet_t *)req->data;
@@ -533,7 +555,7 @@ static void uv_on_tcp_connect(uv_connect_t *req, int status)
 	assert(ol->tcp);
 	int ret;
 
-	debug("%s(status: %s)\n", __FUNCTION__, strerror(-status));
+	debug("%s(status: %s)\n", __FUNCTION__, uv_strerror(status));
 	if (status)
 	{
 		tcp_on_error(ol, A_LWIP_CONN);
@@ -543,7 +565,7 @@ static void uv_on_tcp_connect(uv_connect_t *req, int status)
 
 	/* start recv */
 	ret = uv_read_start((uv_stream_t *)ol->tcp, on_alloc, uv_on_tcp_recv);
-	if (ret) debug("%s: uv_read_start failed(%s)\n", __FUNCTION__, strerror(-ret));
+	if (ret) debug("%s: uv_read_start failed(%s)\n", __FUNCTION__, uv_strerror(ret));
 
 	free(req);
 }
@@ -553,6 +575,10 @@ static void uv_on_tcp_closed(uv_handle_t *tcp)
 	debug("%s(*%p)\n", __FUNCTION__, tcp);
 	free(tcp);
 }
+
+/*
+ *    libuv timers and timeouts
+ */
 
 static inline void
 set_uv_timeout(outlet_t *ol, uv_timer_t *timer, uv_timer_cb cb, uint32_t timeout)
@@ -596,6 +622,37 @@ static void tcp_send_untimeout(outlet_t *ol)
 	unset_uv_timeout(ol, &ol->send_timer);
 }
 
+
+/*
+ *    libuv-specific actions
+ */
+
+void ol_tcp_animate(outlet_t *new_ol, acc_pend_t *pend)
+{
+	assert(new_ol);
+	assert(new_ol->tcp == 0);
+
+	pend->tcp->data = new_ol;
+
+	new_ol->tcp = pend->tcp;
+
+	void *data = pend->ante.base;
+	if (data)	// data received while enqueued
+	{
+		size_t len = pend->ante.len;
+		if (len > new_ol->recv_bufsize)
+		{
+			debug("%s: recv_bufsize=%d and len=%d, truncating\n", __FUNCTION__,
+			      new_ol->recv_bufsize, len);
+			len = new_ol->recv_bufsize;
+		}
+		memcpy(new_ol->recv_buffer, data, len);
+		free(data);
+
+		new_ol->recv_buf_off = len;
+	}
+}
+
 static int tcp_control_open(outlet_t *ol, int family)
 {
 	int ret;
@@ -635,7 +692,7 @@ static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
 	};
 	debug("%s(addr=%s : %d)\n", __FUNCTION__, showbuf, sockaddr_port(&saddr->saddr));
 #endif
- 
+
 	/* get local port */
 	inet_sockaddr srcaddr = { .saddr.sa_family = AF_INET };
 	int slen = 0;
@@ -663,7 +720,7 @@ static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
 	};
 	debug("%s(addr=%s : %d)\n", __FUNCTION__, showbuf, sockaddr_port(&saddr->saddr));
 #endif
- 
+
 	ret = uv_tcp_connect(conn_req, ol->tcp, &saddr->saddr, uv_on_tcp_connect);
 	if (ret) {
 		free(conn_req);
@@ -683,7 +740,7 @@ static int tcp_send_buffer(outlet_t *ol)
 	return uv_write(req, (uv_stream_t *)ol->tcp, &buf, 1, uv_on_tcp_send);
 }
 
-static void tcp_close_connection(outlet_t *ol)
+void ol_tcp_close(outlet_t *ol)
 {
 	uv_close((uv_handle_t *)ol->tcp, uv_on_tcp_closed);
 }
@@ -966,16 +1023,12 @@ static term_t ol_tcp_control(outlet_t *ol,
 	break;
 
 	case INET_REQ_LISTEN:
-#if ERR_NOTIMPL
 	{
 		assert(ol->recv_buf_node == 0);	// or use destroy_private()
 		int backlog = GET_UINT_16(data);
-		ol_tcp_acc_promote(ol, ol->tcp, backlog);
+		ol_tcp_acc_promote(ol, backlog);
 		*reply++ = INET_REP_OK;
 	}
-#else //!LING_WITH_LWIP
-	REPLY_INET_ERROR("enotimpl");
-#endif
 	break;
 
 	case INET_REQ_SETOPTS:
@@ -1002,10 +1055,14 @@ static term_t ol_tcp_control(outlet_t *ol,
 	break;
 
 	case INET_REQ_SUBSCRIBE:
-	if (dlen != 1 && data[0] != INET_SUBS_EMPTY_OUT_Q)
+	if (dlen != 1 && data[0] != INET_SUBS_EMPTY_OUT_Q) {
+		debug("%s(SUBSCRIBE): error (1)\n", __FUNCTION__);
 		goto error;
-	if (ol->empty_queue_in_progress)
+	}
+	if (ol->empty_queue_in_progress) {
+		debug("%s(SUBSCRIBE): error (2)\n", __FUNCTION__);
 		goto error;		//TODO: allow multiple subscriptions
+	}
 
 	int qlen = tcp_sndqueuelen(ol->tcp);
 	if (qlen > 0)
@@ -1115,7 +1172,7 @@ static void ol_tcp_detach(outlet_t *ol)
 	// Take care as the oultet may be closed by
 	// inet_reply_error/inet_async_error() if the memory is tight.
 	//
-	tcp_close_connection(ol);
+	ol_tcp_close(ol);
 
 	//
 	// Outstanding empty queue subscriptions ignored - prim_inet:close() exits
@@ -1371,7 +1428,7 @@ static int tcp_on_recv(outlet_t *ol, const void *packet)
 			len = ol->recv_bufsize -ol->recv_buf_off;	// truncation
 		}
 
-		debug("---> recv_cb: recv_bufsize=%d, recv_buf_off=%d\n\t\ttot_len=%d, len=%d\n", 
+		debug("---> recv_cb: recv_bufsize=%d, recv_buf_off=%d\n\t\ttot_len=%d, len=%d\n",
 				ol->recv_bufsize, ol->recv_buf_off, RECV_PKT_LEN(data), len);
 		RECV_PKT_COPY(ol->recv_buffer + ol->recv_buf_off, data, len);
 		ol->recv_buf_off += len;
@@ -1497,13 +1554,13 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 	while (left > 0)
 	{
 		int opt = *p++;
-		debug("%s(ol=*%p, opt=%d)\n", __FUNCTION__, ol, opt);
 		left--;
 		if (left < 4)
 			return -BAD_ARG;
 		uint32_t val = GET_UINT_32(p);
 		p += 4;
 		left -= 4;
+		debug("%s(ol=*%p, opt=%d, val=%d)\n", __FUNCTION__, ol, opt, val);
 
 		switch (opt)
 		{
@@ -1542,14 +1599,14 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 			//printk("tcp_set_opts: unsupported option SO_PRIORITY ignored\n");
 			break;
 
-#if LING_WITH_LWIP
 		case INET_OPT_TOS:
+#if LING_WITH_LWIP
 			if (ol->tcp)
 				ol->tcp->tos = (uint8_t)val;
 			else
+#endif
 				printk("tcp_set_opts: INET_OPT_TOS ignored\n");
 			break;
-#endif
 
 		case TCP_OPT_NODELAY:
 
@@ -1558,8 +1615,8 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 			// relationship to not delaying send?
 			//
 			if (ol->tcp)
-				tcp_set_nodelay(ol, val);
-			else
+				ol_tcp_set_nodelay(ol, val);
+			els
 				printk("tcp_set_opts: TCP_OPT_NODELAY ignored\n");
 			break;
 
@@ -1603,22 +1660,28 @@ static int ol_tcp_get_opts(outlet_t *ol,
 			val = ol->recv_bufsize;
 			break;
 
-#if LING_WITH_LWIP
 		case INET_OPT_PRIORITY:
 			//
 			// See comment in ol_tcp_animate()
 			//
+#if LING_WITH_LWIP
 			val = ol->tcp->prio;
+#elif LING_WITH_LIBUV
+			val = 0;
+#endif
 			break;
 
 		case INET_OPT_TOS:
+#if LING_WITH_LWIP
 			val = ol->tcp->tos;
+#elif LING_WITH_LIBUV
+			val = 0;
+#endif
 			break;
 
 		case TCP_OPT_NODELAY:
-			val = tcp_nagle_disabled(ol->tcp);
+			val = tcp_get_nodelay(ol);
 			break;
-#endif
 
 		default:
 			if (inet_get_opt(ol, opt, &val) < 0)
@@ -1636,6 +1699,5 @@ static int ol_tcp_get_opts(outlet_t *ol,
 
 	return q -buf;
 }
-#endif
 
 //EOF

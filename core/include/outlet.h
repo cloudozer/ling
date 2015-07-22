@@ -79,26 +79,36 @@ struct outlet_vtab_t {
 	void (*destroy_private)(outlet_t *ol);
 };
 
-#if LING_WITH_LWIP
 typedef struct acc_pend_t acc_pend_t;
 struct acc_pend_t {
 	outlet_t *outlet;
 union {
-	// an acceptor process that called gen_tcp:accept()
+	// an acceptor process that called gen_tcp:accept();
+	// used when acc_pend_t is in ol->accepting
 	struct {
 		term_t reply_to;
 		int timeout_set;
+#if LING_WITH_LIBUV
+		// a process waits for an accept request until this timer runs out:
+		uv_timer_t accept_timer;
+#endif
 	};
 	// an accepted TCP connection waiting for an accept() call
+	// used when acc_pend_t is in ol->accepted
 	struct {
+#if LING_WITH_LWIP
 		struct tcp_pcb *pcb;
 		struct pbuf *ante;
+#endif
+#if LING_WITH_LIBUV
+		uv_tcp_t *tcp;
+		uv_buf_t ante;
+#endif
 	};
 };
 	acc_pend_t *prev;
 	acc_pend_t *next;
 };
-#endif
 
 typedef struct disk_req_t disk_req_t;
 struct disk_req_t {
@@ -145,12 +155,13 @@ struct outlet_t {
 	};
 #elif LING_WITH_LIBUV
 	union {
-	    uv_udp_t *udp;
-        uv_tcp_t *tcp;
+		uv_udp_t *udp;
+		uv_tcp_t *tcp;
 	};
 	uv_timer_t conn_timer;  // udp|tcp (may be used as recv_timer
-    uv_timer_t send_timer;  // tcp
+	uv_timer_t send_timer;  // tcp
 	int family;             // INET_AF_INET | INET_AF_INET6
+	int nodelay;            // Nagle's algorithm for TCP disabled
 #endif
 
 	// More options
@@ -193,14 +204,12 @@ struct outlet_t {
 	term_t empty_queue_reply_to;
 	int peer_close_detected;
 
-#if LING_WITH_LWIP
 	// TCP - listening mode
 	int backlog;
-	acc_pend_t *free_pends;
 	memnode_t *pend_nodes;
-	acc_pend_t *accepting;
-	acc_pend_t *accepted;
-#endif
+	acc_pend_t *free_pends;     // pool of acc_pend_t nodes
+	acc_pend_t *accepting;      // list of pending accept requests from processes
+	acc_pend_t *accepted;       // list of pending accept requests from network
 
 	// Disk
 	disk_req_t *out_reqs; 

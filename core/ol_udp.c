@@ -80,13 +80,6 @@ uv_on_send(uv_udp_send_t *udp, int status)
 	free(udp);
 }
 
-static void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
-{
-	debug("%s(%d)\n", __FUNCTION__, size);
-	buf->len = size;
-	buf->base = malloc(buf->len);
-}
-
 static term_t
 send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint16_t len)
 {
@@ -736,11 +729,6 @@ static void udp_on_recv_timeout(outlet_t *ol)
 static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *addr);
 
 #if LING_WITH_LIBUV
-#define RECV_PKT_T                uv_buf_t
-#define RECV_PKT_FREE(data)       do free((data)->base); while (0)
-#define RECV_PKT_LEN(data)        ((data)->len)
-#define RECV_PKT_COPY(ptr, data)  \
-	do memcpy((ptr), (data)->base, (data)->len); while (0)
 
 static void uv_on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                        const struct sockaddr *addr, unsigned flags)
@@ -773,11 +761,6 @@ static void uv_on_recv_timeout(uv_timer_t *timeout)
 #endif //LING_WITH_LIBUV
 
 #if LING_WITH_LWIP
-#define RECV_PKT_T                struct pbuf
-#define RECV_PKT_FREE(data)       do pbuf_free(data); while (0)
-#define RECV_PKT_LEN(data)        ((data)->tot_len)
-#define RECV_PKT_COPY(ptr, data)  \
-	do pbuf_copy_partial((data), ptr, (data)->tot_len, 0); while (0)
 
 static void lwip_recv_cb(void *arg,
 	struct udp_pcb *udp, struct pbuf *data, struct ip_addr *addr, uint16_t port)
@@ -831,7 +814,7 @@ static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *a
 		RECV_PKT_FREE(data);
 		goto no_memory;
 	}
-	RECV_PKT_COPY(ptr, data);
+	RECV_PKT_COPY(ptr, data, RECV_PKT_LEN(data));
 	RECV_PKT_FREE(data);
 
 	int is_ipv6 = is_ipv6_outlet(ol);

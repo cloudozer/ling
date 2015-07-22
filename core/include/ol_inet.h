@@ -213,25 +213,57 @@ void inet_async_error(term_t oid, term_t reply_to, uint16_t ref, term_t err);
 void inet_reply(term_t oid, term_t reply_ty, term_t reply);
 void inet_reply_error(term_t oid, term_t reply_to, term_t reason);
 
+void ol_tcp_animate(outlet_t *new_ol, acc_pend_t *pend);
+int ol_tcp_set_nodelay(outlet_t *ol, bool nodelay);
+
+void ol_tcp_close(outlet_t *ol);
+
 term_t termerror(int err);
 
 #if LING_WITH_LWIP
+
+#define RECV_PKT_T                struct pbuf
+#define RECV_PKT_FREE(data)       do pbuf_free(data); while (0)
+#define RECV_PKT_LEN(data)        ((data)->tot_len)
+#define RECV_PKT_COPY(ptr, data, len)  \
+	do pbuf_copy_partial((data), (ptr), (len), 0); while (0)
+
 term_t lwip_err_to_term(err_t err);
 
 static inline int is_ipv6_outlet(outlet_t *ol)
 {
 	return PCB_ISIPV6(ol->udp);
 }
+
+static inline int tcp_get_nodelay(outlet_t *ol)
+{
+	return tcp_nagle_disabled(ol->tcp);
+}
 #endif //LING_WITH_LWIP
 
 #if LING_WITH_LIBUV
+
+#define RECV_PKT_T                uv_buf_t
+#define RECV_PKT_FREE(data)       do free((data)->base); while (0)
+#define RECV_PKT_LEN(data)        ((data)->len)
+#define RECV_ACKNOWLEDGE(tcp, len)
+#define RECV_PKT_COPY(ptr, data, len)  \
+	do memcpy((ptr), (data)->base, (len)); while (0)
+
 void *malloc(size_t len);
 void free(void *ptr);
+void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf);
 
 static inline int is_ipv6_outlet(outlet_t *ol)
 {
 	return ol->family == INET_AF_INET6;
 }
+
+static inline int tcp_get_nodelay(outlet_t *ol)
+{
+	return ol->nodelay;
+}
+
 #endif //LING_WITH_LIBUV
 
 //EOF
