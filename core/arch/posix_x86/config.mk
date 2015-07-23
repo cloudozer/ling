@@ -4,6 +4,7 @@ F_NO_REORDER_BLOCKS :=
 #LIBMISC_ARCH := x86
 
 LING_PLATFORM := unix
+LING_POSIX    := 1
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),Linux)
@@ -16,9 +17,12 @@ else ifeq ($(UNAME),Darwin)
 endif
 
 CPPFLAGS      += -DLING_POSIX
-STARTUP_OBJ   := 
+STARTUP_OBJ   :=
+
+CPPFLAGS += -Wno-unknown-pragmas -Wno-int-conversion -Wno-empty-body
+ifeq ($(CC),clang)
 # assuming Apple LLVM version 6.0 (clang-600.0.57)
-CPPFLAGS += -Wno-tautological-compare -Wno-typedef-redefinition -Wno-empty-body
-CPPFLAGS += -Wno-unknown-pragmas -Wno-int-conversion -Wno-self-assign
+CPPFLAGS += -Wno-tautological-compare -Wno-typedef-redefinition -Wno-self-assign
+endif
 
 LING_WITH_LIBUV  := 1

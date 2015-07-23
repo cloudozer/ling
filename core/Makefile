@@ -61,11 +61,10 @@ MISC_SRCS += floor.c log.c log10.c memcmp.c modf.c pow.c
 MISC_SRCS += qsort.c scalbln.c scalbn.c sin.c sinh.c stpcpy.c strcat.c strchr.c
 MISC_SRCS += strchrnul.c strcmp.c strcpy.c strlen.c strncmp.c strtod.c tan.c tanh.c
 
+ifdef LIBMISC_ARCH
 ifneq ($(LIBMISC_ARCH),x86)
 MISC_SRCS += memcpy.c memmove.c memset.c sqrt.c
 endif
-
-ifdef LIBMISC_ARCH
 MISC_OBJS := $(patsubst %.c,%.o,$(addprefix lib/misc/,$(MISC_SRCS)))
 MISC_AS_OBJS := $(patsubst %.s,%.o,$(wildcard lib/misc/arch/$(LIBMISC_ARCH)/*.s))
 else
