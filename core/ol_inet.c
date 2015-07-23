@@ -82,7 +82,12 @@ void inet_set_default_opts(outlet_t *ol)
 
 #if LING_WITH_LIBUV
 static inline int inet_opt(outlet_t *ol, int opt) {
-	int fd = ol->tcp->io_watcher.fd;  /* HACK: io_watcher is not public */
+	uv_os_fd_t fd;	// just `int` for POSIX
+	if (uv_fileno((uv_handle_t *)ol->tcp, &fd)) {
+		debug("%s: failed to get fd\n", __FUNCTION__);
+		return -1;
+	}
+
 	int optval;
 	socklen_t optlen;
 	getsockopt(fd, SOL_SOCKET, opt, &optval, &optlen);
@@ -91,7 +96,12 @@ static inline int inet_opt(outlet_t *ol, int opt) {
 }
 
 static inline int inet_set(outlet_t *ol, int opt, int val) {
-	int fd = ol->tcp->io_watcher.fd; /* HACK: io_watcher is not public */
+	int fd;
+	if (uv_fileno((uv_handle_t *)ol->tcp, &fd)) {
+		debug("%s: failed to get fd\n", __FUNCTION__);
+		return -1;
+	}
+
 	int optval = val;
 	socklen_t optlen = sizeof(optval);
 	debug("%s(opt=%d, val=%d)\n", __FUNCTION__, opt, val);

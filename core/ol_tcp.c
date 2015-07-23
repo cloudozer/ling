@@ -1374,7 +1374,7 @@ static int tcp_on_send(outlet_t *ol)
 static int tcp_on_recv(outlet_t *ol, const void *packet)
 {
 	RECV_PKT_T *data = (RECV_PKT_T *)packet;
-	debug("%s(len=%d)\n", __FUNCTION__, RECV_PKT_LEN(data));
+	debug("%s(len=%d)\n", __FUNCTION__, (data ? RECV_PKT_LEN(data) : -1));
 
 	term_t pid = (ol->cr_in_progress) ?ol->cr_reply_to :ol->owner;
 	proc_t *cont_proc = scheduler_lookup(pid);
