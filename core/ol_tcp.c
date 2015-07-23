@@ -510,7 +510,6 @@ static void uv_on_tcp_recv(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf)
 
 	uv_buf_t rcvbuf = { .base = buf->base, .len = nread };
 	tcp_on_recv(ol, (nread >= 0 ? &rcvbuf : NULL));
-	free(buf->base);
 }
 
 static void uv_on_tcp_send(uv_write_t *req, int status)
