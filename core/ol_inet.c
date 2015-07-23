@@ -95,7 +95,7 @@ static inline int inet_set(outlet_t *ol, int opt, int val) {
 	int optval = val;
 	socklen_t optlen = sizeof(optval);
 	debug("%s(opt=%d, val=%d)\n", __FUNCTION__, opt, val);
-	return setsockopt(fd, SOL_SOCKET, opt, &optval, &optlen);
+	return setsockopt(fd, SOL_SOCKET, opt, &optval, optlen);
 }
 
 # define GET_INET_OPT(opt) \
