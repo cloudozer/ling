@@ -530,7 +530,7 @@ static void ol_tcp_acc_destroy_private(outlet_t *ol)
 
 static int tcpacc_on_recv(acc_pend_t *pend, const void *packet)
 {
-	const RECV_PKT_T *data = (const RECV_PKT_T *)packet;
+	RECV_PKT_T *data = (RECV_PKT_T *)packet;
 	phase_expected(PHASE_EVENTS);
 
 	debug("%s(*0x%p, len=%d)\n", __FUNCTION__,
@@ -553,7 +553,7 @@ static int tcpacc_on_recv(acc_pend_t *pend, const void *packet)
 		reuse_pending(&ol->free_pends, pend);
 	}
 	else
-		save_until_animated(pend, packet);
+		save_until_animated(pend, data);
 
 	return 0;
 }

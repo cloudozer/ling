@@ -297,7 +297,7 @@ static int udp_control_open(outlet_t *ol, int family)
 }
 
 /* returns assigned local_port */
-static int udp_control_bind(outlet_t *ol, ipX_addr_t addr, uint16_t port)
+static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 {
 	assert(ol->udp != 0);
 	int is_ipv6 = PCB_ISIPV6(ol->udp);
@@ -305,12 +305,12 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t addr, uint16_t port)
 	{
 		//debug("UDP: binding %pt to %d.%d.%d.%d:%d\n",
 		//	T(ol->oid), data[2], data[3], data[4], data[5], port);
-		udp_bind(ol->udp, &addr, port); // always succeeds
+		udp_bind(ol->udp, (ip_addr_t *)addr, port); // always succeeds
 	}
 	else
 	{
 #if LWIP_IPV6
-		udp_bind_ip6(ol->udp, &addr, port); // always succeeds
+		udp_bind_ip6(ol->udp, addr, port); // always succeeds
 #else
 		return -1;
 #endif
@@ -775,13 +775,18 @@ static void lwip_recv_cb(void *arg,
 
 	inet_sockaddr saddr;
 	if (PCB_ISIPV6(udp)) {
+		ip6_addr_t *addr6 = (ip6_addr_t*)addr;
 		saddr.saddr.sa_family = AF_INET6;
 		saddr.in6.sin6_port = port;
-		saddr.in6.sin6_addr = /* TODO */;
+		uint32_t *saptr = (uint32_t *)saddr.in6.sin6_addr.s6_addr;
+		saptr[0] = addr6->addr[0];
+		saptr[1] = addr6->addr[1];
+		saptr[2] = addr6->addr[2];
+		saptr[3] = addr6->addr[3];
 	} else {
 		saddr.saddr.sa_family = AF_INET;
 		saddr.in.sin_port = port;
-		saddr.in.sin_addr = addr->ipv4.addr;
+		saddr.in.sin_addr.s_addr = addr->addr;
 	}
 
 	udp_on_recv(ol, (void *)data, &saddr.saddr);
@@ -796,7 +801,7 @@ static void lwip_recv_timeout_cb(void *arg)
 
 static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *addr)
 {
-	const RECV_PKT_T *data = (RECV_PKT_T *)pbuf;
+	RECV_PKT_T *data = (RECV_PKT_T *)pbuf;
 
 	term_t pid = (ol->cr_in_progress ? ol->cr_reply_to : ol->owner);
 	proc_t *cont_proc = scheduler_lookup(pid);

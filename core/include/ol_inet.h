@@ -39,6 +39,7 @@
 
 #ifdef LING_WITH_LWIP
 # include "lwip/err.h"
+# include "lwip/tcp.h"
 # include "lwip/udp.h"
 # include "lwip/timers.h"
 #endif //LING_WITH_LWIP

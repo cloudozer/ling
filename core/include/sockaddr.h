@@ -15,6 +15,9 @@
 # include "lwip/sockets.h"
 # undef LWIP_SOCKET
 
+# undef send
+# undef sendto
+
 #else
 # include <netinet/in.h>
 

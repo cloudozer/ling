@@ -164,7 +164,7 @@ void ol_tcp_acc_promote(outlet_t *ol, int backlog);
 #define RECV_PKT_LEN(data)        ((data)->tot_len)
 #define RECV_PKT_COPY(ptr, data, len)  \
 	do pbuf_copy_partial((data), (ptr), (len), 0); while (0)
-#define RECV_ACKNOWLEDGE(tcp, len) do tcp_recved((len), (tcp)); while(0)
+#define RECV_ACKNOWLEDGE(tcp, len) do tcp_recved((tcp), (len)); while(0)
 
 static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err);
 static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len);
@@ -369,17 +369,18 @@ static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
 {
 	if (saddr->saddr.sa_family == AF_INET)
 	{
-		assert(ol->family == INET_AF_INET;
+		assert(!is_ipv6_outlet(ol));
 		ip_addr_t addr;
 		sockaddrin_to_ipaddr(&saddr->in, &addr);
-		tcp_bind(ol->tcp, &addr, port); // always succeeds
+		tcp_bind(ol->tcp, &addr, saddr->in.sin_port); // always succeeds
 	}
 	else
 	{
 #if LWIP_IPV6
+		assert(is_ipv6_outlet(ol));
 		ip6_addr_t addr;
 		sockaddrin6_to_ip6addr(&saddr->in6, &addr);
-		tcp_bind_ip6(ol->tcp, &addr, port); // always succeeds
+		tcp_bind_ip6(ol->tcp, &addr, saddr->in6.sin6_port); // always succeeds
 #else
 		return -1;
 #endif
@@ -391,6 +392,7 @@ static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
 static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
 {
 	err_t err;
+	uint16_t remote_port = sockaddr_port(&saddr->saddr);
 	int is_ipv6 = is_ipv6_outlet(ol);
 	if (!is_ipv6)
 	{
@@ -1372,7 +1374,7 @@ static int tcp_on_send(outlet_t *ol)
 
 static int tcp_on_recv(outlet_t *ol, const void *packet)
 {
-	const RECV_PKT_T *data = (const RECV_PKT_T *)packet;
+	RECV_PKT_T *data = (RECV_PKT_T *)packet;
 	debug("%s(len=%d)\n", __FUNCTION__, RECV_PKT_LEN(data));
 
 	term_t pid = (ol->cr_in_progress) ?ol->cr_reply_to :ol->owner;
@@ -1616,7 +1618,7 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 			//
 			if (ol->tcp)
 				ol_tcp_set_nodelay(ol, val);
-			els
+			else
 				printk("tcp_set_opts: TCP_OPT_NODELAY ignored\n");
 			break;
 
