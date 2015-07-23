@@ -159,11 +159,6 @@ void ol_tcp_acc_promote(outlet_t *ol, int backlog);
 
 #if LING_WITH_LWIP
 
-#define RECV_PKT_T                struct pbuf
-#define RECV_PKT_FREE(data)       do pbuf_free(data); while (0)
-#define RECV_PKT_LEN(data)        ((data)->tot_len)
-#define RECV_PKT_COPY(ptr, data, len)  \
-	do pbuf_copy_partial((data), (ptr), (len), 0); while (0)
 #define RECV_ACKNOWLEDGE(tcp, len) do tcp_recved((tcp), (len)); while(0)
 
 static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err);
