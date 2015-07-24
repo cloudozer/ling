@@ -35,6 +35,8 @@
 
 #include "ling_common.h"
 
+#if LING_XEN
+
 #include "tube.h"
 #include "string.h"
 #include "getput.h"
@@ -221,3 +223,4 @@ static void avail_send_slots(outlet_t *ol, term_t reply_to)
 		slots_reply(ol->oid, reply_to, tag_int(avail));
 }
 
+#endif

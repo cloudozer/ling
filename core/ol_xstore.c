@@ -35,6 +35,8 @@
 
 #include "ling_common.h"
 
+#if LING_XEN
+
 #include "xenstore.h"
 #include "xen/io/xs_wire.h"
 #include "getput.h"
@@ -98,3 +100,4 @@ static void ol_xstore_detach(outlet_t *ol)
 	xstore_detach(ol);
 }
 
+#endif

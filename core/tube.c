@@ -35,6 +35,8 @@
 
 #include "ling_common.h"
 
+#if LING_XEN
+
 #include <string.h>
 
 #include "grant.h"
@@ -277,3 +279,4 @@ nomem:
 	scheduler_signal_exit_N(caller, oid, A_NO_MEMORY);
 }
 
+#endif //LING_XEN

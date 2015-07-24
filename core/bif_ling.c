@@ -188,12 +188,14 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 			llstat_display();
 #endif // EXP_LINC_LLSTAT
 		break;
+#if LING_XEN
 	case A_NETMAP:
 		if (Arg == A_TX)
 			dump_netmap_state(0);
 		else if (Arg == A_RX)
 			dump_netmap_state(1);
 		break;
+#endif
 	case A_GC:
 		if (Arg == tag_int(1))
 			printk("Pages left: %d\n", mm_alloc_left());

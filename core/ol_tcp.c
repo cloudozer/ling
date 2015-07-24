@@ -63,9 +63,14 @@
 
 #define ASYNC_REF	0
 
+#if LING_WITH_LWIP
 // dictated by lwIP
-#define TCP_MIN_SEND_BUF			TCP_SND_BUF
-#define TCP_MIN_RECV_BUF			TCP_WND
+# define TCP_MIN_SEND_BUF			TCP_SND_BUF
+# define TCP_MIN_RECV_BUF			TCP_WND
+#else
+# define TCP_MIN_SEND_BUF           1024
+# define TCP_MIN_RECV_BUF           2048
+#endif
 
 static uint8_t *ol_tcp_get_send_buffer(outlet_t *ol, int len);
 static int ol_tcp_send(outlet_t *ol, int len, term_t reply_to);
@@ -1421,7 +1426,7 @@ static int tcp_on_recv(outlet_t *ol, const void *packet)
 	else
 	{
 		uint16_t len = RECV_PKT_LEN(data);
-        assert(len <= ol->recv_bufsize -ol->recv_buf_off); // ol->recv_bufsize >= TCP_WND 
+        assert(len <= ol->recv_bufsize -ol->recv_buf_off); // ol->recv_bufsize >= TCP_WND
 
 		debug("---> recv_cb: recv_bufsize=%d, recv_buf_off=%d\n\t\ttot_len=%d, len=%d\n",
 				ol->recv_bufsize, ol->recv_buf_off, RECV_PKT_LEN(data), len);
@@ -1493,7 +1498,7 @@ more_packets:
 
 				// Is it safe to acknowledge the data here, outside of the
 				// receive callback?
-				tcp_recved(ol->tcp, consumed);
+				RECV_ACKNOWLEDGE(ol->tcp, consumed);
 
 				if (ol->packet == TCP_PB_HTTP || ol->packet == TCP_PB_HTTP_BIN)
 					active_tag = A_HTTP;

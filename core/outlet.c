@@ -56,14 +56,16 @@ struct drv_spec_t {
 };
 
 outlet_t *ol_echo_factory(proc_t *cont_proc, uint32_t bit_opts);
-outlet_t *ol_xstore_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_vif_factory(proc_t *cont_proc, uint32_t bit_opts);
-outlet_t *ol_tube_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_dcons_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_console_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_dns_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_udp_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_tcp_factory(proc_t *cont_proc, uint32_t bit_opts);
+#if LING_XEN
+outlet_t *ol_xstore_factory(proc_t *cont_proc, uint32_t bit_opts);
+outlet_t *ol_tube_factory(proc_t *cont_proc, uint32_t bit_opts);
+#endif
 #if LING_CONFIG_DISK
 outlet_t *ol_disk_factory(proc_t *cont_proc, uint32_t bit_opts);
 #endif
@@ -72,14 +74,16 @@ outlet_t *ol_disk_factory(proc_t *cont_proc, uint32_t bit_opts);
 
 drv_spec_t outlet_drivers[NUM_DRIVERS] = {
 	{ .name = A_ECHO,			.factory = ol_echo_factory },
-	{ .name = A_XENSTORE,		.factory = ol_xstore_factory },
 	{ .name = A_VIF,			.factory = ol_vif_factory },
-	{ .name = A_TUBE,			.factory = ol_tube_factory },
 	{ .name = A_DUMB_CONSOLE,	.factory = ol_dcons_factory },
 	{ .name = A_CONSOLE,		.factory = ol_console_factory },
 	{ .name = A_DNS,			.factory = ol_dns_factory },
 	{ .name = A_UDP,			.factory = ol_udp_factory },
 	{ .name = A_TCP,			.factory = ol_tcp_factory },
+#if LING_XEN
+	{ .name = A_TUBE,			.factory = ol_tube_factory },
+	{ .name = A_XENSTORE,		.factory = ol_xstore_factory },
+#endif
 #if LING_CONFIG_DISK
 	{ .name = A_DISK,			.factory = ol_disk_factory },
 #endif

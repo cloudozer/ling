@@ -100,7 +100,9 @@ static int scheduler_park_runnable_N(proc_t *proc);
 uint64_t lwip_closest_timeout(void);
 void net_check_timeouts(void);
 
+#if LING_XEN
 int netmap_do_pending(void);
+#endif
 
 #ifdef LING_DEBUG
 static enum sched_phase_t current_phase = PHASE_NONE;
@@ -380,7 +382,9 @@ do_pending:
 	etimer_expired(ticks);
 	// 'hardware' events
 	int nr_fired = events_do_pending();
+#if LING_XEN
 	nr_fired += netmap_do_pending();
+#endif
 	update_event_times(nr_fired, ticks);
 	set_phase(PHASE_NEXT);
 

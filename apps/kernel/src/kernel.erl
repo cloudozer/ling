@@ -117,15 +117,17 @@ init([]) ->
 	    {user_sup, start, []},
 	    temporary, 2000, supervisor, [user_sup]},
     
+	MinimalServers = case os:type() of
+		{xen, ling} -> [Xenstore, Tube];
+		_ -> []
+	end ++ [File, Disk, Code, StdError, User, Config],
     case init:get_argument(mode) of
 	{ok, [["minimal"]]} ->
 	    SafeSupervisor = {kernel_safe_sup,
 			      {supervisor, start_link,
 			       [{local, kernel_safe_sup}, ?MODULE, safe]},
 			      permanent, infinity, supervisor, [?MODULE]},
-	    {ok, {SupFlags,
-		  [File, Disk, Xenstore, Tube, Code, StdError, User, %%MK
-		   Config, SafeSupervisor]}};
+	    {ok, {SupFlags, [SafeSupervisor | MinimalServers]}};
 	_ ->
 	    Rpc = {rex, {rpc, start_link, []}, 
 		   permanent, 2000, worker, [rpc]},
@@ -165,9 +167,8 @@ init([]) ->
 	    {ok, {SupFlags,
 		  [Rpc, Global, InetDb | DistAC] ++ 
 		  [NetSup, Glo_grp] ++
-		  [P9Server, P9Mounter] ++ %%MK
-		  [File, Disk, Xenstore, Tube | GooFS] ++ %%MK
-		  [Code, StdError, User, Config, SafeSupervisor] ++ Timer}}
+		  [P9Server, P9Mounter | GooFS] ++ %%MK
+		  [SafeSupervisor | MinimalServers] ++ Timer}}
     end;
 init(safe) ->
     SupFlags = {one_for_one, 4, 3600},

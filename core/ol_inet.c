@@ -59,7 +59,11 @@ void inet_set_default_opts(outlet_t *ol)
 	ol->buffer = 0;
 	ol->header = 0;
 	ol->packet = TCP_PB_RAW;
-	ol->packet_size = TCP_WND;		// TCP window in lwIP is static 
+#if LING_WITH_LWIP
+	ol->packet_size = TCP_WND;		// TCP window in lwIP is static
+#else
+	ol->packet_size = 0;
+#endif
 
 	ol->exit_on_close = 1;
 }
@@ -203,8 +207,10 @@ int inet_set_opt(outlet_t *ol, int opt, uint32_t val)
 		break;
 
 	case INET_LOPT_PACKET_SIZE:
+#if LING_WITH_LWIP
 		if (val == 0 || val > TCP_WND)
 			val = TCP_WND;
+#endif
 		ol->packet_size = val;
 		break;
 
