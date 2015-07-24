@@ -163,6 +163,8 @@
 -export([info/0]).
 -deprecated({info, 0, next_major_release}).
 
+-include_lib("public_key/include/public_key.hrl").
+
 -type mpint() :: binary().
 -type rsa_digest_type() :: 'md5' | 'sha' | 'sha224' | 'sha256' | 'sha384' | 'sha512'.
 -type dss_digest_type() :: 'none' | 'sha'.
@@ -198,20 +200,12 @@ stop() ->
     application:stop(crypto).
 
 supports()->
-    Algs = algorithms(),
-    PubKeyAlgs = 
-	case lists:member(ec, Algs) of
-	    true ->
-		{public_keys, [rsa, dss, ecdsa, dh, srp, ecdh]};
-	    false ->
-		{public_keys, [rsa, dss, dh, srp]}
-	end,
-    [{hashs, Algs -- [ec]},
+    [{hashs, [md4, md5, sha, ripe160, sha224, sha256, sha384, sha512]},
      {ciphers, [des_cbc, des_cfb,  des3_cbc, des3_cbf, des_ede3, blowfish_cbc,
 		blowfish_cfb64, blowfish_ofb64, blowfish_ecb, aes_cbc128, aes_cfb128,
 		aes_cbc256, rc2_cbc, aes_ctr, rc4
 	       ]},
-     PubKeyAlgs
+	 {public_keys, [rsa, dss, dh, srp]}
     ].
 
 info_lib() -> ?CRYPTO_INFO_LIB.
@@ -358,10 +352,12 @@ next_iv(des_cfb, Data, Ivec) ->
 next_iv(Type, Data, _Ivec) ->
     next_iv(Type, Data).
 
-stream_init(aes_ctr, _Key, _Ivec) ->
+stream_init(_Algo, _Key) ->
 	erlang:error(not_implemented).
 
-stream_init(rc4, _Key) ->
+stream_init(aes_ctr, Key, Ivec) ->
+	{aes_ctr,aes_ctr_stream_init(Key, Ivec)};
+stream_init(_Algo, _Key, _Ivec) ->
 	erlang:error(not_implemented).
 
 stream_encrypt(State, Data0) ->
@@ -421,13 +417,31 @@ rand_uniform(_Lo, _Hi) ->
 	erlang:error(not_implemented).
 
 -spec mod_pow(binary()|integer(), binary()|integer(), binary()|integer()) -> binary() | error.
-mod_pow(_Base, _Exponent, _Prime) ->
-	erlang:error(not_implemented). %% same as mod_exp() but returns a strange binary
+mod_pow(Base, Exponent, Prime) ->
+	int_to_bin(mod_exp(Base, Exponent, Prime)).
 
 verify(_Alg, _Type, _Data, _Signature, _Key) ->
 	erlang:error(not_implemented).
 
-sign(_Alg, _Type, _Data, _Key) ->
+sign(rsa, Type = sha, Data, [_E,N,D|_]) when is_binary(Data) ->
+	%% see rsa_private_encrypt()
+	ModLen = 256,	%% other sizes?
+
+	Algo = #'AlgorithmNull'{algorithm = 'OTP-PUB-KEY':'id-sha1'()},
+	DigestInfo =
+	#'DigestInfoNull'{digestAlgorithm = Algo, digest = hash(Type, Data)},
+	{ok,BinMesg} = 'OTP-PUB-KEY':encode('DigestInfoNull', DigestInfo),
+
+	PadLen = ModLen - byte_size(BinMesg) - 3,
+	Padding = lists:duplicate(PadLen, 255),
+
+	PaddedMesg = list_to_binary([0,1,Padding,0,BinMesg]),
+	MesgInt = bin_to_int(PaddedMesg),
+
+	EncInt = mod_exp(MesgInt, D, N),
+	<<EncInt:ModLen/unit:8>>;
+
+sign(_Algo, _Type, _Data, _Key) ->
 	erlang:error(not_implemented).
 
 -spec public_encrypt(rsa, binary(), [binary()], rsa_padding()) ->
@@ -484,14 +498,17 @@ exor(Bin1, Bin2) ->
     MaxBytes = max_bytes(),
     exor(Data1, Data2, erlang:byte_size(Data1), MaxBytes, []).
 
-generate_key(_Type, _) ->
-	erlang:error(not_implemented).
+generate_key(Type, Params) ->
+	generate_key(Type, Params, undefined).
 
-generate_key(_Type, _, _) ->
-	erlang:error(not_implemented).
+generate_key(dh, [P,G], _) ->
+	%% P and G are numbers; see dh_generate_key()
+	PrivKey = <<PrivInt:128/unit:8>> = crypto:rand_bytes(128),
+	SecInt = mod_exp(G, PrivInt, P),
+	Secret = <<SecInt:128/unit:8>>,
+	{Secret,PrivKey}.
 
-compute_key(_Type, _, _, _) ->
-	erlang:error(not_implemented).
+compute_key(_Type, _PubKey, _PrivKey, _Params) -> throw(not_implemented).
 
 %%--------------------------------------------------------------------
 %%% Internal functions (some internal API functions are part of the deprecated API)
@@ -866,25 +883,45 @@ stream_crypt(Fun, State0, Data, _, MaxByts, Acc) ->
     {State, CipherText} = Fun(State0, Increment),
     stream_crypt(Fun, State, Rest, erlang:byte_size(Rest), MaxByts, [CipherText | Acc]).
 
-do_stream_encrypt(_, _Data) ->
-	erlang:error(not_implemented).
+do_stream_encrypt({aes_ctr, State0}, Data) ->
+    {State, Cipher} = aes_ctr_stream_encrypt(State0, Data),
+    {{aes_ctr, State}, Cipher};
+do_stream_encrypt({rc4, State0}, Data) ->
+    {State, Cipher} = rc4_encrypt_with_state(State0, Data),
+    {{rc4, State}, Cipher}.
 
-%do_stream_encrypt({aes_ctr, State0}, Data) ->
-%    {State, Cipher} = aes_ctr_stream_encrypt(State0, Data),
-%    {{aes_ctr, State}, Cipher};
-%do_stream_encrypt({rc4, State0}, Data) ->
-%    {State, Cipher} = rc4_encrypt_with_state(State0, Data),
-%    {{rc4, State}, Cipher}.
+do_stream_decrypt({aes_ctr, State0}, Data) ->
+    {State, Text} = aes_ctr_stream_decrypt(State0, Data),
+    {{aes_ctr, State}, Text};
+do_stream_decrypt({rc4, State0}, Data) ->
+    {State, Text} = rc4_encrypt_with_state(State0, Data),
+    {{rc4, State}, Text}.
 
-do_stream_decrypt(_, _Data) ->
-	erlang:error(not_implemented).
+%%
+%% AES - in counter mode (CTR) with state maintained for multi-call streaming 
+%%
+-type ctr_state() :: { iodata(), binary() }.
 
-%do_stream_decrypt({aes_ctr, State0}, Data) ->
-%    {State, Text} = aes_ctr_stream_decrypt(State0, Data),
-%    {{aes_ctr, State}, Text};
-%do_stream_decrypt({rc4, State0}, Data) ->
-%    {State, Text} = rc4_encrypt_with_state(State0, Data),
-%    {{rc4, State}, Text}.
+-spec aes_ctr_stream_init(iodata(), binary()) -> ctr_state().
+-spec aes_ctr_stream_encrypt(ctr_state(), binary()) ->
+				 { ctr_state(), binary() }.
+-spec aes_ctr_stream_decrypt(ctr_state(), binary()) ->
+				 { ctr_state(), binary() }.
+ 
+aes_ctr_stream_init(Key, IVec) -> {Key,IVec}.
+aes_ctr_stream_encrypt({Key,IVec}, Data) ->
+	crypto:aes_ctr_stream_crypt(Key, IVec, Data).
+aes_ctr_stream_decrypt({Key,IVec}, Cipher) ->
+	crypto:aes_ctr_stream_crypt(Key, IVec, Cipher).	%% same
+     
+%%
+%% RC4 - symmetric stream cipher
+%%
+%%-spec rc4_encrypt(iodata(), iodata()) -> binary().
+
+%%rc4_encrypt(_Key, _Data) -> 				erlang:error(not_implemented);
+%%rc4_set_key(_Key) ->						erlang:error(not_implemented);
+rc4_encrypt_with_state(_State, _Data) ->	erlang:error(not_implemented).
 
 %% RC2 block cipher
 
@@ -951,9 +988,6 @@ exor(Data1, Data2, _Size, MaxByts, Acc) ->
      <<Increment2:MaxByts/binary, Rest2/binary>> = Data2,
     Result = crypto:exor(Increment1, Increment2),
     exor(Rest1, Rest2, erlang:byte_size(Rest1), MaxByts, [Result | Acc]).
-
-algorithms() ->
-    [].
 
 int_to_bin(X) when X < 0 -> int_to_bin_neg(X, []);
 int_to_bin(X) -> int_to_bin_pos(X, []).
@@ -1209,4 +1243,3 @@ info() ->
 max_bytes() ->
 	?CRYPTO_MAX_BYTES.
 
-%%EOF

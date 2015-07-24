@@ -223,6 +223,18 @@ struct outlet_t {
 
 	// Non-standard option
 	int max_mq_len;			// maximum message queue length
+
+#if LING_XEN
+	// Tube
+	struct tube_t *tube;
+	int slots_in_progress;
+	int slots_reply_to;
+
+	// Xenstore
+	uint32_t xstore_pend_op;
+	uint32_t xstore_pend_req_id;
+	uint32_t xstore_pend_tx_id;
+#endif
 };
 
 typedef outlet_t *(*outlet_factory_func_t)(proc_t *cont_proc, uint32_t bit_opts);

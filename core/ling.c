@@ -79,6 +79,13 @@ start_info_t start_info;
 unsigned long *phys_to_machine_mapping;
 shared_info_t *HYPERVISOR_shared_info;
 
+void proc_main(proc_t *proc);
+
+void lwip_init(void);
+void pcre_init(void);
+void counters_init(void);
+void gc_opt_init(void);
+
 UNUSED static void print_start_info(void);
 UNUSED static void print_xenmem_info(void);
 UNUSED static void print_xenstore_values(void);
@@ -117,38 +124,40 @@ void start_ling(void)
 	HYPERVISOR_shared_info = &shared_info;
 #endif
 
-#ifdef LING_XEN
-	mm_init(start_info.nr_pages, start_info.pt_base, start_info.nr_pt_frames);
-#else
+#ifndef LING_XEN
 	mm_init();
 #endif
 	time_init();	// sets start_of_day_wall_clock
 
-	// use the time value to seed PRNG
-	mt_seed(start_of_day_wall_clock);
-
+	//XXX mt_seed(start_of_day_wall_clock);
+	mt_seed(0);
+	
 #ifdef LING_XEN
 #if defined(__x86_64__)
 	HYPERVISOR_set_callbacks(0, 0, 0);
 #else /* __x86_64__ */
 	HYPERVISOR_set_callbacks(0, 0, 0, 0);
 #endif
-#endif
+	mm_init(start_info.nr_pages, start_info.pt_base, start_info.nr_pt_frames);
 
-#ifdef LING_XEN
+	// LING does not support more than 4G of memory.
+	// Postpone the check until the console is available.
+	nalloc_init();
+
 	events_init();
 	grants_init();
 
 	console_init(mfn_to_virt(start_info.console.domU.mfn),
 			start_info.console.domU.evtchn);
 
-	nalloc_init();
-
 	xenstore_init(mfn_to_virt(start_info.store_mfn),
 		start_info.store_evtchn);
 
 	xenstore_read("name", my_domain_name, sizeof(my_domain_name));
 	//print_xenstore_values();
+
+	if (start_info.nr_pages > 1024*1024)
+		fatal_error("LING does not support domains larger than 4Gb");
 
 	if (disk_vbd_is_present())
 		disk_init();
@@ -174,6 +183,10 @@ void start_ling(void)
 	ets_init();
 	pcre_init();
 	counters_init();
+#if LING_XEN
+    //can it be used outside Xen?
+	gc_opt_init();
+#endif
 
 	//print_start_info();
 	//print_xenmem_info();

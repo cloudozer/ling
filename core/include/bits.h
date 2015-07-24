@@ -43,6 +43,9 @@
 #define MAX_BYTE_SIZE	((1u << 29) -1)
 #define MAX_BIT_SIZE	(MAX_BYTE_SIZE << 3)
 
+#define BINNODE_SLACK_RATIO		3
+#define BINNODE_MIN_SLACK		256
+
 #define BSF_LITTLE	2
 #define BSF_SIGNED	4
 
@@ -171,6 +174,15 @@ void bits_put_integer(bits_t *bs, int v, uint32_t bcount, int is_le);
 void bits_put_bignum(bits_t *bs, bignum_t *bn, uint32_t bcount, int is_le);
 
 term_t bits_bs_get_float(t_match_ctx_t *mc, uint32_t bcount, int is_little, heap_t *hp);
+
+// Make room for (more) appends
+static inline uint32_t binnode_append_slack(uint32_t size)
+{
+	uint32_t slack = size / BINNODE_SLACK_RATIO;
+	if (slack < BINNODE_MIN_SLACK)
+		slack = BINNODE_MIN_SLACK;
+	return size + slack;
+}
 
 binnode_t *binnode_make(uint32_t size);
 binnode_t *binnode_make_N(uint32_t size);

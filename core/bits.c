@@ -50,8 +50,6 @@
 #include "getput.h"
 #include "bignum.h"
 
-#define BS_APPEND_SLACK		256
-
 void bits_get_real(void *pbin, bits_t *bs)
 {
 	switch (boxed_tag(pbin))
@@ -469,10 +467,46 @@ void bits_put_bignum(bits_t *bs, bignum_t *bn, uint32_t bcount, int is_le)
 
 //-----------------------------------------------------------------------------
 
+//#define BINNODE_TATS
+#ifdef BINNODE_STATS
+#include "time.h"
+
+uint64_t bn_ts_ns;
+int bn_nr_pages_in;
+int bn_nr_nodes_in;
+int bn_nr_pages_out;
+int bn_nr_nodes_out;
+
+static void dump_binnode_stats(void)
+{
+	uint64_t now = monotonic_clock();
+	uint64_t elapsed_ns = now - bn_ts_ns;
+	double page_in_rate = (double) bn_nr_pages_in * 1e9 / elapsed_ns;
+	double node_in_rate = (double) bn_nr_nodes_in * 1e9 / elapsed_ns;
+	double page_out_rate = (double) bn_nr_pages_out * 1e9 / elapsed_ns;
+	double node_out_rate = (double) bn_nr_nodes_out * 1e9 / elapsed_ns;
+
+	printk("binnode: ts %lu ms: IN: %.1f nd/s %.1f pg/s OUT: %.1f nd/s %.1f pg/s\n",
+			now / 1000 / 1000, node_in_rate, page_in_rate, node_out_rate, page_out_rate);
+
+	bn_ts_ns = now;
+	bn_nr_nodes_in = 0;
+	bn_nr_pages_in = 0;
+	bn_nr_nodes_out = 0;
+	bn_nr_pages_out = 0;
+}
+#endif
+
 uint32_t total_binary_size = 0;
 
 binnode_t *binnode_make(uint32_t size)
 {
+#ifdef BINNODE_STATS
+	bn_nr_pages_out += (size + PAGE_SIZE -1) / PAGE_SIZE;
+	if (++bn_nr_nodes_out >= 20)
+		dump_binnode_stats();
+#endif
+
 	// binnode_t is the extended version of memnode_t; its size by coincidence
 	// is the same
 	assert(sizeof(binnode_t) == sizeof(memnode_t));
@@ -490,6 +524,12 @@ binnode_t *binnode_make(uint32_t size)
 
 binnode_t *binnode_make_N(uint32_t size)
 {
+#ifdef BINNODE_STATS
+	bn_nr_pages_out += (size + PAGE_SIZE -1) / PAGE_SIZE;
+	if (++bn_nr_nodes_out >= 20)
+		dump_binnode_stats();
+#endif
+
 	// binnode_t is the extended version of memnode_t; its size by coincidence
 	// is the same
 	assert(sizeof(binnode_t) == sizeof(memnode_t));
@@ -505,6 +545,11 @@ binnode_t *binnode_make_N(uint32_t size)
 
 void binnode_destroy(binnode_t *bnode)
 {
+#ifdef BINNODE_STATS
+	bn_nr_pages_in += bnode->index;
+	bn_nr_nodes_in++;
+#endif
+
 	total_binary_size -= bnode->index *PAGE_SIZE;
 	nfree((memnode_t *)bnode);
 }
@@ -602,7 +647,7 @@ int bits_calc_bit_size(term_t size, uint8_t unit, uint32_t *bcount)
 
 term_t bits_bs_init_writable(int size, heap_t *hp)
 {
-	uint32_t node_size = size + BS_APPEND_SLACK;
+	uint32_t node_size = binnode_append_slack(size);
 	binnode_t *node = binnode_make(node_size);
 
 	int needed = WSIZE(t_proc_bin_t) + WSIZE(t_sub_bin_t);
@@ -663,7 +708,7 @@ int bits_bs_private_append(term_t bin,
 	{
 		// reallocate node
 		int old_size = node->ends -node->starts;
-		int new_size = old_size + (bcount +7) /8 + BS_APPEND_SLACK;
+		int new_size = binnode_append_slack(old_size + (bcount +7) /8);
 		binnode_t *new_node = binnode_make(new_size);
 		memcpy(new_node->starts, node->starts, old_size);
 		pb->node = new_node; // modified in place
@@ -733,7 +778,7 @@ term_t bits_bs_append(term_t bin,
 		if ((bs.ends - bs.starts) % unit != 0)
 			return A_BADARG;
 
-		uint32_t node_size = (bs.ends -bs.starts +bcount +7) /8 + BS_APPEND_SLACK;
+		uint32_t node_size = binnode_append_slack((bs.ends -bs.starts +bcount +7) /8);
 		binnode_t *node = binnode_make(node_size);
 
 		uint8_t *data = bs.data + bs.starts /8;

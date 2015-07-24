@@ -140,7 +140,7 @@ term_t trace_module = noval;
 #endif
 
 // tunable
-#define BS_INIT_FAIL_GC_THRESH	8000
+//#define BS_INIT_FAIL_GC_THRESH	8000
 
 #define DELIVER_SIGNALS 	1
 
@@ -341,8 +341,11 @@ schedule:
 	}
 	memcpy(proc->cap.fr, fr, NUM_FREGS*sizeof(double));
 
+	// slim down the process
 	if (proc->result.what == SLICE_RESULT_YIELD)
-		proc_burn_fat(proc, 0, proc->cap.regs, proc->cap.live);
+		proc_burn_fat(GC_LOC_PROC_YIELD, proc, proc->cap.regs, proc->cap.live);
+	else if (proc->result.what == SLICE_RESULT_WAIT)
+		proc_burn_fat(GC_LOC_PROC_WAIT, proc, proc->cap.regs, proc->cap.live);
 
 	proc = scheduler_next(proc, reds_left);
 
@@ -1149,7 +1152,6 @@ msg_queue_next(&proc->mailbox);
 <%@ variant(Index, wait, Id, [Loop], Wsz, Attrs) %>
 <% Id %>: <% hc(Attrs) %> {
 <% inc(Index) %>
-//TODO: should we burn process fat here too?
 ip = <% arg(Loop) %>;
 proc->result.what = SLICE_RESULT_WAIT;
 proc->result.until_when = LING_INFINITY;
@@ -3299,7 +3301,6 @@ swap_out();
 int live = <% arg(Live) %>;
 rs[live] = tmp_arg1;
 rs[live+1] = tmp_arg2;
-proc_burn_fat(proc, 0, rs, live +2);
 tmp_arg2 = rs[live +1];
 tmp_arg1 = rs[live];
 
@@ -3366,13 +3367,6 @@ if (x < 0)
 {
 	<% jump_or_continue(Fail0) %>;
 	badarg();
-}
-
-if (osz >= BS_INIT_FAIL_GC_THRESH)
-{
-	swap_out();
-	proc_burn_fat(proc, 0, rs, <% arg(Live) %>);
-	swap_in();
 }
 
 binnode_t *node = binnode_make(osz);
@@ -3611,7 +3605,6 @@ int num_slots = <% arg(NumSlots) %> +1;	//NB: +1
 if (boxed_tag(bdata) != SUBTAG_MATCH_CTX
 			|| match_ctx_num_slots(bdata) < num_slots)
 {
-	//NB: Live unused, burn some fat?
 	light_swap_out();
 	bin = bits_bs_start_match2(bin, num_slots, &proc->hp);
 	light_swap_in();
@@ -4125,16 +4118,8 @@ if (r0 == noval)
 		r0 = rs[2];
 	else
 	{
-		// A very nice spot for a garbage collection:
-		// a few live registers and a portion of the
-		// stack just gone.
-		//
-		
 		swap_out();
-		proc_burn_fat(proc, 0, rs, 3);
-
-		// Both error and exit exceptions are converted to {'EXIT',Reason}
-	
+		// both error and exit exceptions are converted to {'EXIT',Reason}
 		if (rs[1] == A_ERROR)
 			rs[2] = heap_tuple2(&proc->hp, rs[2], proc->stack_trace);
 		rs[0] = heap_tuple2(&proc->hp, AEXIT__, rs[2]);
@@ -4330,18 +4315,12 @@ sp -= gap;
 cp = 0; // not to confuse stack tracing
 
 <%@ test_heap(HeapNeeded, Live) %>
-if (unlikely(hend - htop < <% arg(HeapNeeded) %>))
+int needed = <% arg(HeapNeeded) %>;
+if (unlikely(hend - htop < needed))
 {
 	swap_out();
-	int nr_regs = proc_count_root_regs(proc);
-	if (nr_regs <= MAX_ROOT_REGS && !proc->hp.suppress_gc)
-	{
-		region_t root_regs[nr_regs];
-		proc_fill_root_regs(proc, root_regs, rs, <% arg(Live) %>);
-		heap_ensure(&proc->hp, <% arg(HeapNeeded) %>, root_regs, nr_regs);
-	}
-	else
-		heap_alloc(&proc->hp, <% arg(HeapNeeded) %>);
+	proc_burn_fat(GC_LOC_TEST_HEAP, proc, rs, <% arg(Live) %>);
+	heap_alloc(&proc->hp, needed + HEAP_ASK_FOR_MORE);
 	swap_in();
 }
 

@@ -3,6 +3,7 @@
 
 is_builtin(crypto, exor, 2) -> true;
 is_builtin(crypto, rand_bytes, 1) -> true;
+is_builtin(crypto, aes_ctr_stream_crypt, 3) -> true;
 is_builtin(crypto, aes_cbc_crypt, 4) -> true;
 is_builtin(crypto, sha512_mac_n, 3) -> true;
 is_builtin(crypto, sha384_mac_n, 3) -> true;
@@ -206,6 +207,7 @@ is_builtin(erlang, read_timer, 1) -> true;
 is_builtin(erlang, cancel_timer, 1) -> true;
 is_builtin(erlang, send_after, 3) -> true;
 is_builtin(erlang, start_timer, 3) -> true;
+is_builtin(error_logger, warning_map, 0) -> true;
 is_builtin(file, native_name_encoding, 0) -> true;
 is_builtin(erlang, universaltime, 0) -> true;
 is_builtin(erlang, localtime, 0) -> true;

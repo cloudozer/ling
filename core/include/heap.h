@@ -41,24 +41,47 @@
 // Heap allocations
 //
 
+// gc_hook() locations
+#define GC_LOC_IDLE			0
+#define GC_LOC_PROC_YIELD	1
+#define GC_LOC_PROC_WAIT	2
+#define GC_LOC_TEST_HEAP	3
+#define GC_LOCATIONS		4
+
+#define GC_COHORTS			4
+
+#define HEAP_ASK_FOR_MORE	512
+
 typedef struct heap_t heap_t;
 struct heap_t {
 	memnode_t init_node;			// a fake memory node for the initial buffer
 	uint32_t *init_node_threshold;	// 
 	memnode_t *nodes;				// a chain of memory nodes; never 0
 	int total_size;					// the size of the heap
-	memnode_t *gc_spot;				// the last gc node
 	t_proc_bin_t *proc_bins;		// the list of refc binaries
 	int total_pb_size;				// the sum of sizes of referenced proc_bins
 	int suppress_gc;				// do not collect garbage
 	int full_sweep_after;			// the fullsweep_after option value
 	int sweep_after_count;			// the counter for fullsweep_after
 	int minor_gcs;					// the number of gc runs while running
-	int wait_gc_runs;				// the number of gc runs while waiting
 #ifdef LING_DEBUG
 	// the expected value of the next heap_set_top()
 	uint32_t *expected_top;
 #endif
+	// Viktor's GC
+
+	// If the cohort-based GC sticks, it would be reasonable to split the list of nodes into
+	// separate lists for each cohort. This way the code will get simpler and we avoid bleeding
+	// data from generation to generation while merging nodes.
+
+	memnode_t *gc_cohorts[GC_COHORTS];
+	uint8_t gc_flags[GC_COHORTS];
+
+	// How many time GC may run for this heap when VM is idle
+	int gc_yield_runs;
+
+	// the process reductions when the last GC run happened
+	uint32_t gc_last_reds;
 };
 
 typedef struct region_t region_t;
@@ -69,21 +92,36 @@ struct region_t {
 
 #define HEAP_COPY_TERMS_MAX_DEPTH	1000
 
+#define HEAP_NEW_SIZE_RATIO			16
+#define HEAP_NEW_SIZE_CAP			(16384 - WSIZE(memnode_t))
+#define HEAP_NEW_SIZE_INDEX			16
+
+static inline int is_sweep_node(memnode_t *node)
+{
+	// sweep_node -> init_node -> 0
+	return (node->index > HEAP_NEW_SIZE_INDEX &&
+			node->next != 0 &&
+			node->next->next == 0);
+}
+
+static inline int heap_chunk_size(int needed, int total_size)
+{
+	int csize = total_size / HEAP_NEW_SIZE_RATIO;
+	if (csize > HEAP_NEW_SIZE_CAP)
+		csize = HEAP_NEW_SIZE_CAP;
+	if (csize < needed)
+		csize = needed;
+	return csize;
+}
+
 void heap_init(heap_t *hp, uint32_t *init_starts, uint32_t *init_ends);
 
 void heap_reset_init_node_end(heap_t *hp, uint32_t *ends);
 
-int estimate_max_gc_runs(uint64_t duration_ns);
-
-// Ensures that heap has size words unoccupied after the heap_top() pointer
-//
-// Returns the heap top or 0 if there is not enough memory
-//
-uint32_t *heap_ensure(heap_t *hp, int needed, region_t *root_regs, int nr_regs);
 uint32_t *heap_alloc(heap_t *hp, int needed);
 uint32_t *heap_alloc_N(heap_t *hp, int needed);
 
-int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs);
+int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, int nr_regs);
 int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs);
 
 void *heap_top(heap_t *hp);
@@ -126,4 +164,3 @@ term_t heap_make_ref(heap_t *heap);
 int ref_is_local(term_t t);
 uint64_t local_ref_id(term_t t);
 
-//EOF

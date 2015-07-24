@@ -136,4 +136,3 @@ gzip(Data) -> Data.
 
 gunzip(Data) -> Data.
 
-%%EOF

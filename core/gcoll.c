@@ -79,21 +79,14 @@ static region_t *containing_region(region_t *regions, int n, void *addr);
 	(ss)->top->ends = (ends__); \
 } while (0)
 
-int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
+int heap_gc_generational_N(heap_t *hp, memnode_t *gc_node, region_t *root_regs, int nr_regs)
 {
+	assert(gc_node != 0);
+
 	ssi(SYS_STATS_GC_RUNS);
 	hp->minor_gcs++;
 
-	// select the GC node
-	memnode_t *gc_node = (hp->gc_spot != 0)
-		? hp->gc_spot->next
-		: hp->nodes;
-
-	if (gc_node == 0)
-		gc_node = hp->nodes;
-
-	assert(gc_node != 0);
-	int is_init_node = gc_node == &hp->init_node;
+	int is_init_node = (gc_node == &hp->init_node);
 
 	region_t gc_region = {
 		.starts = (is_init_node)
@@ -133,8 +126,6 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 			*ref = gc_node->next;
 			nfree(gc_node);
 		}
-		else
-			hp->gc_spot = 0;
 
 		return 0;
 	}
@@ -170,11 +161,15 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	int nodes_merging = 1;
 	if (prev_node != 0 && NODE_SPACE_LEFT(prev_node) >= copy_size*sizeof(uint32_t))
 		new_node = prev_node;
-	else if (gc_node->next != 0 && NODE_SPACE_LEFT(gc_node->next) >= copy_size*sizeof(uint32_t))
+	else if (gc_node->next != 0 &&
+			 !is_sweep_node(gc_node->next) &&	// do not merge with the sweep node
+			 NODE_SPACE_LEFT(gc_node->next) >= copy_size*sizeof(uint32_t))
 		new_node = gc_node->next;
 	else
 	{
-		new_node = nalloc_N(copy_size*sizeof(uint32_t));
+		// always allocate standard size chunks
+		int csize = heap_chunk_size(copy_size, hp->total_size);
+		new_node = nalloc_N(csize *sizeof(uint32_t));
 		if (new_node == 0)
 			return -NO_MEMORY;
 		nodes_merging = 0;
@@ -199,12 +194,12 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	// with respect to the number of regions to be put on the stack relative to
 	// the term size of a cons cell. This may not be the case as some programs
 	// seems to require more. The upper bound esimation requires more thought.
-	int upper_bound = nr_regs + (copy_size + total_active_size +1) /2 +256;	// 2 is the size of a cons cell
+	uint32_t upper_bound = nr_regs + (copy_size + total_active_size +1) /2 +256; // 2 is the size of a cons cell
 
 	// The region stack now uses a unallocated page space. It is possible to use
 	// it because no allocations are allowed during term marshalling.
 	void *stack_starts = mm_alloc_tmp();
-	int stack_size = mm_alloc_left() *PAGE_SIZE;
+	uint32_t stack_size = mm_alloc_left() *PAGE_SIZE;
 	if (upper_bound *sizeof(region_t) > stack_size)
 	{
 		//debug("heap_gc_non_recursive_N(): not enough memory for regions stack: upper %d\n", upper_bound);
@@ -288,14 +283,6 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	else
 		nfree(gc_node);
 
-	// save the last gc node
-	if (is_init_node)
-		hp->gc_spot = 0;
-	else
-		hp->gc_spot = (new_node != 0)
-			? new_node
-			: prev_node;
-
 	//printk("reclaimed %d done\n", copy_size - new_size);
 	hp->sweep_after_count++;
 	return 0;
@@ -303,6 +290,8 @@ int heap_gc_non_recursive_N(heap_t *hp, region_t *root_regs, int nr_regs)
 
 int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 {
+	hp->sweep_after_count = 0;
+
 	// copies all live terms to a single node
 	ssi(SYS_STATS_GC_RUNS);
 	//printk("GC:full-sweep: heap %pp total_size %d", hp, hp->total_size);
@@ -310,21 +299,26 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	// Potentially, we can use init_node here if total_size is very low;
 	// this happens rarely and will complicate logic too much though.
 
+	assert(hp->total_size > 0);
 	memnode_t *sweep_node = nalloc_N(hp->total_size *sizeof(uint32_t));
 	if (sweep_node == 0)
+	{
+		printk("GC: cannot allocate sweep node: total_size %u\n", hp->total_size);
 		return -NO_MEMORY;
+	}
 	
 	// The estimate of the upper bound of regions needed to the process to
 	// complete - keep in sync with the formula in heap_gc_non_recursive()
-	int upper_bound = nr_regs + (hp->total_size +1) /2 +256;
+	uint32_t upper_bound = nr_regs + (hp->total_size +1) /2 +256;
 
 	// The region stack now uses a unallocated page space. It is possible to use
 	// it because no allocations are allowed during term marshalling.
 	void *stack_starts = mm_alloc_tmp();
-	int stack_size = mm_alloc_left() *PAGE_SIZE;
+	uint32_t stack_size = mm_alloc_left() *PAGE_SIZE;
 	if (upper_bound *sizeof(region_t) > stack_size)
 	{
-		//printk("heap_gc_full_sweep(): not enough memory for regions stack: upper %d\n", upper_bound);
+		printk("GC:full-sweep: stack too small: stack_size %d needed %d\n",
+				stack_size, upper_bound *sizeof(region_t));
 		nfree(sweep_node);
 		return -NO_MEMORY;
 	}
@@ -404,6 +398,7 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	uint32_t sweep_size = htop - sweep_node->starts;
 	sweep_node->starts = htop;
 
+	assert(hp->total_size >= sweep_size);
 	ssa(SYS_STATS_GC_WORDS_RECLAIM, hp->total_size -sweep_size);
 
 	// Replace all heap nodes with the sweep node - beware of init_node
@@ -419,10 +414,10 @@ int heap_gc_full_sweep_N(heap_t *hp, region_t *root_regs, int nr_regs)
 	sweep_node->next = &hp->init_node;
 	hp->nodes = sweep_node;
 
-	hp->total_size = sweep_size;
+	for (int ch = 0; ch < GC_COHORTS; ch++)
+		hp->gc_cohorts[ch] = sweep_node;
 
-	hp->gc_spot = 0;
-	hp->sweep_after_count = 0;
+	hp->total_size = sweep_size;
 
 	//printk(" done, sweep_size %d\n", sweep_size);
 	return 0;

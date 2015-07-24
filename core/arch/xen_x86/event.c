@@ -117,6 +117,21 @@ void event_bind(uint32_t port, event_entry_t entry, void *data)
 	bound_events[nr_bound++] = port;
 }
 
+void event_unbind(uint32_t port)
+{
+	assert(event_handlers[port].entry != dummy_handler);
+	event_handlers[port].entry = dummy_handler;
+
+	int found;
+	for (found = 0; found < nr_bound; found++)
+		if (bound_events[found] == port)
+			break;
+
+	assert(found < nr_bound);
+	bound_events[found] = bound_events[nr_bound -1];
+	nr_bound--;
+}
+
 uint32_t event_alloc_unbound(domid_t remote_domid)
 {
 	evtchn_alloc_unbound_t op;
@@ -124,8 +139,19 @@ uint32_t event_alloc_unbound(domid_t remote_domid)
 	op.remote_dom = remote_domid;
 	int rs = HYPERVISOR_event_channel_op(EVTCHNOP_alloc_unbound, &op);
 	if (rs)
-		fatal_error("events_alloc_unbound failed: %d\n", rs);
+		fatal_error("events_alloc_unbound() failed: %d\n", rs);
 	return op.port;
+}
+
+uint32_t event_bind_interdomain(domid_t remote_domid, uint32_t remote_port)
+{
+	evtchn_bind_interdomain_t op;
+	op.remote_dom = remote_domid;
+	op.remote_port = remote_port;
+	int rs = HYPERVISOR_event_channel_op(EVTCHNOP_bind_interdomain, &op);
+	if (rs)
+		fatal_error("events_bind_interdomain() failed: %d\n", rs);
+	return op.local_port;
 }
 
 uint32_t event_bind_virq(uint32_t virq, event_entry_t entry, void *data)
@@ -148,6 +174,4 @@ void event_kick(uint32_t port)
 	if (rs < 0)
 		fatal_error("event_kick: %d", rs);
 }
-
-/*EOF*/
 

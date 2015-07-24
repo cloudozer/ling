@@ -135,6 +135,8 @@ erlang:universaltime()		cbif_universaltime0
 
 file:native_name_encoding()	cbif_native_name_encoding0
 
+error_logger:warning_map()	cbif_warning_map0
+
 erlang:start_timer(Time,Dest,Msg)	cbif_start_timer3
 erlang:send_after(Time,Dest,Msg)	cbif_send_after3
 erlang:cancel_timer(TRef)			cbif_cancel_timer1
@@ -396,7 +398,8 @@ crypto:sha256_mac_n(Key,Data,Size)	cbif_sha256_mac_n3
 crypto:sha384_mac_n(Key,Data,Size)	cbif_sha384_mac_n3
 crypto:sha512_mac_n(Key,Data,Size)	cbif_sha512_mac_n3
 
-crypto:aes_cbc_crypt(Key,IVec,Data,Dir)		cbif_aes_cbc_crypt4
+crypto:aes_cbc_crypt(Key,IVec,Data,Dir)			cbif_aes_cbc_crypt4
+crypto:aes_ctr_stream_crypt(Key,IVec,Data)		cbif_aes_ctr_stream_crypt3
 
 crypto:rand_bytes(N)		cbif_rand_bytes1
 crypto:exor(Bin1,Bin2)		cbif_exor2

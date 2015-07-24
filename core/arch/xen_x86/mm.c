@@ -31,17 +31,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/**
- *
- *
- *
- */
-
 #include "ling_common.h"
 #include "ling_xen.h"
 
 #define GC_RESERVE_RATIO	64
-#define GC_MAX_RESERVED		2048
+#define GC_MAX_RESERVED		4096
 
 /* page allocator data */
 static void *free_pages_start = 0;

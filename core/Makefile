@@ -37,12 +37,16 @@ include arch/$(ARCH)/config.mk
 ifndef LING_POSIX
 CPPFLAGS += -isystem lib/misc/include
 endif
+
 ifdef LING_WITH_LWIP
 CPPFLAGS += -DLING_WITH_LWIP=1
 CPPFLAGS += -iquote lib/lwip/src/include
 CPPFLAGS += -iquote lib/lwip/src/include/ipv4
 CPPFLAGS += -iquote lib/lwip/src/include/ipv6
 CPPFLAGS += -iquote lib/lwip/ling
+
+# for LWIP
+COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer
 endif
 
 ifdef LING_WITH_LIBUV
@@ -169,7 +173,7 @@ vmling.o: $(STARTUP_OBJ) $(MISC_AS_OBJS) $(ALL_OBJS)
 nettle: lib/nettle/libnettle.a
 
 lib/nettle/libnettle.a: lib/nettle/config.h
-	$(MAKE) -C lib/nettle
+	$(MAKE) -C lib/nettle libnettle.a
 
 lib/nettle/config.h: lib/nettle.tar.gz
 	mkdir -p lib/nettle && tar vxzf $< -C lib/nettle --strip-components=1 && \

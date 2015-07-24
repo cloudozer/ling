@@ -340,7 +340,8 @@ static void tcp_accept_untimeout(struct acc_pend_t *pend)
 // turn an ordinary TCP outlet to a listening mode
 void ol_tcp_acc_promote(outlet_t *ol, int backlog)
 {
-	assert(ol->recv_buf_node == 0);
+	//XXX: see similar assert() in ol_tcp.c
+	//assert(ol->recv_buf_node == 0);
 	ol->vtab = &ol_tcp_acc_vtab;	// switch outlet behaviour
 
 	ol->backlog = backlog;

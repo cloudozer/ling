@@ -26,4 +26,3 @@ void netfe_detach_outlet(netfe_t *fe);
 void netfe_output(netfe_t *fe, uint8_t *packet, int pack_len);
 int build_getifaddrs_reply(char *buf, int len);
 
-//EOF

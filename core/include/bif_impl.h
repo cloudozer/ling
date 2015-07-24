@@ -45,10 +45,12 @@
 #include <nettle/hmac.h>
 #include <nettle/aes.h>
 #include <nettle/cbc.h>
+#include <nettle/ctr.h>
 
 #include "crc32.h"
 #include "adler32.h"
 
+#include "mm.h"
 #include "atom_defs.h"
 #include "bits.h"
 #include "getput.h"
@@ -74,6 +76,7 @@
 #include "decode.h"
 
 #include "monitors.h"
+#include "timers.h"
 #include "console.h"
 #include "netfe.h"
 #include "ser_cons.h"
@@ -88,6 +91,11 @@
 #include "netif.h"
 
 #include "disk.h"
+
+#ifdef LING_XEN
+# include "xenstore.h"
+# include "xen/io/xs_wire.h"
+#endif
 
 #ifdef LING_WITH_LWIP
 #include "lwip/ip_addr.h"
@@ -110,4 +118,3 @@
 	return noval; \
 } while (0)
 
-//EOF

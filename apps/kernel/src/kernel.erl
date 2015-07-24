@@ -101,9 +101,9 @@ init([]) ->
 	    permanent, 2000, worker, [code]},
 
 	%%MK
-	Disk = {disk_server,
-		{disk_server, start_link, []},
-		permanent, 2000, worker, []},
+	Disk = {disk_server,{disk_server,start_link,[]},permanent,2000,worker,[]},
+	Xenstore = {xenstore,{xenstore, start_link, []},permanent,2000,worker,[]},
+	Tube = {tube_server,{tube_server, start_link, []},permanent,2000,worker,[]},
 	%%MK
 
     File = {file_server_2,
@@ -124,7 +124,7 @@ init([]) ->
 			       [{local, kernel_safe_sup}, ?MODULE, safe]},
 			      permanent, infinity, supervisor, [?MODULE]},
 	    {ok, {SupFlags,
-		  [File, Disk, Code, StdError, User, %%MK
+		  [File, Disk, Xenstore, Tube, Code, StdError, User, %%MK
 		   Config, SafeSupervisor]}};
 	_ ->
 	    Rpc = {rex, {rpc, start_link, []}, 
@@ -166,7 +166,7 @@ init([]) ->
 		  [Rpc, Global, InetDb | DistAC] ++ 
 		  [NetSup, Glo_grp] ++
 		  [P9Server, P9Mounter] ++ %%MK
-		  [File, Disk | GooFS] ++ %%MK
+		  [File, Disk, Xenstore, Tube | GooFS] ++ %%MK
 		  [Code, StdError, User, Config, SafeSupervisor] ++ Timer}}
     end;
 init(safe) ->

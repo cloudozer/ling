@@ -113,9 +113,9 @@ term_t cbif_statistics1(proc_t *proc, term_t *regs)
 	else if (What == A_RUNTIME)
 	{
 		static uint64_t last_runtime = 0;
-		if (last_runtime == 0)
-			last_runtime = start_of_day_wall_clock /1000000;
 		uint64_t runtime_ms = scheduler_runtime_get() /1000000;
+		if (last_runtime == 0)
+			last_runtime = runtime_ms; //XXX
 		term_t n1 = int_to_term(runtime_ms, &proc->hp);
 		term_t n2 = int_to_term(runtime_ms - last_runtime, &proc->hp);
 		term_t r = heap_tuple2(&proc->hp, n1, n2);
@@ -806,6 +806,12 @@ term_t cbif_universaltime0(proc_t *proc, term_t *regs)
 term_t cbif_native_name_encoding0(proc_t *proc, term_t *regs)
 {
 	return A_UTF8;
+}
+
+term_t cbif_warning_map0(proc_t *proc, term_t *regs)
+{
+	// In BEAM, this can be changed using +W command line flags
+	return A_WARNING;
 }
 
 static term_t start_timer(proc_t *proc, term_t *regs, int enveloped)

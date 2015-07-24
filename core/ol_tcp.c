@@ -62,15 +62,10 @@
 #include <string.h>
 
 #define ASYNC_REF	0
-//
-// To achieve a record number of concurrent connections, the TCP_MIN_RECV_BUF
-// +TCP_MIN_SEND_BUF should be set to a small value (at most 3200?). This
-// ensures that a single page is allocated per TCP/IP outlet.
-//
-//#define TCP_MIN_SEND_BUF			1024
-//#define TCP_MIN_RECV_BUF			2048
-#define TCP_MIN_SEND_BUF			1024
-#define TCP_MIN_RECV_BUF			4096
+
+// dictated by lwIP
+#define TCP_MIN_SEND_BUF			TCP_SND_BUF
+#define TCP_MIN_RECV_BUF			TCP_WND
 
 static uint8_t *ol_tcp_get_send_buffer(outlet_t *ol, int len);
 static int ol_tcp_send(outlet_t *ol, int len, term_t reply_to);
@@ -94,6 +89,8 @@ outlet_t *ol_tcp_factory(proc_t *cont_proc, uint32_t bit_opts)
 	outlet_t *new_ol = outlet_make_N(&ol_tcp_vtab, cont_proc, bit_opts, extra);
 	if (new_ol == 0)
 		return 0;
+
+	//printk("TCP outlet occupies %d pages\n", new_ol->home_node->index);
 
 	inet_set_default_opts(new_ol);
 
@@ -415,9 +412,10 @@ static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
 
 static int tcp_send_buffer(outlet_t *ol)
 {
+	uint16_t max_len = tcp_sndbuf(ol->tcp);
 	uint16_t write_len = ol->send_buf_left;
-	if (write_len > TCP_SND_BUF)
-		write_len = TCP_SND_BUF;
+	if (write_len > max_len)
+		write_len = max_len;
 
 	ol->send_buf_off += write_len;
 
@@ -814,6 +812,11 @@ static int ol_tcp_send(outlet_t *ol, int len, term_t reply_to)
 	assert(buf_len <= ol->max_send_bufsize);
 
 	ol->send_buf_left = buf_len;
+#if LING_WITH_LWIP
+	uint16_t max_len = tcp_sndbuf(ol->tcp);
+	uint16_t write_len = (buf_len > max_len) ?max_len :buf_len;
+	ol->send_buf_off = write_len;
+#endif
 	ol->send_buf_ack = 0;       // start transmission from the start of the buffer
 
 	int ret = tcp_send_buffer(ol);
@@ -1020,7 +1023,9 @@ static term_t ol_tcp_control(outlet_t *ol,
 
 	case INET_REQ_LISTEN:
 	{
-		assert(ol->recv_buf_node == 0);	// or use destroy_private()
+		//XXX: how rec_buf_size option gets inherited?
+
+		//assert(ol->recv_buf_node == 0);	// or use destroy_private()
 		int backlog = GET_UINT_16(data);
 		ol_tcp_acc_promote(ol, backlog);
 		*reply++ = INET_REP_OK;
@@ -1090,7 +1095,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 		goto error;
 	}
 	
-	if (ol->peer_close_detected)
+	if (ol->peer_close_detected && ol->recv_buf_off == 0)
 		inet_async_error(ol->oid, reply_to, ASYNC_REF, A_CLOSED);
 	else
 	{
@@ -1416,13 +1421,7 @@ static int tcp_on_recv(outlet_t *ol, const void *packet)
 	else
 	{
 		uint16_t len = RECV_PKT_LEN(data);
-		if (len > ol->recv_bufsize -ol->recv_buf_off)
-		{
-			debug("recv_cb: len %d recv_bufsize %d recv_buf_off %d\n",
-									len, ol->recv_bufsize, ol->recv_buf_off);
-			debug("recv_cb: received data do not fit recv_buffer - truncated\n");
-			len = ol->recv_bufsize -ol->recv_buf_off;	// truncation
-		}
+        assert(len <= ol->recv_bufsize -ol->recv_buf_off); // ol->recv_bufsize >= TCP_WND 
 
 		debug("---> recv_cb: recv_bufsize=%d, recv_buf_off=%d\n\t\ttot_len=%d, len=%d\n",
 				ol->recv_bufsize, ol->recv_buf_off, RECV_PKT_LEN(data), len);
@@ -1430,7 +1429,7 @@ static int tcp_on_recv(outlet_t *ol, const void *packet)
 		ol->recv_buf_off += len;
 
 		// A more natural place to acknowledge the data when complete packets are baked. No.
-		RECV_ACKNOWLEDGE(ol->tcp, len);
+		//RECV_ACKNOWLEDGE(ol->tcp, len);
 
 		RECV_PKT_FREE(data);
 		int x = recv_bake_packets(ol, cont_proc);
@@ -1494,7 +1493,7 @@ more_packets:
 
 				// Is it safe to acknowledge the data here, outside of the
 				// receive callback?
-				//tcp_recved(ol->tcp, consumed);
+				tcp_recved(ol->tcp, consumed);
 
 				if (ol->packet == TCP_PB_HTTP || ol->packet == TCP_PB_HTTP_BIN)
 					active_tag = A_HTTP;
@@ -1574,7 +1573,7 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 					continue;
 				}
 				ol->recv_bufsize = val;
-				assert(ol->recv_buf_off <= ol->recv_bufsize); // no truncation
+				assert(ol->recv_buf_off <= ol->recv_bufsize);
 				memcpy(node->starts, ol->recv_buffer, ol->recv_buf_off);
 				ol->max_recv_bufsize = (void *)node->ends -(void *)node->starts;
 				ol->recv_buffer = (uint8_t *)node->starts;
@@ -1583,7 +1582,11 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 				// ol->recv_buf_off stays the same
 			}
 			else
+			{
+				if (val < TCP_MIN_RECV_BUF)
+					val = TCP_MIN_RECV_BUF;
 				ol->recv_bufsize = val;
+			}
 			break;
 
 		case INET_OPT_PRIORITY:

@@ -41,6 +41,36 @@
 
 #include "mm.h"
 
+//#define NALLOC_STATS
+#ifdef NALLOC_STATS
+#include "time.h"
+
+uint64_t na_ts_ns;
+int na_nr_pages_in;
+int na_nr_nodes_in;
+int na_nr_pages_out;
+int na_nr_nodes_out;
+
+static void dump_nalloc_stats(void)
+{
+	uint64_t now = monotonic_clock();
+	uint64_t elapsed_ns = now - na_ts_ns;
+	double page_in_rate = (double) na_nr_pages_in * 1e9 / elapsed_ns;
+	double node_in_rate = (double) na_nr_nodes_in * 1e9 / elapsed_ns;
+	double page_out_rate = (double) na_nr_pages_out * 1e9 / elapsed_ns;
+	double node_out_rate = (double) na_nr_nodes_out * 1e9 / elapsed_ns;
+
+	printk("nalloc: ts %lu ms: IN: %.1f nd/s %.1f pg/s OUT: %.1f nd/s %.1f pg/s\n",
+			now / 1000 / 1000, node_in_rate, page_in_rate, node_out_rate, page_out_rate);
+
+	na_ts_ns = now;
+	na_nr_nodes_in = 0;
+	na_nr_pages_in = 0;
+	na_nr_nodes_out = 0;
+	na_nr_pages_out = 0;
+}
+#endif
+
 #define NBOUND	4096
 #define NINDEX	12
 
@@ -51,7 +81,6 @@ jmp_buf no_memory_jmp_buf;
 struct {
 	// lists of nodes of same size; free[0] contains odd-sized nodes
 	memnode_t *free[MAX_INDEX];
-	int nr_freed_pages;
 } node_allocator;
 
 void nalloc_init(void)
@@ -60,7 +89,13 @@ void nalloc_init(void)
 	for (i = 0; i < MAX_INDEX; i++)
 		node_allocator.free[i] = 0;
 
-	node_allocator.nr_freed_pages = 0;
+#ifdef NALLOC_STATS
+	na_ts_ns = monotonic_clock();
+	na_nr_pages_in = 0;
+	na_nr_nodes_in = 0;
+	na_nr_pages_out = 0;
+	na_nr_nodes_out = 0;
+#endif
 }
 
 static memnode_t *nalloc_internal(int size);
@@ -71,7 +106,12 @@ memnode_t *nalloc(int size)
 {
 	memnode_t *node = nalloc_internal(size);
 	if (node == 0)
+	{
+#ifdef LING_DEBUG
+		printk("NO MEMORY!\n");
+#endif
 		no_memory_signal();
+	}
 
 	return node;
 }
@@ -89,11 +129,6 @@ memnode_t *nalloc_N(int size)
 	return node;
 }
 
-int nalloc_freed_pages()
-{
-	return node_allocator.nr_freed_pages;
-}
-
 static memnode_t *nalloc_internal(int size)
 {
 	assert(size > 0);
@@ -101,8 +136,14 @@ static memnode_t *nalloc_internal(int size)
 	// ext_size accomodates both the client memory and the memnode_t structure
 	// itself aligned to NBOUND
 	int ext_size = (sizeof(memnode_t) + size + (NBOUND-1)) & ~(NBOUND-1);
-
 	int index = ext_size >> NINDEX;
+
+#ifdef NALLOC_STATS
+	na_nr_pages_out += index;
+	if (++na_nr_nodes_out >= 1000)
+		dump_nalloc_stats();
+#endif
+
 	if (index >= MAX_INDEX)
 	{
 		// The large size is large -
@@ -122,8 +163,6 @@ static memnode_t *nalloc_internal(int size)
 		{
 			*ref = node->next;
 			node->next = 0;
-
-			node_allocator.nr_freed_pages -= node->index;
 			return node;
 		}
 
@@ -135,8 +174,6 @@ static memnode_t *nalloc_internal(int size)
 		memnode_t *node = node_allocator.free[index];
 		node_allocator.free[index] = node->next;
 		node->next = 0;
-
-		node_allocator.nr_freed_pages -= node->index;
 		return node;
 	}
 
@@ -149,8 +186,6 @@ static memnode_t *nalloc_internal(int size)
 		new_node->index = index;
 		new_node->starts = NODE_THRESHOLD(new_node);
 		new_node->ends = (void *)new_node + ext_size;
-
-		node_allocator.nr_freed_pages -= new_node->index;
 		return new_node;
 	}
 
@@ -163,8 +198,6 @@ static memnode_t *nalloc_internal(int size)
 		// try to allocate a node by splitting larger nodes
 		chip = split_nodes(index);
 
-	if (chip != 0)
-		node_allocator.nr_freed_pages -= chip->index;
 	return chip;
 }
 
@@ -252,6 +285,11 @@ void nfree(memnode_t *node)
 	if (node == 0)
 		return;
 
+#ifdef NALLOC_STATS
+	na_nr_pages_in += node->index;
+	na_nr_nodes_in++;
+#endif
+
 	// reset starts; the caller cannot touch .ends
 	node->starts = NODE_THRESHOLD(node);
 
@@ -260,8 +298,6 @@ void nfree(memnode_t *node)
 	while (p +1 <= node->ends)
 		*p++ = UNUSED_MEM_SIGN;
 #endif
-
-	node_allocator.nr_freed_pages += node->index;
 
 	int index = node->index;
 	if (node->index >= MAX_INDEX)

@@ -31,31 +31,26 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/**
- *
- *
- *
- */
-
-#include <string.h>
-
+#include "xenstore.h"
 #include "ling_common.h"
 
-#include "ling_xen.h"
-
-#include "errno.h"
-#include "xen/io/xs_wire.h"
-
+#include <string.h>
 #include "event.h"
 #include "strings.h"
 
+#include "atom_defs.h"
+#include "outlet.h"
+#include "scheduler.h"
+#include "term_util.h"
+
 static struct xenstore_domain_interface *store_intf = 0;
 static uint32_t store_port = 0;
-static uint32_t req_id = 0;
+static uint32_t req_id = 1;
+static struct outlet_t *attached_outlet = 0;
 
-//static void handle_store_events(evtchn_port_t port, void *data, void *regs);
+static void xstore_int(uint32_t port, void *data);
 
-static int xenstore_error(const char *str, size_t len);
+static int xenstore_error(const char *str, int len);
 
 void xenstore_init(struct xenstore_domain_interface *intf, uint32_t port)
 {
@@ -63,15 +58,93 @@ void xenstore_init(struct xenstore_domain_interface *intf, uint32_t port)
 	store_port = port;
 }
 
-//static void handle_store_events(evtchn_port_t port, void *data, void *regs)
-//{
-//	//TODO
-//}
-
-static void xenstore_request(char *message, size_t len)
+void xstore_attach(outlet_t *ol)
 {
-	if (len > XENSTORE_RING_SIZE)
-		fatal_error("xenstore_request: too big");
+	if (attached_outlet != 0) 
+		printk("*** Port %pt is stealing control over Xenstore from %pt\n",
+				T(ol->oid), T(attached_outlet->oid));
+	attached_outlet = ol;
+	event_bind(store_port, xstore_int, 0);
+}
+
+void xstore_detach(outlet_t *ol)
+{
+	assert(attached_outlet == ol);
+	event_unbind(store_port);
+	attached_outlet = 0;
+}
+
+static term_t op_to_term(uint32_t op)
+{
+	if (op == XS_READ) 						return A_READ;
+	else if (op == XS_WRITE)				return A_WRITE;
+	else if (op == XS_MKDIR)				return A_MKDIR;
+	else if (op == XS_RM)					return A_RM;
+	else if (op == XS_DIRECTORY)			return A_DIRECTORY;
+	else if (op == XS_GET_PERMS)			return A_GET_PERMS;
+	else if (op == XS_SET_PERMS)			return A_SET_PERMS;
+	else if (op == XS_WATCH)				return A_WATCH;
+	else if (op == XS_WATCH_EVENT)			return A_WATCH_EVENT;
+	else if (op == XS_UNWATCH)				return A_UNWATCH;
+	else if (op == XS_TRANSACTION_START)	return A_TRANSACTION_START;
+	else if (op == XS_TRANSACTION_END)		return A_TRANSACTION_END;
+	assert(op == XS_ERROR);	
+	return A_ERROR;
+}
+
+static void xstore_int(uint32_t port, void *data)
+{
+	assert(attached_outlet != 0);
+	while (store_intf->rsp_prod > store_intf->rsp_cons)
+	{
+		struct xsd_sockmsg msg;
+		xenstore_response((char *)&msg, sizeof(msg));
+		proc_t *cont_proc = scheduler_lookup(attached_outlet->owner);
+		assert(cont_proc != 0);
+		term_t data = nil;
+		if (msg.len > 0)
+		{
+			char payload[msg.len];
+			xenstore_response(payload, msg.len);
+			uint32_t pl_len = msg.len;
+			if (payload[pl_len-1] == 0)
+				pl_len--;
+			data = heap_str_N(&cont_proc->hp, payload, pl_len);
+		}
+		if (msg.type != XS_WATCH_EVENT)	
+		{
+			assert(attached_outlet->xstore_pend_req_id == msg.req_id);
+			assert(attached_outlet->xstore_pend_tx_id == msg.tx_id);
+		}
+		// {watch,Port,Path}
+		uint32_t *p = 0;
+		if (data != noval)
+			p = heap_alloc_N(&cont_proc->hp, 1+3);
+		if (data == noval || p == 0)
+		{
+			scheduler_signal_exit_N(cont_proc, attached_outlet->oid, A_NO_MEMORY);
+			break;
+		}
+		else
+		{
+			heap_set_top(&cont_proc->hp, p+1+3);
+			p[0] = 3;
+			p[1] = op_to_term(msg.type);
+			p[2] = attached_outlet->oid,
+			p[3] = data;
+			int x = scheduler_new_local_mail_N(cont_proc, tag_tuple(p));
+			if (x < 0)
+			{
+				scheduler_signal_exit_N(cont_proc, attached_outlet->oid, err_to_term(x));
+				break;
+			}
+		}
+	}
+}
+
+void xenstore_request(char *message, int len)
+{
+	assert(len <= XENSTORE_RING_SIZE);
 	
 	int prod = store_intf->req_prod;
 	while (len > 0)
@@ -86,7 +159,12 @@ static void xenstore_request(char *message, size_t len)
 	store_intf->req_prod = prod;
 }
 
-static void xenstore_response(char *buffer, size_t len)
+void xenstore_complete(void)
+{
+	event_kick(store_port);
+}
+
+void xenstore_response(char *buffer, int len)
 {
 	int cons = store_intf->rsp_cons;
 	while (len > 0)
@@ -104,8 +182,8 @@ int xenstore_write(const char *key, char *value)
 {
 	char buf[XENSTORE_RING_SIZE];
 
-	size_t klen = strlen(key);
-	size_t vlen = strlen(value);
+	int klen = strlen(key);
+	int vlen = strlen(value);
 	
 	struct xsd_sockmsg msg;
 	msg.type = XS_WRITE;
@@ -125,9 +203,9 @@ int xenstore_write(const char *key, char *value)
 	return 0;
 }
 
-int xenstore_read(const char *key, char *value, size_t len)
+int xenstore_read(const char *key, char *value, int len)
 {
-	size_t klen = strlen(key);
+	int klen = strlen(key);
 	
 	struct xsd_sockmsg msg;
 	msg.type = XS_READ;
@@ -189,9 +267,9 @@ int xenstore_read_u64(uint64_t *result, const char *key)
 	return 0;
 }
 
-int xenstore_read_dir(const char *key, char *value, size_t len)
+int xenstore_read_dir(const char *key, char *value, int len)
 {
-	size_t klen = strlen(key);
+	int klen = strlen(key);
 	
 	struct xsd_sockmsg msg;
 	msg.type = XS_DIRECTORY;
@@ -220,14 +298,14 @@ int xenstore_read_dir(const char *key, char *value, size_t len)
 	return 0;
 }
 
-void xenstore_write_uint(const char *key, unsigned int n)
+int xenstore_write_uint(const char *key, unsigned int n)
 {
 	char buf[256];
 	char *val = i64toa(n, buf, sizeof(buf));
-	xenstore_write(key, val);
+	return xenstore_write(key, val);
 }
 
-static int xenstore_error(const char *str, size_t len)
+static int xenstore_error(const char *str, int len)
 {
 	int i;
 	for (i = 0; i < sizeof(xsd_errors)/sizeof(struct xsd_errors); i++)
@@ -238,4 +316,3 @@ static int xenstore_error(const char *str, size_t len)
 	return -1;
 }
 
-/*EOF*/

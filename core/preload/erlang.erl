@@ -468,9 +468,11 @@ open_port(PortName, Opts) ->
 	BitOpts = port_options(Opts),
 	erlang:port_open(Drv, BitOpts).
 
-port_driver(echo) -> echo;
-port_driver(vif) -> vif;
-port_driver(disk) -> disk;
+port_driver(echo)	  -> echo;
+port_driver(xenstore) -> xenstore;
+port_driver(vif)	  -> vif;
+port_driver(tube)	  -> tube;
+port_driver(disk)	  -> disk;
 port_driver({fd,2,2}) -> dumb_console;
 port_driver({spawn,console}) -> console;
 port_driver({spawn,"inet_gethost " ++ _}) -> dns;

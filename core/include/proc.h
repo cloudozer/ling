@@ -197,8 +197,12 @@ void inter_links_notify(inter_links_t *links, term_t src, term_t reason);
 void inter_links_done(inter_links_t *links);
 int proc_count_root_regs(proc_t *proc);
 void proc_fill_root_regs(proc_t *proc, region_t *root_regs, term_t *rs, int live);
-uint32_t *proc_burn_fat(proc_t *proc, int needed, term_t *rs, int live);
+void proc_burn_fat(int gc_loc, proc_t *proc, term_t *rs, int live);
 void proc_destroy(proc_t *proc);
+
+void gc_age_at_spawn(heap_t *hp);
+int gc_skip_idle(heap_t *hp);
+void gc_hook(int gc_loc, proc_t *proc, region_t *root_regs, int nr_regs);
 
 // BIF utilities
 int proc_spawn_N(proc_t *new_proc, term_t m, term_t f, term_t args);
