@@ -101,7 +101,7 @@ estone(suite) ->
 estone(doc) ->
     ["EStone Test"];
 estone(Config) when is_list(Config) ->
-    ?line DataDir = ?config(data_dir,Config),
+    ?line DataDir = [],%?config(data_dir,Config),
     ?line Mhz=get_cpu_speed(os:type(),DataDir),
     ?line L = ?MODULE:macro(?MODULE:micros(),DataDir),
     ?line {Total, Stones} = sum_micros(L, 0, 0),
@@ -323,7 +323,7 @@ micros() ->
      micro(msgp_huge),
      micro(pattern),
      micro(trav),
-     micro(port_io),
+%     micro(port_io),
      micro(large_dataset_work),
      micro(large_local_dataset_work),
      micro(alloc),
