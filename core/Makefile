@@ -39,7 +39,7 @@ CPPFLAGS += -DLING_VER=$(LING_VER)
 #CPPFLAGS += -DDEBUG_UNUSED_MEM
 #CPPFLAGS += -DTRACE_HARNESS
 
-COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer
+COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer -flto
 
 CFLAGS := \
 	-Wall -Werror -std=gnu99 -O3 \
