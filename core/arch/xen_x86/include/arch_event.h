@@ -38,11 +38,11 @@
 
 typedef void (*event_entry_t)(uint32_t port, void *data);
 
-void events_poll(uint64_t timeout);
-int events_do_pending(void);
 void events_init(void);
 void event_bind(uint32_t port, event_entry_t entry, void *data);
+void event_unbind(uint32_t port);
 uint32_t event_alloc_unbound(domid_t remote_domid);
+uint32_t event_bind_interdomain(domid_t remote_domid, uint32_t remote_port);
 uint32_t event_bind_virq(uint32_t virq, event_entry_t entry, void *data);
 void event_kick(uint32_t port);
 
