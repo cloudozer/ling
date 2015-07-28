@@ -41,7 +41,8 @@ build-arm:
 # use `make fresh` when you don't want to rebuild core/ling_main.c
 fresh:
 	mv core/ling_main.o . ; \
-	rm -r core/*.o core/arch/$(ARCH)/*.o railing/railing.img railing/.railing ; \
+	rm -r core/*.o core/arch/$(ARCH)/*.o \
+	      railing/railing railing/railing.img railing/.railing ; \
 	mv ling_main.o core/
 
 clean:
