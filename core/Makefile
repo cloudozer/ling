@@ -16,10 +16,11 @@ CPPFLAGS += -isystem lib
 CPPFLAGS += -iquote include -iquote arch/$(ARCH)/include
 CPPFLAGS += -iquote bignum
 ifdef LING_DEBUG
-CPPFLAGS += -DLING_DEBUG
-CPPFLAGS += -DDEBUG_UNUSED_MEM
-CPPFLAGS += -DTRACE_HARNESS
+CPPFLAGS += -DLING_DEBUG=1
+CPPFLAGS += -DDEBUG_UNUSED_MEM=1
+CPPFLAGS += -DTRACE_HARNESS=1
 CPPFLAGS += -g
+LDFLAGS  += -g
 endif
 
 CFLAGS   := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3

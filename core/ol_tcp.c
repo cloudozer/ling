@@ -161,7 +161,10 @@ void ol_tcp_acc_promote(outlet_t *ol, int backlog);
 
 #if LING_WITH_LWIP
 
-#define RECV_ACKNOWLEDGE(tcp, len) do tcp_recved((tcp), (len)); while(0)
+#define RECV_ACKNOWLEDGE(tcp, len) \
+	do tcp_recved((tcp), (len)); while(0)
+#define RECV_CHECK_BUF(ol, len)    \
+	do assert((len) <= (ol)->recv_bufsize - (ol)->recv_buf_off); while (0)
 
 static err_t lwip_recv_cb(void *arg, struct tcp_pcb *tcp, struct pbuf *data, err_t err);
 static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len);
@@ -461,6 +464,13 @@ void ol_tcp_close(outlet_t *ol)
 
 #if LING_WITH_LIBUV
 
+#define RECV_CHECK_BUF(ol, len) \
+	do {                                                      \
+		typeof(len) new_buf_off = (ol)->recv_buf_off + (len); \
+		if (new_buf_off > (ol)->recv_bufsize)                 \
+			ol_realloc_recvbuf((ol), 2 * (ol)->recv_bufsize); \
+	} while(0)
+
 #define tcp_sndqueuelen(tcp)    (((outlet_t*)tcp->data)->send_buf_left)
 
 /*
@@ -512,7 +522,7 @@ static void uv_on_tcp_recv(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf)
 
 static void uv_on_tcp_send(uv_write_t *req, int status)
 {
-	debug("%s(*%p, status: %s)\n", __FUNCTION__, req, uv_strerror(status));
+	debug("%s(*%p, status: %s)\n", __FUNCTION__, req, status ? uv_strerror(status) : "ok");
 
 	outlet_t *ol = req->data;
 	if (status == 0)
@@ -547,6 +557,18 @@ static void uv_on_tcp_send_timeout(uv_timer_t *timer)
 	timer->data = NULL;
 }
 
+static void uv_on_recv_alloc(uv_handle_t *tcp, size_t suggested_size, uv_buf_t *buf)
+{
+	assert(tcp);
+	outlet_t *ol = (outlet_t *)tcp->data;
+	assert(ol);
+	debug("%s(recv_bufsize=%d, max_recv_bufsize=%d, recv_buf_off=%d)\n",
+		  __FUNCTION__, ol->recv_bufsize, ol->max_recv_bufsize, ol->recv_buf_off);
+
+	buf->len = ol->max_recv_bufsize;
+	buf->base = malloc(buf->len);
+}
+
 static void uv_on_tcp_connect(uv_connect_t *req, int status)
 {
 	outlet_t *ol = (outlet_t *)req->data;
@@ -554,7 +576,7 @@ static void uv_on_tcp_connect(uv_connect_t *req, int status)
 	assert(ol->tcp);
 	int ret;
 
-	debug("%s(status: %s)\n", __FUNCTION__, uv_strerror(status));
+	debug("%s(status: %s)\n", __FUNCTION__, status ? uv_strerror(status) : "ok");
 	if (status)
 	{
 		tcp_on_error(ol, A_LWIP_CONN);
@@ -563,7 +585,7 @@ static void uv_on_tcp_connect(uv_connect_t *req, int status)
 	tcp_on_connected(ol);
 
 	/* start recv */
-	ret = uv_read_start((uv_stream_t *)ol->tcp, on_alloc, uv_on_tcp_recv);
+	ret = uv_read_start((uv_stream_t *)ol->tcp, uv_on_recv_alloc, uv_on_tcp_recv);
 	if (ret) debug("%s: uv_read_start failed(%s)\n", __FUNCTION__, uv_strerror(ret));
 
 	free(req);
@@ -760,6 +782,7 @@ static uint8_t *ol_tcp_get_send_buffer(outlet_t *ol, int len)
 
 	if (buf_len > ol->max_send_bufsize)
 	{
+		debug("%s: reallocating send_buffer, new size = %d\n", __FUNCTION__, len);
 		nfree(ol->send_buf_node);
 		ol->send_buf_node = 0;
 		memnode_t *node = nalloc_N(buf_len);
@@ -1422,24 +1445,24 @@ static int tcp_on_recv(outlet_t *ol, const void *packet)
 		// No more data will be received, otherwise it is a normal connection.
 		// No need to do tcp_close() or anything.
 		ol->peer_close_detected = 1;
+		debug("%s: peer_close_detected <- 1\n", __FUNCTION__);
 	}
 	else
 	{
 		uint16_t len = RECV_PKT_LEN(data);
-        assert(len <= ol->recv_bufsize -ol->recv_buf_off); // ol->recv_bufsize >= TCP_WND
-
-		debug("---> recv_cb: recv_bufsize=%d, recv_buf_off=%d\n\t\ttot_len=%d, len=%d\n",
+		debug("---> recv_cb: recv_bufsize=%d, recv_buf_off=%d, tot_len=%d, len=%d\n",
 				ol->recv_bufsize, ol->recv_buf_off, RECV_PKT_LEN(data), len);
+
+		RECV_CHECK_BUF(ol, len);
 		RECV_PKT_COPY(ol->recv_buffer + ol->recv_buf_off, data, len);
 		ol->recv_buf_off += len;
 
-		// A more natural place to acknowledge the data when complete packets are baked. No.
-		//RECV_ACKNOWLEDGE(ol->tcp, len);
-
 		RECV_PKT_FREE(data);
 		int x = recv_bake_packets(ol, cont_proc);
-		if (x < 0)
+		if (x < 0) {
+			debug("%s: recv_bake_packets() faled(%d)\n", __FUNCTION__, x);
 			scheduler_signal_exit_N(cont_proc, ol->oid, err_to_term(x));
+		}
 	}
 
 	return 0;
@@ -1462,6 +1485,8 @@ static int recv_bake_packets(outlet_t *ol, proc_t *cont_proc)
 	term_t reason = noval;
 	term_t packet = noval;
 	term_t active_tag = A_TCP;
+	debug("%s(recv_buf_off=%d, cr_in_progress=%d)\n", __FUNCTION__,
+	      ol->recv_buf_off, ol->cr_in_progress);
 
 more_packets:
 	if (ol->cr_in_progress || ol->active != INET_PASSIVE)
@@ -1469,7 +1494,10 @@ more_packets:
 		if (ol->packet == TCP_PB_RAW &&
 			ol->recv_expected_size != 0 &&
 			ol->recv_buf_off < ol->recv_expected_size)
+		{
+			debug("%s: packet = A_MORE\n", __FUNCTION__);
 				packet = A_MORE;
+		}
 		else
 		{
 			uint32_t more_len;
@@ -1483,6 +1511,8 @@ more_packets:
 			bits_init_buf(ol->recv_buffer, adj_len, &bs);
 			packet = decode_packet_N(ol->packet, &bs, noval, ol->binary,
 						&reason, &more_len, ol->packet_size, 0, &cont_proc->hp);
+			debug("%s: ol->packet=%d, packet=0x%x, packet_size=%d, reason=0x%x\n", __FUNCTION__,
+			      ol->packet, packet, ol->packet_size, reason);
 
 			if (packet == A_MORE && more_len != 0 && more_len > ol->recv_bufsize)
 				return -TOO_LONG;
@@ -1493,8 +1523,8 @@ more_packets:
 				uint32_t consumed = adj_len -left;
 				memmove(ol->recv_buffer, ol->recv_buffer +consumed, ol->recv_buf_off -consumed);
 				ol->recv_buf_off -= consumed;
-				//debug("---> recv_bake_packets: consumed %d left %d cr_in_progress %d active %d\n",
-				//		consumed, left, ol->cr_in_progress, ol->active);
+				debug("---> recv_bake_packets: consumed=%d, left=%d, cr_in_progress=%d, active=%d\n",
+						consumed, left, ol->cr_in_progress, ol->active);
 
 				// Is it safe to acknowledge the data here, outside of the
 				// receive callback?
@@ -1517,6 +1547,7 @@ more_packets:
 
 	if (packet != A_MORE && ol->cr_in_progress)
 	{
+		debug("%s: cr_cancel_deferred\n", __FUNCTION__);
 		cr_cancel_deferred(ol);
 		term_t a = (packet == noval) ?A_ERROR :A_OK;
 		term_t b = (packet == noval) ?reason :packet;
@@ -1524,6 +1555,7 @@ more_packets:
 	}
 	else if (packet != A_MORE && ol->active != INET_PASSIVE)
 	{
+		debug("%s: {tcp_error, Oid, Reason}\n", __FUNCTION__);
 		uint32_t *p = heap_alloc_N(&cont_proc->hp, 1 +3);
 		if (p == 0)
 			return -NO_MEMORY;
@@ -1542,6 +1574,7 @@ more_packets:
 			goto more_packets;
 	}
 
+	debug("%s(): done\n", __FUNCTION__);
 	return 0;
 }
 
@@ -1569,22 +1602,8 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 				return -BAD_ARG;
 			if (val > ol->max_recv_bufsize)
 			{
-				memnode_t *node = nalloc_N(val);
-				if (node == 0)
-				{
-					// We may return -NO_MEMORY here; a more conservative
-					// approach is to ignore the option and continue
-					printk("ol_tcp_set_opts: cannot expand recv_buffer to %d byte(s)\n", (int)val);
+				if (ol_realloc_recvbuf(ol, val))
 					continue;
-				}
-				ol->recv_bufsize = val;
-				assert(ol->recv_buf_off <= ol->recv_bufsize);
-				memcpy(node->starts, ol->recv_buffer, ol->recv_buf_off);
-				ol->max_recv_bufsize = (void *)node->ends -(void *)node->starts;
-				ol->recv_buffer = (uint8_t *)node->starts;
-				nfree(ol->recv_buf_node);
-				ol->recv_buf_node = node;
-				// ol->recv_buf_off stays the same
 			}
 			else
 			{

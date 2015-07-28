@@ -50,6 +50,29 @@
 # include <sys/socket.h>
 #endif
 
+int ol_realloc_recvbuf(outlet_t *ol, size_t size)
+{
+	memnode_t *node = nalloc_N(size);
+	if (node == 0)
+	{
+		// We may return -NO_MEMORY here; a more conservative
+		// approach is to ignore the option and continue
+		printk("%s: cannot expand recv_buffer to %d byte(s)\n", __FUNCTION__, (int)size);
+		return -NO_MEMORY;
+	}
+	ol->recv_bufsize = size;
+	assert(ol->recv_buf_off <= ol->recv_bufsize);
+	memcpy(node->starts, ol->recv_buffer, ol->recv_buf_off); /* might cause a long pause */
+	ol->max_recv_bufsize = (void *)node->ends -(void *)node->starts;
+	ol->recv_buffer = (uint8_t *)node->starts;
+	nfree(ol->recv_buf_node);
+
+	ol->recv_buf_node = node;
+	debug("%s(size=%d)\n", __FUNCTION__, (int)size);
+	return 0;
+	// ol->recv_buf_off stays the same
+}
+
 void inet_set_default_opts(outlet_t *ol)
 {
 	ol->active = INET_ACTIVE;
@@ -495,7 +518,6 @@ void on_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf)
 	buf->len = size;
 	buf->base = malloc(buf->len);
 }
-
 #endif
 
 //EOF

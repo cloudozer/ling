@@ -73,7 +73,6 @@ console_do_pending(void)
 	return total;
 }
 
-#if LING_DEBUG
 #include <stdarg.h>
 
 int debug(const char *fmt, ...) {
@@ -83,4 +82,3 @@ int debug(const char *fmt, ...) {
     va_end(ap);
     return ret;
 }
-#endif

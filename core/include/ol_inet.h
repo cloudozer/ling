@@ -218,6 +218,7 @@ void ol_tcp_animate(outlet_t *new_ol, acc_pend_t *pend);
 int ol_tcp_set_nodelay(outlet_t *ol, bool nodelay);
 
 void ol_tcp_close(outlet_t *ol);
+int ol_realloc_recvbuf(outlet_t *ol, size_t size);
 
 term_t termerror(int err);
 
