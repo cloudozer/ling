@@ -103,11 +103,13 @@ open(Protocol, Family, Type, Opts, Req, Data) ->
     end.
 
 enc_family(inet) -> ?INET_AF_INET;
-enc_family(inet6) -> ?INET_AF_INET6.
+enc_family(inet6) -> ?INET_AF_INET6;
+enc_family(raw) -> ?INET_AF_PACKET.
 
 enc_type(stream) -> ?INET_TYPE_STREAM;
 enc_type(dgram) -> ?INET_TYPE_DGRAM;
-enc_type(seqpacket) -> ?INET_TYPE_SEQPACKET.
+enc_type(seqpacket) -> ?INET_TYPE_SEQPACKET;
+enc_type(link) -> ?INET_TYPE_LINK.
 
 protocol2drv(tcp)  -> "tcp_inet";
 protocol2drv(udp)  -> "udp_inet";

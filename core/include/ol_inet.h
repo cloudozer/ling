@@ -99,11 +99,13 @@
 #define INET_AF_INET6        2
 #define INET_AF_ANY          3 // Fake for ANY in any address family
 #define INET_AF_LOOPBACK     4 // Fake for LOOPBACK in any address family
+#define INET_AF_PACKET       5 // raw link sockets
 
 // type codes to open and gettype - INET_REQ_GETTYPE
 #define INET_TYPE_STREAM     1
 #define INET_TYPE_DGRAM      2
 #define INET_TYPE_SEQPACKET  3
+#define INET_TYPE_LINK       4
 
 // reply codes for *_REQ_*
 #define INET_REP_ERROR    0

@@ -66,6 +66,16 @@ static int ol_udp_get_opts(outlet_t *ol,
 
 #ifdef LING_WITH_LIBUV
 
+#ifndef AF_PACKET
+# if defined(__APPLE__)
+#  define AF_PACKET  PF_NDRV
+# elif defined(BSD)
+#  define AF_PACKET  PF_LINK
+# else
+#  error "No AF_PACKET defined"
+# endif
+#endif
+
 static void
 uv_on_recv(uv_udp_t *, ssize_t,
            const uv_buf_t *, const struct sockaddr *, unsigned);
@@ -116,7 +126,7 @@ static inline int udp_recv_stop(outlet_t *ol)
 
 static inline int udp_recv_set_timeout(outlet_t *ol, unsigned int msecs)
 {
-    assert(ol->conn_timer.data == NULL);
+	assert(ol->conn_timer.data == NULL);
 	int ret;
 	uv_timer_t *timeout = &ol->conn_timer;
 
@@ -135,7 +145,7 @@ static inline int udp_recv_set_timeout(outlet_t *ol, unsigned int msecs)
 static inline void udp_recv_untimeout(outlet_t *ol)
 {
 	debug("%s\n", __FUNCTION__);
-    assert(ol->conn_timer.data);
+	assert(ol->conn_timer.data);
 	assert(ol->conn_timer.data == ol);
 
 	uv_timer_stop(&ol->conn_timer);
@@ -153,6 +163,8 @@ static void uv_on_close(uv_handle_t *handle)
 
 static void udp_destroy_private(outlet_t *ol)
 {
+	if (!ol->udp) return;
+
 	/* uv_udp_t is a "subclass" of uv_handle_t */
 	uv_handle_t *udp = (uv_handle_t *)ol->udp;
 
@@ -169,6 +181,7 @@ static void udp_destroy_private(outlet_t *ol)
 static int udp_control_open(outlet_t *ol, int family)
 {
 	debug("%s\n", __FUNCTION__);
+	int ret = 0;
 
 	uv_udp_t *udp = malloc(sizeof(uv_udp_t));
 	if (!udp)
@@ -176,20 +189,41 @@ static int udp_control_open(outlet_t *ol, int family)
 
 	udp->data = ol;
 
-	int ret = uv_udp_init(uv_default_loop(), udp);
+	ret = uv_udp_init(uv_default_loop(), udp);
 	if (ret)
-		return -1;
+		goto cleanup;
+
+	if (family == INET_AF_PACKET)
+	{
+		int sock;
+		sock = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW);
+		if (sock < 0) {
+			ret = errno;
+			debug("%s: socket() error: %s\n", __FUNCTION__, strerror(ret));
+			goto cleanup;
+		}
+
+		ret = uv_udp_open(udp, sock);
+		if (ret) {
+			debug("%s: uv_udp_open failed: %s\n", __FUNCTION__, uv_strerror(ret));
+			goto cleanup;
+		}
+	}
 
 	ol->udp = udp;
 	ol->family = family;
 	return 0;
+
+cleanup:
+	free(udp);
+	return ret;
 }
 
 static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 {
 	int ret;
 	debug("%s(addr=0x%x, port=%d)\n", __FUNCTION__, addr->ip4.addr, (int)port);
-    inet_sockaddr saddr;
+	inet_sockaddr saddr;
 	if (is_ipv6_outlet(ol))
 	{
 		saddr.saddr.sa_family = AF_INET6;
@@ -423,19 +457,26 @@ static term_t ol_udp_control(outlet_t *ol,
 	{
 	case INET_REQ_OPEN:
 	{
-		if (dlen != 2 || data[1] != INET_TYPE_DGRAM)
+		if (dlen != 2)
+			goto error;
+		if (data[1] != INET_TYPE_DGRAM && data[1] != INET_TYPE_LINK)
 			goto error;
 		uint8_t family = data[0];
+		debug("%s(OPEN, family=%d)\n", __FUNCTION__, family);
 		switch (family)
 		{
-		case INET_AF_INET: case INET_AF_INET6:
+		case INET_AF_INET:
+		case INET_AF_INET6:
+		case INET_AF_PACKET:
 			break;
 		default:
 			goto error;
 		}
 
-		if (udp_control_open(ol, family))
+		if (udp_control_open(ol, family)) {
+			debug("%s(OPEN) failed\n", __FUNCTION__);
 			goto error;
+		}
 
 		*reply++ = INET_REP_OK;
 	}
@@ -586,7 +627,7 @@ static term_t ol_udp_control(outlet_t *ol,
 		if (dlen != 1 && data[0] != INET_SUBS_EMPTY_OUT_Q) {
 			debug("%s(SUBSCRIBE): dlen=%d, data[0]=%d\n", __FUNCTION__, dlen, (int)data[0]);
 			goto error;
-	}
+		}
 		//
 		// output queue is always empty
 		//
@@ -640,6 +681,7 @@ static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 		if (left < 4)
 			return -BAD_ARG;
 		uint32_t val = GET_UINT_32(p);
+		debug("%s(opt=%d, val=%u)\n", __FUNCTION__, opt, val);
 		p += 4;
 		left -= 4;
 
@@ -677,6 +719,7 @@ static int ol_udp_get_opts(outlet_t *ol,
 	{
 		int opt = *p++;
 		uint32_t val;
+		debug("%s(opt=%d)\n", __FUNCTION__, opt);
 
 		switch (opt)
 		{

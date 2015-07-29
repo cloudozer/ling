@@ -28,11 +28,13 @@
 -define(INET_AF_INET6,        2).
 -define(INET_AF_ANY,          3). % Fake for ANY in any address family
 -define(INET_AF_LOOPBACK,     4). % Fake for LOOPBACK in any address family
+-define(INET_AF_PACKET,       5).
 
 %% type codes to open and gettype - INET_REQ_GETTYPE
 -define(INET_TYPE_STREAM,     1).
 -define(INET_TYPE_DGRAM,      2).
 -define(INET_TYPE_SEQPACKET,  3).
+-define(INET_TYPE_LINK,       4).
 
 %% socket modes, INET_LOPT_MODE
 -define(INET_MODE_LIST,	      0).
