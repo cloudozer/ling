@@ -1,5 +1,5 @@
 
-.PHONY: default bc core apps railing test install checkotp test.img clean fresh
+.PHONY: default bc core apps railing test install checkotp test.img image clean fresh
 
 include Config.mk
 
@@ -27,6 +27,9 @@ test:
 
 install: bc core apps railing
 	install railing/railing /usr/bin
+
+image: railing
+	cd railing && ./railing image
 
 test.img: railing
 	$(MAKE) -C test test.img
