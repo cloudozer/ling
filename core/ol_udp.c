@@ -278,7 +278,7 @@ static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
 	assert(ol->udp);
 
 	size_t iflen = strlen(ifname);
-	assert(iflen < sizeof(iface.ifr_name) + 1); /* common sense and 0 */
+	assert(iflen + 1 < sizeof(iface.ifr_name)); /* common sense and 0 */
 
 	ret = uv_fileno((uv_handle_t *)ol->udp, &fd);
 	if (ret) goto exit;
