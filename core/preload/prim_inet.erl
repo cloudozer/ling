@@ -2253,7 +2253,8 @@ utf8_to_characters([B|Bs], U, N) when ((B band 16#3F) bor 16#80) =:= B ->
     utf8_to_characters(Bs, (U bsl 6) bor (B band 16#3F), N-1).
 
 ip_to_bytes(IP) when tuple_size(IP) =:= 4 -> ip4_to_bytes(IP);
-ip_to_bytes(IP) when tuple_size(IP) =:= 8 -> ip6_to_bytes(IP).
+ip_to_bytes(IP) when tuple_size(IP) =:= 8 -> ip6_to_bytes(IP);
+ip_to_bytes(IP) when is_list(IP) -> IP ++ [0].  % raw link: iface name
 
 ip4_to_bytes({A,B,C,D}) ->
     [A band 16#ff, B band 16#ff, C band 16#ff, D band 16#ff].

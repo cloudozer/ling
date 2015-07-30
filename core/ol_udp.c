@@ -69,6 +69,8 @@ static int ol_udp_get_opts(outlet_t *ol,
 #ifdef SOCK_PACKET
 # define PACKET_CAPTURE_ENABLED 1
 
+# include <stdio.h> /* snprintf */
+# include <linux/if.h>
 # include <linux/if_ether.h>
 #endif
 
@@ -197,7 +199,7 @@ static int udp_control_open(outlet_t *ol, int family)
 		 * NB: AF_INET/SOCK_PACKET combo is obsolete
 		 * but we use it to coexist with libuv
 		 */
-		sock = socket(AF_INET, SOCK_PACKET, htons(ETH_P_IP));
+		sock = socket(AF_INET, SOCK_PACKET, htons(ETH_P_ALL));
 		if (sock < 0) {
 			ret = errno;
 			debug("%s: socket() error: %s\n", __FUNCTION__, strerror(ret));
@@ -267,6 +269,64 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 		return -4;
 	}
 }
+
+#if PACKET_CAPTURE_ENABLED
+static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
+{
+	int ret = 0;
+	int fd;
+	struct ifreq iface;
+	assert(ol->udp);
+
+	size_t iflen = strlen(ifname);
+	assert(iflen < sizeof(iface.ifr_name)); /* common sense */
+
+	ret = uv_fileno((uv_handle_t *)ol->udp, &fd);
+	if (ret) goto exit;
+
+	memset(&iface, 0, sizeof(struct ifreq));
+	snprintf(iface.ifr_name, sizeof(iface.ifr_name), ifname);
+	ret = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void*)&iface, sizeof(iface));
+	if (ret) {
+		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, iface, strerror(ret));
+		goto exit;
+	}
+
+exit:
+	//if (ret)
+		debug("%s(ifname='%s'): failed(%d)\n", __FUNCTION__, ifname, ret);
+	return ret;
+}
+#endif
+
+#if PACKET_CAPTURE_ENABLED
+static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
+{
+	int ret = 0;
+	int fd;
+	struct ifreq iface;
+	assert(ol->udp);
+
+	size_t iflen = strlen(ifname);
+	assert(iflen < sizeof(iface.ifr_name)); /* common sense */
+
+	ret = uv_fileno((uv_handle_t *)ol->udp, &fd);
+	if (ret) goto exit;
+
+	memset(&iface, 0, sizeof(struct ifreq));
+	snprintf(iface.ifr_name, sizeof(iface.ifr_name), ifname);
+	ret = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void*)&iface, sizeof(iface));
+	if (ret) {
+		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, iface, strerror(ret));
+		goto exit;
+	}
+
+exit:
+	//if (ret)
+		debug("%s(ifname='%s'): failed(%d)\n", __FUNCTION__, ifname, ret);
+	return ret;
+}
+#endif
 
 #endif
 
@@ -536,6 +596,18 @@ static term_t ol_udp_control(outlet_t *ol,
 		uint16_t port = GET_UINT_16(data);
 		ipX_addr_t addr;
 
+#if PACKET_CAPTURE_ENABLED
+		if (ol->family == INET_AF_PACKET)
+		{
+			if (raw_udp_bind_iface(ol, (char *)data + 2))
+				goto error;
+
+			*reply++ = INET_REP_OK;
+			PUT_UINT_16(reply, (uint16_t)0);
+			reply += 2;
+			break;
+		}
+#endif
 		if (dlen != 2 + (is_ipv6_outlet(ol) ? 16 : 4))
 			goto error;
 

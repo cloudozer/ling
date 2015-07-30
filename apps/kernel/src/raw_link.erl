@@ -13,17 +13,17 @@ getaddr(Address) -> inet_udp:getaddr(Address).
 
 open(Port) -> open(Port, []).
 
-open(Port, Opts) -> 
+open(Port, Opts) ->
     case inet:udp_options(
-	   [{port,Port}, {recbuf, ?RECBUF} | Opts], 
-	   inet) of
-	{error, Reason} -> exit(Reason);
-	{ok, #udp_opts{fd=Fd,
-		       ifaddr=BAddr={A,B,C,D},
-		       port=BPort,
-		       opts=SockOpts}} when ?ip(A,B,C,D), ?port(BPort) ->
-	    inet:open(Fd,BAddr,BPort,SockOpts,udp,raw,link,?MODULE);
-	{ok, _} -> exit(badarg)
+       [{port,Port}, {recbuf, ?RECBUF} | Opts],
+       raw) of
+    {error, Reason} -> exit(Reason);
+    {ok, #udp_opts{fd=Fd,
+               ifaddr=BAddr,
+               port=BPort,
+               opts=SockOpts}} when ?port(BPort) ->
+        inet:open(Fd,BAddr,BPort,SockOpts,udp,raw,link,?MODULE);
+    {ok, _} -> exit(badarg)
     end.
 
 send(S,{A,B,C,D},P,Data) when ?ip(A,B,C,D), ?port(P) ->
@@ -31,7 +31,7 @@ send(S,{A,B,C,D},P,Data) when ?ip(A,B,C,D), ?port(P) ->
 
 send(S, Data) ->
     prim_inet:sendto(S, {0,0,0,0}, 0, Data).
-    
+
 connect(S, {A,B,C,D}, P) when ?ip(A,B,C,D), ?port(P) ->
     prim_inet:connect(S, {A,B,C,D}, P).
 
