@@ -1,15 +1,15 @@
 // Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // * Redistributions of source code must retain the above copyright notice, this
 // list of conditions and the following disclaimer.
-// 
+//
 // * Redistributions in binary form must reproduce the above copyright notice,
 // this list of conditions and the following disclaimer in the documentation
 // and/or other materials provided with the distribution.
-// 
+//
 // * Redistributions in any form must be accompanied by information on how to
 // obtain complete source code for the LING software and any accompanying
 // software that uses the LING software. The source code must either be included
@@ -19,7 +19,7 @@
 // code for all modules it contains. It does not include source code for modules
 // or files that typically accompany the major components of the operating
 // system on which the executable file runs.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
 // IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
@@ -66,14 +66,10 @@ static int ol_udp_get_opts(outlet_t *ol,
 
 #ifdef LING_WITH_LIBUV
 
-#ifndef AF_PACKET
-# if defined(__APPLE__)
-#  define AF_PACKET  PF_NDRV
-# elif defined(BSD)
-#  define AF_PACKET  PF_LINK
-# else
-#  error "No AF_PACKET defined"
-# endif
+#ifdef SOCK_PACKET
+# define PACKET_CAPTURE_ENABLED 1
+
+# include <linux/if_ether.h>
 #endif
 
 static void
@@ -193,10 +189,15 @@ static int udp_control_open(outlet_t *ol, int family)
 	if (ret)
 		goto cleanup;
 
+#if PACKET_CAPTURE_ENABLED
 	if (family == INET_AF_PACKET)
 	{
 		int sock;
-		sock = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW);
+		/*
+		 * NB: AF_INET/SOCK_PACKET combo is obsolete
+		 * but we use it to coexist with libuv
+		 */
+		sock = socket(AF_INET, SOCK_PACKET, htons(ETH_P_IP));
 		if (sock < 0) {
 			ret = errno;
 			debug("%s: socket() error: %s\n", __FUNCTION__, strerror(ret));
@@ -209,6 +210,7 @@ static int udp_control_open(outlet_t *ol, int family)
 			goto cleanup;
 		}
 	}
+#endif
 
 	ol->udp = udp;
 	ol->family = family;
@@ -222,8 +224,15 @@ cleanup:
 static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 {
 	int ret;
-	debug("%s(addr=0x%x, port=%d)\n", __FUNCTION__, addr->ip4.addr, (int)port);
 	inet_sockaddr saddr;
+
+#if PACKET_CAPTURE_ENABLED
+	if (ol->family == INET_AF_PACKET)
+		return 0;
+#endif
+
+	debug("%s(addr=0x%x, port=%d)\n", __FUNCTION__, addr->ip4.addr, (int)port);
+
 	if (is_ipv6_outlet(ol))
 	{
 		saddr.saddr.sa_family = AF_INET6;
@@ -237,7 +246,10 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 		saddr.in.sin_addr.s_addr = htonl(addr->ip4.addr);
 	}
 	ret = uv_udp_bind(ol->udp, &saddr.saddr, 0);
-	if (ret) return -1;
+	if (ret) {
+		debug("%s: uv_udp_bind failed: %s\n", uv_strerror(ret));
+		return -1;
+	}
 
 	inet_sockaddr ip;
 	int saddr_len = sizeof(ip);
@@ -467,7 +479,9 @@ static term_t ol_udp_control(outlet_t *ol,
 		{
 		case INET_AF_INET:
 		case INET_AF_INET6:
+#if PACKET_CAPTURE_ENABLED
 		case INET_AF_PACKET:
+#endif
 			break;
 		default:
 			goto error;
