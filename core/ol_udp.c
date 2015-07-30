@@ -69,7 +69,6 @@ static int ol_udp_get_opts(outlet_t *ol,
 #ifdef SOCK_PACKET
 # define PACKET_CAPTURE_ENABLED 1
 
-# include <stdio.h> /* snprintf */
 # include <linux/if.h>
 # include <linux/if_ether.h>
 #endif
@@ -202,7 +201,7 @@ static int udp_control_open(outlet_t *ol, int family)
 		sock = socket(AF_INET, SOCK_PACKET, htons(ETH_P_ALL));
 		if (sock < 0) {
 			ret = errno;
-			debug("%s: socket() error: %s\n", __FUNCTION__, strerror(ret));
+			debug("%s: socket() error: %s\n", __FUNCTION__, strerror(errno));
 			goto cleanup;
 		}
 
@@ -279,21 +278,21 @@ static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
 	assert(ol->udp);
 
 	size_t iflen = strlen(ifname);
-	assert(iflen < sizeof(iface.ifr_name)); /* common sense */
+	assert(iflen < sizeof(iface.ifr_name) + 1); /* common sense and 0 */
 
 	ret = uv_fileno((uv_handle_t *)ol->udp, &fd);
 	if (ret) goto exit;
 
 	memset(&iface, 0, sizeof(struct ifreq));
-	snprintf(iface.ifr_name, sizeof(iface.ifr_name), ifname);
+	strcpy(iface.ifr_name, ifname);
 	ret = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void*)&iface, sizeof(iface));
 	if (ret) {
-		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, ifname, strerror(ret));
+		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, ifname, strerror(errno));
 		goto exit;
 	}
 
 exit:
-	//if (ret)
+	if (ret)
 		debug("%s(ifname='%s'): failed(%d)\n", __FUNCTION__, ifname, ret);
 	return ret;
 }
