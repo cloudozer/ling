@@ -288,7 +288,7 @@ static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
 	snprintf(iface.ifr_name, sizeof(iface.ifr_name), ifname);
 	ret = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void*)&iface, sizeof(iface));
 	if (ret) {
-		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, iface, strerror(ret));
+		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, ifname, strerror(ret));
 		goto exit;
 	}
 
@@ -297,38 +297,9 @@ exit:
 		debug("%s(ifname='%s'): failed(%d)\n", __FUNCTION__, ifname, ret);
 	return ret;
 }
-#endif
+#endif  //PACKET_CAPTURE_ENABLED
 
-#if PACKET_CAPTURE_ENABLED
-static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
-{
-	int ret = 0;
-	int fd;
-	struct ifreq iface;
-	assert(ol->udp);
-
-	size_t iflen = strlen(ifname);
-	assert(iflen < sizeof(iface.ifr_name)); /* common sense */
-
-	ret = uv_fileno((uv_handle_t *)ol->udp, &fd);
-	if (ret) goto exit;
-
-	memset(&iface, 0, sizeof(struct ifreq));
-	snprintf(iface.ifr_name, sizeof(iface.ifr_name), ifname);
-	ret = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void*)&iface, sizeof(iface));
-	if (ret) {
-		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, iface, strerror(ret));
-		goto exit;
-	}
-
-exit:
-	//if (ret)
-		debug("%s(ifname='%s'): failed(%d)\n", __FUNCTION__, ifname, ret);
-	return ret;
-}
-#endif
-
-#endif
+#endif //LING_WITH_LIBUV
 
 #ifdef LING_WITH_LWIP
 
