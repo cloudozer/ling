@@ -1034,7 +1034,10 @@ static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *a
 		}
 
 		if (ol->active == INET_ONCE)
+		{
 			ol->active = INET_PASSIVE;
+			udp_recv_stop(ol);
+		}
 	}
 
 	return;
