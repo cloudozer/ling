@@ -995,10 +995,10 @@ static term_t ol_tcp_control(outlet_t *ol,
 			*reply++ = INET_REP_OK;
 			*reply++ = INET_AF_INET;
 
-			PUT_UINT_16(reply, &peeraddr.in.sin_port);
+			PUT_UINT_16(reply, ntohs(peeraddr.in.sin_port));
 			reply += 2;
 
-			PUT_UINT_32(reply, &peeraddr.in.sin_addr.s_addr);
+			PUT_UINT_32(reply, ntohl(peeraddr.in.sin_addr.s_addr));
 			reply += 4;
 			break;
 		case AF_INET6:
@@ -1006,10 +1006,10 @@ static term_t ol_tcp_control(outlet_t *ol,
 			*reply++ = INET_REP_OK;
 			*reply++ = INET_AF_INET6;
 
-			PUT_UINT_16(reply, &peeraddr.in6.sin6_port);
+			PUT_UINT_16(reply, ntohs(peeraddr.in6.sin6_port));
 			reply += 2;
 
-			memcpy(reply, &peeraddr.in6.sin6_addr.s6_addr, 16);
+			memcpy(reply, peeraddr.in6.sin6_addr.s6_addr, 16);
 			reply += 16;
 			break;
 		default: goto error;
