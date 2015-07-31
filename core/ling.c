@@ -100,7 +100,7 @@ UNUSED void lwip_init(void);
 void pcre_init(void);
 void counters_init(void);
 
-static void spawn_init_start(char *cmd_line);
+static void spawn_init_start(int argc, char **cmd_line);
 
 // both domain and host name
 char my_domain_name[256];
@@ -109,7 +109,7 @@ char my_domain_name[256];
 /* defined by startup.[sSc] calling conventions */
 void start_ling(start_info_t *si)
 #else
-void start_ling(void)
+void start_ling(int argc, char **argv)
 #endif
 {
 	//-------- init phase 1 --------
@@ -200,13 +200,13 @@ void start_ling(void)
 	proc_main(0); // preliminary run
 
 #ifdef LING_XEN
-	spawn_init_start((char *)start_info.cmd_line);
+	spawn_init_start(0, &(char *)start_info.cmd_line);
 #else
     /*
 	static char *hardcoded_command_line = "-eval \"lists:map(fun application:start/1, [crypto,asn1,public_key,ssh,compiler,syntax_tools,xmerl,mnesia,lager,linc])\" -config /lincx/priv/sys.config -home /lincx -pz /lincx/apps/linc/ebin /lincx/apps/linc_max/ebin /lincx/apps/linc_us3/ebin /lincx/apps/linc_us4/ebin /lincx/deps/eenum/ebin /lincx/deps/enetconf/ebin /lincx/deps/lager/ebin /lincx/deps/meck/ebin /lincx/deps/of_config/ebin /lincx/deps/of_protocol/ebin /lincx/deps/pkt/ebin /lincx/priv";
 	*/
-	static char hardcoded_command_line[] = "-home /";
-	spawn_init_start(hardcoded_command_line);
+	//static char hardcoded_command_line[] = "-home /";
+	spawn_init_start(argc, argv);
 #endif
 
 	//while (1)
@@ -298,12 +298,29 @@ static term_t parse_cmd_line(heap_t *hp, char *cmd_line)
 	return list_rev(args, hp);
 }
 
-static void spawn_init_start(char *cmd_line)
+static term_t parse_argv(heap_t *hp, int argc, char **argv)
+{
+	int i;
+	term_t args = nil;
+	for (i = 0; i < argc; ++i)
+	{
+		uint8_t *binptr;
+		size_t arglen = strlen(argv[i]);
+		term_t bin = heap_make_bin(hp, arglen, &binptr);
+		memcpy(binptr, argv[i], arglen);
+		args = heap_cons(hp, bin, args);
+	}
+	return list_rev(args, hp);
+}
+
+static void spawn_init_start(int argc, char **cmd_line)
 {
 	proc_t *init_proc = proc_make(noval);	// group leader set later
 	assert(init_proc != 0);
 
-	init_proc->cap.regs[0] = parse_cmd_line(&init_proc->hp, cmd_line);
+	init_proc->cap.regs[0] = argc
+		? parse_argv(&init_proc->hp, argc, cmd_line)
+		: parse_cmd_line(&init_proc->hp, *cmd_line);
 	assert(init_proc->cap.regs[0] != noval);
 	init_proc->cap.live = 1;
 

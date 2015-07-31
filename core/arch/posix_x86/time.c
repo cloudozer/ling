@@ -79,7 +79,7 @@ uint64_t wall_clock(void)
     struct timeval tv = { .tv_sec = 0, .tv_usec = 0 };
     gettimeofday(&tv, NULL);
     uint64_t t = ((uint64_t)tv.tv_sec * 1000000ull + (uint64_t)tv.tv_usec);
-	return 1000ull * t; // nanoseconds
+    return 1000ull * t; // nanoseconds
 }
 
 void sleep_us(unsigned usec)
@@ -92,7 +92,7 @@ void sleep_us(unsigned usec)
 
 void expand_time(struct time_exp_t *xt, uint64_t wall_clock)
 {
-	memset(xt, 0, sizeof(*xt));
+    memset(xt, 0, sizeof(*xt));
     time_t wall_sec = wall_clock / 1000000000ull;
 
     struct tm tm;
