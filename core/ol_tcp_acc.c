@@ -241,6 +241,8 @@ static void uv_on_tcp_accept(uv_stream_t *tcpacc, int status)
 	if (!conn)
 		goto pend_cleanup;
 
+	conn->data = pend;
+
 	ret = uv_tcp_init(uv_default_loop(), conn);
 	if (ret)
 		goto pend_cleanup;
