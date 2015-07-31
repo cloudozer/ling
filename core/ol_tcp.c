@@ -418,6 +418,25 @@ static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
 	return err;
 }
 
+static inline int tcp_control_peername(outlet_t *ol, inet_sockaddr *saddr)
+{
+	if (PCB_ISIPV6(ol->tcp))
+	{
+#if LWIP_IPV6
+		saddr->saddr.sa_family = AF_INET6;
+		saddr->in6.sin6_port = ol->tcp->remote_port;
+		memcpy((void *)&saddr->in6.sin6_port.s6_addr, &ol->tcp->remote_port, 16);
+		return 0;
+#else
+		return -1;
+#endif
+	}
+	saddr->saddr.sa_family = AF_INET;
+	saddr->in.sin_port = ol->tcp->remote_port;
+	saddr->in.sin_addr.s_addr = ntohl(ol->tcp->remote_ip.addr);
+	return 0;
+}
+
 static int tcp_send_buffer(outlet_t *ol)
 {
 	uint16_t max_len = tcp_sndbuf(ol->tcp);
@@ -750,6 +769,16 @@ static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
 	return 0;
 }
 
+static inline int tcp_control_peername(outlet_t *ol, inet_sockaddr *saddr)
+{
+	assert(ol->tcp);
+	int namelen = sizeof(inet_sockaddr);
+	//memset(saddr, 0, sizeof(inet_sockaddr));
+	int ret = uv_tcp_getpeername(ol->tcp, &saddr->saddr, &namelen);
+	if (ret) debug("%s() failed: %s\n", __FUNCTION__, uv_strerror(ret));
+	return ret;
+}
+
 static int tcp_send_buffer(outlet_t *ol)
 {
 	uv_write_t *req = malloc(sizeof(uv_write_t));
@@ -955,29 +984,36 @@ static term_t ol_tcp_control(outlet_t *ol,
 		REPLY_INET_ERROR("enotconn");
 	else
 	{
-#if LING_WITH_LWIP
-		*reply++ = INET_REP_OK;
-		*reply++ = INET_AF_INET;
-		uint16_t peer_port = ol->tcp->remote_port;
-		PUT_UINT_16(reply, peer_port);
-		reply += 2;
-		if (PCB_ISIPV6(ol->tcp))
+		inet_sockaddr peeraddr;
+		int ret = tcp_control_peername(ol, &peeraddr);
+		if (ret) goto error;
+
+		switch (peeraddr.saddr.sa_family)
 		{
-			ip_addr_set_hton((ip_addr_t *)reply, (ip_addr_t *)&ol->tcp->remote_ip);
+		case AF_INET:
+			debug("%s(PEER): AF_INET\n", __FUNCTION__);
+			*reply++ = INET_REP_OK;
+			*reply++ = INET_AF_INET;
+
+			PUT_UINT_16(reply, &peeraddr.in.sin_port);
+			reply += 2;
+
+			PUT_UINT_32(reply, &peeraddr.in.sin_addr.s_addr);
 			reply += 4;
-		}
-		else
-		{
-#if LWIP_IPV6
-			ip6_addr_set_hton((ip6_addr_t *)reply, (ip6_addr_t *)&ol->tcp->remote_ip);
+			break;
+		case AF_INET6:
+			debug("%s(PEER): AF_INET6\n", __FUNCTION__);
+			*reply++ = INET_REP_OK;
+			*reply++ = INET_AF_INET6;
+
+			PUT_UINT_16(reply, &peeraddr.in6.sin6_port);
+			reply += 2;
+
+			memcpy(reply, &peeraddr.in6.sin6_addr.s6_addr, 16);
 			reply += 16;
-#else
-			goto error;
-#endif
+			break;
+		default: goto error;
 		}
-#else //!LING_WITH_LWIP
-		REPLY_INET_ERROR("enotimpl");
-#endif
 	}
 	break;
 
