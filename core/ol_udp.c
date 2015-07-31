@@ -228,10 +228,7 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 	int ret;
 	inet_sockaddr saddr;
 
-#if PACKET_CAPTURE_ENABLED
-	if (ol->family == INET_AF_PACKET)
-		return 0;
-#endif
+	assert(ol->family == INET_AF_INET6 || ol->family == INET_AF_INET);
 
 	debug("%s(addr=0x%x, port=%d)\n", __FUNCTION__, addr->ip4.addr, (int)port);
 
@@ -294,6 +291,9 @@ static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
 		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, ifname, strerror(errno));
 		goto exit;
 	}
+
+	if (ol->active)
+		udp_recv_start(ol);
 
 exit:
 	if (ret)
