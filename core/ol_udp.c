@@ -215,6 +215,7 @@ static int udp_control_open(outlet_t *ol, int family)
 
 	ol->udp = udp;
 	ol->family = family;
+
 	return 0;
 
 cleanup:
@@ -248,9 +249,12 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 	}
 	ret = uv_udp_bind(ol->udp, &saddr.saddr, 0);
 	if (ret) {
-		debug("%s: uv_udp_bind failed: %s\n", uv_strerror(ret));
+		debug("%s: uv_udp_bind failed: %s\n", __FUNCTION__, uv_strerror(ret));
 		return -1;
 	}
+
+	if (ol->active)
+		udp_recv_start(ol);
 
 	inet_sockaddr ip;
 	int saddr_len = sizeof(ip);
@@ -323,8 +327,8 @@ send_udp_packet(outlet_t *ol, ip_addr_t *addr, uint16_t port, void *data, uint16
 		pb = pb->next;
 	}
 
-	//debug("UDP: sending %d byte(s) to %d.%d.%d.%d:%d\n", len,
-	//	ip4_addr1(&addr), ip4_addr2(&addr), ip4_addr3(&addr), ip4_addr4(&addr), port);
+	//)debug("UDP: sending %d byte(s) to %d.%d.%d.%d:%d\n", len,
+	//)	ip4_addr1(&addr), ip4_addr2(&addr), ip4_addr3(&addr), ip4_addr4(&addr), port);
 
 	int rc = udp_sendto(ol->udp, packet, addr, port);
 	pbuf_free(packet);
@@ -754,6 +758,15 @@ static int ol_udp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 #endif
 			break;
 
+		case INET_LOPT_ACTIVE:
+			if (ol->active && val) break;
+			if (!ol->active && !val) break;
+			if (val)
+				udp_recv_start(ol);
+			else
+				udp_recv_stop(ol);
+			/* fallthrough */
+
 		default:
 			if (inet_set_opt(ol, opt, val) < 0) {
 				debug("%s: inet_set_opt ERR\n",__FUNCTION__);
@@ -901,24 +914,26 @@ static void lwip_recv_timeout_cb(void *arg)
 static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *addr)
 {
 	RECV_PKT_T *data = (RECV_PKT_T *)pbuf;
+	size_t dlen = RECV_PKT_LEN(data);
 
 	term_t pid = (ol->cr_in_progress ? ol->cr_reply_to : ol->owner);
 	proc_t *cont_proc = scheduler_lookup(pid);
 	if (cont_proc == 0)
 	{
+		debug("%s: cont_proc null\n", __FUNCTION__);
 		// nowhere to send
 		RECV_PKT_FREE(data);
 		return;
 	}
 
 	uint8_t *ptr;
-	term_t packet = heap_make_bin_N(&cont_proc->hp, RECV_PKT_LEN(data), &ptr);
+	term_t packet = heap_make_bin_N(&cont_proc->hp, dlen, &ptr);
 	if (packet == noval)
 	{
 		RECV_PKT_FREE(data);
 		goto no_memory;
 	}
-	RECV_PKT_COPY(ptr, data, RECV_PKT_LEN(data));
+	RECV_PKT_COPY(ptr, data, dlen);
 	RECV_PKT_FREE(data);
 
 	int is_ipv6 = is_ipv6_outlet(ol);
@@ -990,10 +1005,10 @@ static void udp_on_recv(outlet_t *ol, const void *pbuf, const struct sockaddr *a
 				goto no_memory;
 			p[0] = 4;
 			/* TODO: test endianness and such */
-			p[1] = addrptr[0];
-			p[2] = addrptr[1];
-			p[3] = addrptr[2];
-			p[4] = addrptr[3];
+			p[1] = tag_int(addrptr[0]);
+			p[2] = tag_int(addrptr[1]);
+			p[3] = tag_int(addrptr[2]);
+			p[4] = tag_int(addrptr[3]);
 			heap_set_top(&cont_proc->hp, p +1 +4);
 
 			remote_addr = tag_tuple(p);
