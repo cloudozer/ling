@@ -241,11 +241,11 @@ static void uv_on_tcp_accept(uv_stream_t *tcpacc, int status)
 	if (!conn)
 		goto pend_cleanup;
 
-	conn->data = pend;
-
 	ret = uv_tcp_init(uv_default_loop(), conn);
 	if (ret)
 		goto pend_cleanup;
+
+	conn->data = pend;
 
 	ret = uv_accept(tcpacc, (uv_stream_t *)conn);
 	if (ret)
@@ -534,7 +534,7 @@ static void ol_tcp_acc_destroy_private(outlet_t *ol)
 static int tcpacc_on_recv(acc_pend_t *pend, const void *packet)
 {
 	RECV_PKT_T *data = (RECV_PKT_T *)packet;
-	phase_expected(PHASE_EVENTS);
+	phase_expected2(PHASE_EVENTS, PHASE_NEXT);
 
 	debug("%s(*0x%p, len=%d)\n", __FUNCTION__,
 	      pend, (data == 0) ?0: RECV_PKT_LEN(data));

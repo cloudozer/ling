@@ -82,20 +82,16 @@ struct outlet_vtab_t {
 typedef struct acc_pend_t acc_pend_t;
 struct acc_pend_t {
 	outlet_t *outlet;
-union {
 	// an acceptor process that called gen_tcp:accept();
 	// used when acc_pend_t is in ol->accepting
-	struct {
 		term_t reply_to;
 		int timeout_set;
 #if LING_WITH_LIBUV
 		// a process waits for an accept request until this timer runs out:
 		uv_timer_t accept_timer;
 #endif
-	};
 	// an accepted TCP connection waiting for an accept() call
 	// used when acc_pend_t is in ol->accepted
-	struct {
 #if LING_WITH_LWIP
 		struct tcp_pcb *pcb;
 		struct pbuf *ante;
@@ -104,8 +100,6 @@ union {
 		uv_tcp_t *tcp;
 		uv_buf_t ante;
 #endif
-	};
-};
 	acc_pend_t *prev;
 	acc_pend_t *next;
 };
