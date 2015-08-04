@@ -260,8 +260,8 @@ embedfs_object(EmbedFsPath, ImgName) ->
 	OutPath = filename:join(filename:absname(cache_dir()), "embedfs.o"),
 	case ?ARCH of
 		xen_x86 ->
-			LdCmd = lists:flatmap(fun(Opt) -> Opt ++ " " end, ld()),
-			ok = sh(LdCmd ++ " -r -b binary -o " ++ OutPath ++ " embed.fs", CC);
+			[Ld | _] = ld(),
+			ok = sh(Ld ++ " -r -b binary -o " ++ OutPath ++ " embed.fs", CC);
 		_ ->
 			EmbedCPath = filename:join(filename:absname(cache_dir()), "embedfs.c"),
 			{ok, Embed} = file:read_file(EmbedFsPath),
