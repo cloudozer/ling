@@ -57,16 +57,39 @@ void netfe_output(netfe_t *fe, uint8_t *packet, int pack_len)
 	fatal_error("not implemented");
 }
 
+#if __APPLE__
+# define AF_LINKLAYER AF_LINK
+#elif __linux__
+# define AF_LINKLAYER AF_PACKET
+#endif
+
 int build_getifaddrs_reply(char *buf, int len)
 {
 	assert(buf);
 	assert(len > 0);
 #define CHECK_BUF(nnew)   \
-	do { if (cur + (nnew) > buf + len) goto nomem; } while (0)
+	do { if (reply + (nnew) > buf + len) goto nomem; } while (0)
+
+#define PUT_REPLY_SOCKADDR4(addr, opt) \
+	do { \
+		CHECK_BUF(2 + 4 + 1); \
+		*reply++ = (opt); \
+		*reply++ = INET_AF_INET; \
+		sockaddrin_to_ipaddr(&(addr)->in, (ip_addr_t *)reply); \
+		reply += 4; \
+	} while (0)
+#define PUT_REPLY_SOCKADDR6(addr, opt) \
+	do { \
+		CHECK_BUF(2 + 16 + 1); \
+		*reply++ = (opt); \
+		*reply++ = INET_AF_INET6; \
+		sockaddrin6_to_ip6addr(&(addr)->in6, (ip6_addr_t *)reply); \
+		reply += 16; \
+	} while (0)
 
 	int ret;
 	struct ifaddrs *iflist = NULL, *ifaddr;
-	char *cur = buf;
+	char *reply = buf;
 
 	ret = getifaddrs(&iflist);
 	if (ret)
@@ -82,76 +105,82 @@ int build_getifaddrs_reply(char *buf, int len)
 		debug("%s: found %s\n", __FUNCTION__, ifaddr->ifa_name);
 		CHECK_BUF(ifnamlen + 2); // two NUL bytes: one for the name, one for the opts
 
-		memcpy(cur, ifaddr->ifa_name, ifnamlen); cur += ifnamlen;
-		*cur++ = '\0';
+		memcpy(reply, ifaddr->ifa_name, ifnamlen); reply += ifnamlen;
+		*reply++ = '\0'; // end of name
+
+		/* INET_IFOPT_FLAGS */
+		CHECK_BUF(1 + 4 + 1);
+		*reply++ = INET_IFOPT_FLAGS;
+		uint32_t ifflags = 0;
+		if (ifaddr->ifa_flags & IFF_UP)          ifflags |= INET_IFF_UP;
+		if (ifaddr->ifa_flags & IFF_LOOPBACK)    ifflags |= INET_IFF_LOOPBACK;
+		if (ifaddr->ifa_flags & IFF_BROADCAST)   ifflags |= INET_IFF_BROADCAST;
+		if (ifaddr->ifa_flags & IFF_POINTOPOINT) ifflags |= INET_IFF_POINTTOPOINT;
+		if (ifaddr->ifa_flags & IFF_RUNNING)     ifflags |= INET_IFF_RUNNING;
+		if (ifaddr->ifa_flags & IFF_MULTICAST)   ifflags |= INET_IFF_MULTICAST;
+		PUT_UINT_32(reply, ifflags);
+		reply += 4;
 
 		/* INET_IFOPT_ADDR */
-		inet_sockaddr *saddr = (inet_sockaddr *)ifaddr->ifa_addr;
+		saddr_t *saddr = (saddr_t *)ifaddr->ifa_addr;
+		saddr_t *netmask = (saddr_t *)ifaddr->ifa_netmask;
+		saddr_t *broadaddr = (saddr_t *)ifaddr->ifa_broadaddr;
 		debug("%s: ifa_addr.sa_family = %d\n", __FUNCTION__, saddr->saddr.sa_family);
 		switch (saddr->saddr.sa_family)
 		{
 		case AF_INET:
-			CHECK_BUF(2 + 4 + 1);
-			*cur++ = INET_IFOPT_ADDR;
-			*cur++ = INET_AF_INET;
+			PUT_REPLY_SOCKADDR4(saddr, INET_IFOPT_ADDR);
 
-			sockaddrin_to_ipaddr(&saddr->in, (ip_addr_t *)cur);
-			cur += 4;
+			if (netmask)
+				PUT_REPLY_SOCKADDR4(netmask, INET_IFOPT_NETMASK);
+
+			if (broadaddr && (ifflags & INET_IFF_BROADCAST))
+				PUT_REPLY_SOCKADDR4(broadaddr, INET_IFOPT_BROADADDR);
 			break;
+
 		case AF_INET6:
-			CHECK_BUF(2 + 16 + 1);
-			*cur++ = INET_IFOPT_ADDR;
-			*cur++ = INET_AF_INET6;
+			PUT_REPLY_SOCKADDR6(saddr, INET_IFOPT_ADDR);
 
-			sockaddrin6_to_ip6addr(&saddr->in6, (ip6_addr_t *)cur);
-			cur += 16;
+			if (netmask)
+				PUT_REPLY_SOCKADDR6(netmask, INET_IFOPT_NETMASK);
+
+			if (broadaddr && (ifflags & INET_IFF_BROADCAST))
+				PUT_REPLY_SOCKADDR6(broadaddr, INET_IFOPT_BROADADDR);
 			break;
-#if defined(__APPLE__)
-		case AF_LINK: {
+
+		case AF_LINKLAYER: {
+#if __APPLE__
 			struct sockaddr_dl *sll = (struct sockaddr_dl *)ifaddr->ifa_addr;
-			assert(sll->sdl_family == AF_LINK);
-
-			//debug("%s: sdl_alen = %d\n", __FUNCTION__, sll->sdl_alen);
-			sll->sdl_alen = 6;
-			assert(sll->sdl_alen == 6);  // must be Ethernet address
-
-			CHECK_BUF(1 + 2 + sll->sdl_alen + 1);
-			*cur++ = INET_IFOPT_HWADDR;
-
-			PUT_UINT_16(cur, ((uint16_t)sll->sdl_alen));
-			cur += 2;
-
-			memcpy(cur, LLADDR(sll), sll->sdl_alen);
-			cur += sll->sdl_alen;
-			} break;
-#endif
-#if defined(__linux__)
-		case AF_PACKET: {
+			size_t lladdrlen = sll->sdl_alen;
+			char *lladdr = LLADDR(sll);
+#elif __linux__
 			struct sockaddr_ll *sll = (struct sockaddr_ll *)ifaddr->ifa_addr;
-			assert(sll->sll_family == AF_PACKET);
-			assert(sll->sll_halen == 6); // must be Ethernet
-
-			CHECK_BUF(1 + 2 + sll->sll_halen + 1);
-			*cur++ = INET_IFOPT_HWADDR;
-
-			PUT_UINT_16(cur, (uint16_t)sll->sll_halen);
-			cur += 2;
-
-			memcpy(cur, sll->sll_addr, sll->sll_halen);
-			cur += sll->sll_halen;
-			} break;
+			size_t lladdrlen = sll->sll_halen;
+			char *lladdr = (char *)sll->sll_addr;
 #endif
+			if (lladdrlen == 0) break;
+			debug("%s: lladdrlen = %d\n", __FUNCTION__, lladdrlen);
+
+			CHECK_BUF(1 + 2 + lladdrlen + 1);
+			*reply++ = INET_IFOPT_HWADDR;
+
+			PUT_UINT_16(reply, (uint16_t)lladdrlen);
+			reply += 2;
+
+			memcpy(reply, lladdr, lladdrlen);
+			reply += lladdrlen;
+			} break;
 		}
 
-		*cur++ = '\0';
+		*reply++ = '\0'; // end of options
 
 		ifaddr = ifaddr->ifa_next;
 	}
 	CHECK_BUF(1);
-	*cur++ = '\0';
+	*reply++ = '\0';
 
 	freeifaddrs(iflist);
-	return cur - buf;
+	return reply - buf;
 nomem:
 	freeifaddrs(iflist);
 	return -ENOMEM; // must be negative to signal error

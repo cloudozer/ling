@@ -365,7 +365,7 @@ static int tcp_control_open(outlet_t *ol, int family)
  *   returns the bound local port on success;
  *            negative error on failure;
  */
-static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
+static int tcp_control_bind(outlet_t *ol, const saddr_t *saddr)
 {
 	if (saddr->saddr.sa_family == AF_INET)
 	{
@@ -389,7 +389,7 @@ static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
 	return ol->tcp->local_port;
 }
 
-static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
+static int tcp_control_connect(outlet_t *ol, saddr_t *saddr)
 {
 	err_t err;
 	uint16_t remote_port = sockaddr_port(&saddr->saddr);
@@ -418,7 +418,7 @@ static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
 	return err;
 }
 
-static inline int tcp_control_peername(outlet_t *ol, inet_sockaddr *saddr)
+static inline int tcp_control_peername(outlet_t *ol, saddr_t *saddr)
 {
 	if (PCB_ISIPV6(ol->tcp))
 	{
@@ -715,7 +715,7 @@ static int tcp_control_open(outlet_t *ol, int family)
 	return 0;
 }
 
-static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
+static int tcp_control_bind(outlet_t *ol, const saddr_t *saddr)
 {
 	assert(ol->tcp);
 	assert((saddr->saddr.sa_family == AF_INET6 && ol->family == INET_AF_INET6)
@@ -736,7 +736,7 @@ static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
 #endif
 
 	/* get local port */
-	inet_sockaddr srcaddr = { .saddr.sa_family = AF_INET };
+	saddr_t srcaddr = { .saddr.sa_family = AF_INET };
 	int slen = 0;
 	ret = uv_tcp_getsockname(ol->tcp, &srcaddr.saddr, &slen);
 	if (ret) return -2;
@@ -744,7 +744,7 @@ static int tcp_control_bind(outlet_t *ol, const inet_sockaddr *saddr)
 	return sockaddr_port(&srcaddr.saddr);
 }
 
-static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
+static int tcp_control_connect(outlet_t *ol, saddr_t *saddr)
 {
 	int ret;
 	uv_connect_t *conn_req = malloc(sizeof(uv_connect_t));
@@ -771,11 +771,11 @@ static int tcp_control_connect(outlet_t *ol, inet_sockaddr *saddr)
 	return 0;
 }
 
-static inline int tcp_control_peername(outlet_t *ol, inet_sockaddr *saddr)
+static inline int tcp_control_peername(outlet_t *ol, saddr_t *saddr)
 {
 	assert(ol->tcp);
-	int namelen = sizeof(inet_sockaddr);
-	//memset(saddr, 0, sizeof(inet_sockaddr));
+	int namelen = sizeof(saddr_t);
+	//memset(saddr, 0, sizeof(saddr_t));
 	int ret = uv_tcp_getpeername(ol->tcp, &saddr->saddr, &namelen);
 	if (ret) debug("%s() failed: %s\n", __FUNCTION__, uv_strerror(ret));
 	return ret;
@@ -940,7 +940,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 		uint32_t timeout = GET_UINT_32(data);
 		uint16_t remote_port = htons(GET_UINT_16(data +4));
 
-		inet_sockaddr saddr;
+		saddr_t saddr;
 		if (is_ipv6) {
 			saddr.saddr.sa_family = AF_INET6;
 			saddr.in6.sin6_port = remote_port;
@@ -986,7 +986,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 		REPLY_INET_ERROR("enotconn");
 	else
 	{
-		inet_sockaddr peeraddr;
+		saddr_t peeraddr;
 		int ret = tcp_control_peername(ol, &peeraddr);
 		if (ret) goto error;
 
@@ -1053,7 +1053,7 @@ static term_t ol_tcp_control(outlet_t *ol,
 
 	case INET_REQ_BIND:
 	{
-		inet_sockaddr saddr;
+		saddr_t saddr;
 		int is_ipv6 = is_ipv6_outlet(ol);
 		if ((is_ipv6 && dlen != 2 +16) || (!is_ipv6 && dlen != 2 +4))
 			goto error;

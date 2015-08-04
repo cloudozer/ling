@@ -226,7 +226,7 @@ cleanup:
 static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 {
 	int ret;
-	inet_sockaddr saddr;
+	saddr_t saddr;
 
 	assert(ol->family == INET_AF_INET6 || ol->family == INET_AF_INET);
 
@@ -253,7 +253,7 @@ static int udp_control_bind(outlet_t *ol, ipX_addr_t *addr, uint16_t port)
 	if (ol->active)
 		udp_recv_start(ol);
 
-	inet_sockaddr ip;
+	saddr_t ip;
 	int saddr_len = sizeof(ip);
 	ret = uv_udp_getsockname(ol->udp, &ip.saddr, &saddr_len);
 	if (ret) return -3;
@@ -887,7 +887,7 @@ static void lwip_recv_cb(void *arg,
 	assert(data != 0);
 	assert(ol->udp == udp);
 
-	inet_sockaddr saddr;
+	saddr_t saddr;
 	if (PCB_ISIPV6(udp)) {
 		ip6_addr_t *addr6 = (ip6_addr_t*)addr;
 		saddr.saddr.sa_family = AF_INET6;

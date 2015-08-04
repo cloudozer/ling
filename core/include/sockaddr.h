@@ -54,7 +54,7 @@ typedef struct {
         struct sockaddr_in  in;
         struct sockaddr_in6 in6;
     };
-} inet_sockaddr;
+} saddr_t;
 
 
 static inline uint16_t
@@ -93,7 +93,7 @@ sockaddrin6_to_ip6addr(const struct sockaddr_in6 *sin6, ip6_addr_t *addr)
 }
 
 static inline void
-saddr_to_ipaddr(const inet_sockaddr *saddr, ipX_addr_t *addr)
+saddr_to_ipaddr(const saddr_t *saddr, ipX_addr_t *addr)
 {
 	switch (saddr->saddr.sa_family) {
 	case AF_INET:   sockaddrin_to_ipaddr(&saddr->in, &addr->ip4); break;
