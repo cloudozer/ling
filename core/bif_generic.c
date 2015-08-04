@@ -1476,7 +1476,7 @@ term_t cbif_make_tuple2(proc_t *proc, term_t *regs)
 		badarg(N);
 
 	int arity = int_value(N);
-	if (arity < 0)
+	if (arity < 0 || arity > MAX_TUPLE_ARITY)
 		badarg(N);
 	if (arity == 0)
 		return ZERO_TUPLE;
@@ -1504,7 +1504,7 @@ term_t cbif_make_tuple3(proc_t *proc, term_t *regs)
 		badarg(DefList);
 
 	int arity = int_value(N);
-	if (arity < 0)
+	if (arity < 0 || arity > MAX_TUPLE_ARITY)
 		badarg(N);
 	if (arity == 0 && DefList != nil)
 		badarg(DefList);

@@ -108,6 +108,8 @@
 -define(LING_COMPAT_REL, 17).
 -define(LING_COMPAT_OTP_RELEASE, "17").	%% do not forget to update this
 
+-define(SLICE_REDUCTIONS, 1000).
+
 get_module_info(Module) when is_atom(Module) ->
 	Items = [exports,imports,attributes,compile],
 	[{Item,erlang:get_module_info(Module, Item)}
@@ -585,6 +587,7 @@ system_info(smp_support) -> false;
 system_info(heap_type) -> private;
 system_info(schedulers) -> 1;
 system_info(schedulers_online) -> 1;
+system_info(context_reductions) -> ?SLICE_REDUCTIONS;
 system_info({allocator,ets_alloc}) -> false;
 system_info(ets_always_compress) -> false;
 system_info(thread_pool_size) -> 0;

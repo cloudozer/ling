@@ -339,7 +339,7 @@ default:
 	if (packet_size != 0 && body_len > packet_size)
 	{
 		debug("Over-sized packet detected: body_len %d packet_size %d\n", body_len, packet_size);
-		*reason = A_EMSGSIZE;
+		*reason = A_INVALID;
 		return noval;
 	}
 	if (exp_len > (bs->ends -bs->starts) /8)
@@ -1087,7 +1087,7 @@ if (ch == '\r')
 
 if (ptr -buf >= sizeof(buf) || (packet_size != 0 && ptr -buf >= packet_size))
 {
-	*reason = A_EMSGSIZE;
+	*reason = A_INVALID;
 	return noval;
 }
 *ptr++ = ch;
@@ -1303,7 +1303,7 @@ static term_t decode_tls(bits_t *bs, term_t parent,
 		exp_len = dlen +5;
 		if (packet_size != 0 && dlen > packet_size)	// magic (OTP tests)
 		{
-			*reason = A_EMSGSIZE;
+			*reason = A_INVALID;
 			return noval;
 		}
 		if (bs->ends -bs->starts < dlen *8)
@@ -1344,7 +1344,7 @@ static term_t decode_tls(bits_t *bs, term_t parent,
 		exp_len = dlen +2;
 		if (packet_size != 0 && dlen -3 > packet_size)	// magic (OTP tests)
 		{
-			*reason = A_EMSGSIZE;
+			*reason = A_INVALID;
 			return noval;
 		}
 		if (bs->ends -bs->starts < (dlen -1) *8)

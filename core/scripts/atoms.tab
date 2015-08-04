@@ -265,7 +265,6 @@ httph_bin
 tcp
 tcp_error
 tcp_closed
-emsgsize
 ac
 scope
 empty_out_q

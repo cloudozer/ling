@@ -8,7 +8,7 @@
 
 #include <sys/mman.h>
 
-#define MEMORY_SIZE		(256*1024*1024)
+#define MEMORY_SIZE		(1024*1024*1024)
 #ifdef __APPLE__
 #	define MMAP_ADDR NULL
 #elif __linux
