@@ -584,6 +584,7 @@ system_info(wordsize) -> 4;
 system_info({wordsize,internal}) -> 4;
 system_info({wordsize,external}) -> 4;
 system_info(smp_support) -> false;
+system_info(snifs) -> [];
 system_info(heap_type) -> private;
 system_info(schedulers) -> 1;
 system_info(schedulers_online) -> 1;
@@ -775,12 +776,14 @@ halt(_, _) ->
 
 atom_to_binary(Atom, Enc) ->
 	Chars = atom_to_list(Atom),
-	unicode:characters_to_binary(Chars, Enc).
+	unicode:characters_to_binary(Chars, latin1, Enc).
 
+binary_to_atom(Bin, _) when byte_size(Bin) > 255 -> erlang:error(system_limit); %% relaxed
 binary_to_atom(Bin, Enc) ->
 	List = unicode:characters_to_list(Bin, Enc),
 	list_to_atom(List).
 
+binary_to_existing_atom(Bin, _) when byte_size(Bin) > 255 -> erlang:error(system_limit); %% relaxed
 binary_to_existing_atom(Bin, Enc) ->
 	List = unicode:characters_to_list(Bin, Enc),
 	list_to_existing_atom(List).

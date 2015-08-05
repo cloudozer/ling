@@ -78,4 +78,3 @@ characters_to_binary(Data) ->
 characters_to_binary(Data, InEncoding) ->
 	unicode:characters_to_binary(Data, InEncoding, unicode).
 
-%%EOF
