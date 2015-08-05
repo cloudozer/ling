@@ -703,8 +703,10 @@ static term_t ol_udp_control(outlet_t *ol,
 		if (dlen != 0)
 			goto error;
 
-		sz = build_getifaddrs_reply(rbuf, sizeof(rbuf));
-		assert(sz >= 0);
+		sz = build_getifaddrs_reply(rbuf + 1, sizeof(rbuf) - 1);
+		if (sz < 0)
+			goto error;
+		*reply++ = INET_REP_OK;
 		reply = rbuf +sz;
 	}
 	break;
