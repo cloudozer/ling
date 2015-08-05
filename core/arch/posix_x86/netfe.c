@@ -68,28 +68,28 @@ int build_getifaddrs_reply(char *buf, int len)
 	assert(buf);
 	assert(len > 0);
 #define CHECK_BUF(nnew)   \
-	do { if (cur + (nnew) > buf + len) goto nomem; } while (0)
+	do { if (reply + (nnew) > buf + len) goto nomem; } while (0)
 
 #define PUT_REPLY_SOCKADDR4(addr, opt) \
 	do { \
 		CHECK_BUF(2 + 4 + 1); \
-		*cur++ = (opt); \
-		*cur++ = INET_AF_INET; \
-		sockaddrin_to_ipaddr(&(addr)->in, (ip_addr_t *)cur); \
-		cur += 4; \
+		*reply++ = (opt); \
+		*reply++ = INET_AF_INET; \
+		sockaddrin_to_ipaddr(&(addr)->in, (ip_addr_t *)reply); \
+		reply += 4; \
 	} while (0)
 #define PUT_REPLY_SOCKADDR6(addr, opt) \
 	do { \
 		CHECK_BUF(2 + 16 + 1); \
-		*cur++ = (opt); \
-		*cur++ = INET_AF_INET6; \
-		sockaddrin6_to_ip6addr(&(addr)->in6, (ip6_addr_t *)cur); \
-		cur += 16; \
+		*reply++ = (opt); \
+		*reply++ = INET_AF_INET6; \
+		sockaddrin6_to_ip6addr(&(addr)->in6, (ip6_addr_t *)reply); \
+		reply += 16; \
 	} while (0)
 
 	int ret;
 	struct ifaddrs *iflist = NULL, *ifaddr;
-	char *cur = buf;
+	char *reply = buf;
 
 	ret = getifaddrs(&iflist);
 	if (ret)
@@ -105,12 +105,12 @@ int build_getifaddrs_reply(char *buf, int len)
 		debug("%s: found %s\n", __FUNCTION__, ifaddr->ifa_name);
 		CHECK_BUF(ifnamlen + 2); // two NUL bytes: one for the name, one for the opts
 
-		memcpy(cur, ifaddr->ifa_name, ifnamlen); cur += ifnamlen;
-		*cur++ = '\0'; // end of name
+		memcpy(reply, ifaddr->ifa_name, ifnamlen); reply += ifnamlen;
+		*reply++ = '\0'; // end of name
 
 		/* INET_IFOPT_FLAGS */
 		CHECK_BUF(1 + 4 + 1);
-		*cur++ = INET_IFOPT_FLAGS;
+		*reply++ = INET_IFOPT_FLAGS;
 		uint32_t ifflags = 0;
 		if (ifaddr->ifa_flags & IFF_UP)          ifflags |= INET_IFF_UP;
 		if (ifaddr->ifa_flags & IFF_LOOPBACK)    ifflags |= INET_IFF_LOOPBACK;
@@ -118,13 +118,13 @@ int build_getifaddrs_reply(char *buf, int len)
 		if (ifaddr->ifa_flags & IFF_POINTOPOINT) ifflags |= INET_IFF_POINTTOPOINT;
 		if (ifaddr->ifa_flags & IFF_RUNNING)     ifflags |= INET_IFF_RUNNING;
 		if (ifaddr->ifa_flags & IFF_MULTICAST)   ifflags |= INET_IFF_MULTICAST;
-		PUT_UINT_32(cur, ifflags);
-		cur += 4;
+		PUT_UINT_32(reply, ifflags);
+		reply += 4;
 
 		/* INET_IFOPT_ADDR */
-		inet_sockaddr *saddr = (inet_sockaddr *)ifaddr->ifa_addr;
-		inet_sockaddr *netmask = (inet_sockaddr *)ifaddr->ifa_netmask;
-		inet_sockaddr *broadaddr = (inet_sockaddr *)ifaddr->ifa_broadaddr;
+		saddr_t *saddr = (saddr_t *)ifaddr->ifa_addr;
+		saddr_t *netmask = (saddr_t *)ifaddr->ifa_netmask;
+		saddr_t *broadaddr = (saddr_t *)ifaddr->ifa_broadaddr;
 		debug("%s: ifa_addr.sa_family = %d\n", __FUNCTION__, saddr->saddr.sa_family);
 		switch (saddr->saddr.sa_family)
 		{
@@ -162,25 +162,25 @@ int build_getifaddrs_reply(char *buf, int len)
 			debug("%s: lladdrlen = %d\n", __FUNCTION__, lladdrlen);
 
 			CHECK_BUF(1 + 2 + lladdrlen + 1);
-			*cur++ = INET_IFOPT_HWADDR;
+			*reply++ = INET_IFOPT_HWADDR;
 
-			PUT_UINT_16(cur, (uint16_t)lladdrlen);
-			cur += 2;
+			PUT_UINT_16(reply, (uint16_t)lladdrlen);
+			reply += 2;
 
-			memcpy(cur, lladdr, lladdrlen);
-			cur += lladdrlen;
+			memcpy(reply, lladdr, lladdrlen);
+			reply += lladdrlen;
 			} break;
 		}
 
-		*cur++ = '\0'; // end of options
+		*reply++ = '\0'; // end of options
 
 		ifaddr = ifaddr->ifa_next;
 	}
 	CHECK_BUF(1);
-	*cur++ = '\0';
+	*reply++ = '\0';
 
 	freeifaddrs(iflist);
-	return cur - buf;
+	return reply - buf;
 nomem:
 	freeifaddrs(iflist);
 	return -ENOMEM; // must be negative to signal error
