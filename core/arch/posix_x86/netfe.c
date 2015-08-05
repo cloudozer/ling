@@ -106,14 +106,12 @@ int build_getifaddrs_reply(char *buf, int len)
 			sockaddrin6_to_ip6addr(&saddr->in6, (ip6_addr_t *)cur);
 			cur += 16;
 			break;
-#if defined(__APPLE__)
+#ifdef __APPLE__
 		case AF_LINK: {
 			struct sockaddr_dl *sll = (struct sockaddr_dl *)ifaddr->ifa_addr;
-			assert(sll->sdl_family == AF_LINK);
 
-			//debug("%s: sdl_alen = %d\n", __FUNCTION__, sll->sdl_alen);
-			sll->sdl_alen = 6;
-			assert(sll->sdl_alen == 6);  // must be Ethernet address
+			if (sll->sdl_alen == 0) break;
+			debug("%s: sdl_alen = %d\n", __FUNCTION__, sll->sdl_alen);
 
 			CHECK_BUF(1 + 2 + sll->sdl_alen + 1);
 			*cur++ = INET_IFOPT_HWADDR;
@@ -125,11 +123,9 @@ int build_getifaddrs_reply(char *buf, int len)
 			cur += sll->sdl_alen;
 			} break;
 #endif
-#if defined(__linux__)
+#if __linux__
 		case AF_PACKET: {
 			struct sockaddr_ll *sll = (struct sockaddr_ll *)ifaddr->ifa_addr;
-			assert(sll->sll_family == AF_PACKET);
-			assert(sll->sll_halen == 6); // must be Ethernet
 
 			CHECK_BUF(1 + 2 + sll->sll_halen + 1);
 			*cur++ = INET_IFOPT_HWADDR;
