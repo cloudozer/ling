@@ -595,7 +595,9 @@ static void uv_on_tcp_connect(uv_connect_t *req, int status)
 	assert(ol->tcp);
 	int ret;
 
-	debug("%s(status: %s)\n", __FUNCTION__, status ? uv_strerror(status) : "ok");
+	debug("%s(status: (%d) %s)\n", __FUNCTION__, status, status ? uv_strerror(status) : "ok");
+	if (status == -125)
+		return; /* outlet is likely to be freed already, TODO */
 	if (status)
 	{
 		tcp_on_error(ol, A_LWIP_CONN);
@@ -1270,6 +1272,7 @@ static void ol_tcp_detach(outlet_t *ol)
 
 static void ol_tcp_destroy_private(outlet_t *ol)
 {
+	debug("%s(*%p)\n", __FUNCTION__, ol);
 	assert(ol->vtab == &ol_tcp_vtab);
 
 	nfree(ol->send_buf_node);
