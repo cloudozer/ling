@@ -3,47 +3,65 @@
 #include "console.h"
 #include "outlet.h"
 
-#include "syscalls.h"
-
+#include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <termios.h>
 
 #define constwrite1(s) write(1, (s), sizeof(s)-1)
 
 static outlet_t *attached_outlet;
+struct termios saved_termios;
+bool console_available = false;
+
+void console_restore_termios(void)
+{
+	tcsetattr(STDIN_FILENO, TCSANOW, &saved_termios);
+}
 
 void
 console_init(void)
 {
-#if CONSOLE_DEBUG
-	constwrite1("console hello\n");
-#endif
+	int ret;
+
 	int flag = O_NONBLOCK;
 	fcntl(STDIN_FILENO, F_SETFL, flag);
+
+	console_available = true;
+
+	/* switch TTY to raw mode */
+	ret = tcgetattr(STDIN_FILENO, &saved_termios);
+	if (ret) return;
+
+	struct termios raw_termios = saved_termios;
+	cfmakeraw(&raw_termios);
+	raw_termios.c_oflag |= OPOST;
+
+	ret = tcsetattr(STDIN_FILENO, TCSANOW, &raw_termios);
+	if (ret) return;
+
+	/* don't forget to clean up */
+	atexit(console_restore_termios);
 }
 
 int
 console_is_initialized(void)
 {
-	return 1;
+	return console_available;
 }
 
 void
 console_attach(outlet_t *ol)
 {
-#if CONSOLE_DEBUG
-	constwrite1("console attach\n");
-#endif
 	attached_outlet = ol;
 }
 
 void
 console_detach(outlet_t *ol)
 {
-#if CONSOLE_DEBUG
-	constwrite1("console detach\n");
-#endif
+	debug("%s()\n", __FUNCTION__);
 	attached_outlet = NULL;
 }
 
@@ -56,7 +74,7 @@ console_write(char *buf, int len)
 int
 ser_cons_write(char *buf, int len)
 {
-	return write(STDOUT_FILENO, buf, len);
+	return len;
 }
 
 int
