@@ -102,7 +102,6 @@ int build_getifaddrs_reply(char *buf, int len)
 	while (ifaddr)
 	{
 		size_t ifnamlen = strlen(ifaddr->ifa_name);
-		debug("%s: found %s\n", __FUNCTION__, ifaddr->ifa_name);
 		CHECK_BUF(ifnamlen + 2); // two NUL bytes: one for the name, one for the opts
 
 		memcpy(reply, ifaddr->ifa_name, ifnamlen); reply += ifnamlen;
@@ -125,7 +124,8 @@ int build_getifaddrs_reply(char *buf, int len)
 		saddr_t *saddr = (saddr_t *)ifaddr->ifa_addr;
 		saddr_t *netmask = (saddr_t *)ifaddr->ifa_netmask;
 		saddr_t *broadaddr = (saddr_t *)ifaddr->ifa_broadaddr;
-		debug("%s: ifa_addr.sa_family = %d\n", __FUNCTION__, saddr->saddr.sa_family);
+		debug("%s: %s, sa_family = %d\n", __FUNCTION__,
+		      ifaddr->ifa_name, saddr->saddr.sa_family);
 		switch (saddr->saddr.sa_family)
 		{
 		case AF_INET:
@@ -159,7 +159,6 @@ int build_getifaddrs_reply(char *buf, int len)
 			char *lladdr = (char *)sll->sll_addr;
 #endif
 			if (lladdrlen == 0) break;
-			debug("%s: lladdrlen = %d\n", __FUNCTION__, lladdrlen);
 
 			CHECK_BUF(1 + 2 + lladdrlen + 1);
 			*reply++ = INET_IFOPT_HWADDR;
