@@ -295,8 +295,8 @@ binary_to_term(T, Opts) ->
 	erlang:error(badarg, [T,Opts]).
 
 term_to_binary(T) ->
-	%% defaults to no compression and zero minor version
-	erlang:'term_to_binary$'(T, 0, 0).
+	%% defaults to no compression and minor version 1
+	erlang:'term_to_binary$'(T, 0, 1).
 
 term_to_binary(T, Opts) when is_list(Opts) ->
 	{Compression,Version} = lists:foldl(fun(compressed, {_C,V}) ->
@@ -307,17 +307,17 @@ term_to_binary(T, Opts) when is_list(Opts) ->
 		{C,M};
 	(_, _) ->
 		erlang:error(badarg, [T,Opts])
-	end, {0,0}, Opts),
+	end, {0,1}, Opts),	%% default minor version is 1 since R17
 	erlang:'term_to_binary$'(T, Compression, Version);
 
 term_to_binary(T, Opts) ->
 	erlang:error(badarg, [T,Opts]).
 
 external_size(T) ->
-	erlang:'external_size$'(T, 0).
+	erlang:'external_size$'(T, 1).	%% default version is 1 since R17
 
 external_size(T, []) ->
-	erlang:'external_size$'(T, 0);
+	erlang:'external_size$'(T, 1);
 external_size(T, [{minor_version,Ver}]) when is_integer(Ver), Ver >= 0, Ver =< 1 ->
 	erlang:'external_size$'(T, Ver);
 external_size(T, Opts) ->
@@ -593,7 +593,7 @@ system_info({allocator,ets_alloc}) -> false;
 system_info(ets_always_compress) -> false;
 system_info(thread_pool_size) -> 0;
 system_info(process_count) -> length(processes());
-system_info(hipe_architecture) -> none;
+system_info(hipe_architecture) -> undefined;
 system_info(machine) -> "LING";
 system_info(logical_processors) -> 1;
 system_info(break_ignored) -> false.
