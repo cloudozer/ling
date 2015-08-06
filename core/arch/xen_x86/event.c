@@ -83,6 +83,9 @@ int events_do_pending(void)
 			nr_fired++;
 		}
 	}
+
+	/* netmap */
+	nr_fired += netmap_do_pending();
 	return nr_fired;
 }
 
