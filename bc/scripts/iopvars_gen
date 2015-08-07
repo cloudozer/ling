@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -pa ../bc gentab
+%%! -pa ../bc gentab bc bc/gentab
 
 %% vim: set filetype=erlang :
 
@@ -38,7 +38,7 @@
 
 -mode(compile).
 
--include_lib("bc/ling_code.hrl").
+-include_lib("../ling_code.hrl").
 
 %% in words
 -define(LOADED_MODULES_SIZE, 500000).

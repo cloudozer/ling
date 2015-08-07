@@ -1,5 +1,5 @@
 #!/usr/bin/env escript 
-%%! -pa ../bc gentab
+%%! -pa ../bc gentab bc core/gentab
 %% vim: set filetype=erlang :
 
 %% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
@@ -39,7 +39,7 @@
 
 -define(HOT_TOP, 100).
 
-main([LingMainTemplate,HotColdFile]) ->
+main([LingMainTemplate,HotColdFile,LingMainC]) ->
 
 	{TopHits,HC} = parse_hot_cold(HotColdFile),
 
@@ -63,8 +63,10 @@ main([LingMainTemplate,HotColdFile]) ->
 	Data = {OpVars},
 	C = ling_main_c:render(Data),
 
-	{ok,Out} = file:open("ling_main.c", [write]),
-	io:format(Out, "~s~n", [C]),
+	{ok,Out} = file:open(LingMainC, [write]),
+
+	io:format(Out, "~s\n", [C]),
+
 	file:close(Out).
 
 parse_hot_cold(HotColdFile) ->

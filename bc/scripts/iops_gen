@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -pa ..
+%%! -pa .. -pa bc
 
 %% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
 %% 
@@ -36,14 +36,14 @@
 
 -mode(compile).
 
-main([IopsTabFile,IopsTabErl]) ->
+main([IopsTabFile,IopsTabErlEt,IopsTabErl]) ->
 
 	{ok,File} = file:open(IopsTabFile, [read]),
 	
 	Tab = read_iops_tab(File, []),
 	check_iops_tab(Tab),
 
-	ok = erltl:compile("scripts/iops_tab_erl.et"),	%%TODO: make an arg
+	ok = erltl:compile(IopsTabErlEt),
 	Data = {Tab},
 	C = iops_tab_erl:render(Data),
 
@@ -52,7 +52,7 @@ main([IopsTabFile,IopsTabErl]) ->
 	file:close(Out);
 
 main(_) ->
-	io:format("usage: iops_gen iops.tab iops_tab.erl~n").
+	io:format("usage: iops_gen iops.tab iops_tab_erl.et iops_tab.erl\n").
 
 read_iops_tab(File, Acc) ->
 	case file:read_line(File) of

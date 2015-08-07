@@ -1,5 +1,5 @@
 #!/usr/bin/env escript 
-%%! -pa ../bc gentab
+%%! -pa ../bc gentab bc core/gentab
 
 %% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
 %% 
@@ -36,7 +36,7 @@
 
 -mode(compile).
 
--include_lib("bc/ling_code.hrl").
+-include_lib("../../bc/ling_code.hrl").
 
 main([PreloadDir,BifTabFile,ExpTabErl]) ->
 

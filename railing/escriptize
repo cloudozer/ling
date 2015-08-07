@@ -24,6 +24,7 @@ main([Arch]) ->
 	FileList1 = 
 		lists:map(
 			fun(F) ->
+			io:format("~s\n", [F]),
 				{ok, Bin} = file:read_file(F),
 				{filename:basename(F), Bin}
 			end,

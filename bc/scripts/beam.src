@@ -20,6 +20,6 @@
 # The analysis must see all possible iops. Rare iops are typically seen in
 # tests.
 #
-sample
-../test/ebin
+bc/sample
+test/ebin
 

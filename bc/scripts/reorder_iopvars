@@ -1,10 +1,10 @@
 #!/usr/bin/env escript
-%%! -pa gentab
+%%! -pa gentab -pa bc bc/gentab
 %% vim: set filetype=erlang :
 
 -mode(compile).
 
-main([IopVarsTab,HotColdIops,IopVarsErl]) ->
+main([IopVarsTab,HotColdIops,IopVarsErlEt,IopVarsErl]) ->
 	{ok,[Variants]} = file:consult(IopVarsTab),
 
 	%% {Freq,Op,VarNo,ArgTypes}
@@ -32,7 +32,7 @@ main([IopVarsTab,HotColdIops,IopVarsErl]) ->
 	%% var_index(Op, VarNo) -> Index
 	%% var_by_index(Index) -> {Op,VarNo}
 
-	ok = erltl:compile("scripts/iopvars_erl.et"),
+	ok = erltl:compile(IopVarsErlEt),
 	Data = {TrueOrder},
 	C = iopvars_erl:render(Data),
 
