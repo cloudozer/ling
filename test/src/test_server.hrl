@@ -17,14 +17,15 @@
 %% %CopyrightEnd%
 %%
 
+%%-define(line_trace, 1).
 -ifdef(line_trace).
--line_trace(true).
 -define(line,
-	io:format(lists:concat([?MODULE,",",integer_to_list(?LINE),": ~p"]),
+	io:format(lists:concat([?MODULE,":",integer_to_list(?LINE),": ~p\n"]),
 		  [erlang:now()]),).
 -else.
 -define(line,).
 -endif.
+
 -define(t,test_server).
 -define(config,test_server:lookup_config).
 

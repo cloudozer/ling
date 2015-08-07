@@ -19,7 +19,7 @@
 -module(estone_SUITE).
 %% Test functions
 -export([all/0, suite/0,groups/0,init_per_suite/1, end_per_suite/1, 
-	 init_per_group/2,end_per_group/2,estone/1,estone_bench/1]).
+	 init_per_group/2,end_per_group/2,estone/1]).
 -export([init_per_testcase/2, end_per_testcase/2]).
 
 %% Internal exports for EStone tests
@@ -45,8 +45,7 @@
 	 run_micro/3,p1/1,ppp/3,macro/2,micros/0]).
 
 
--include_lib("test_server/include/test_server.hrl").
--include_lib("common_test/include/ct_event.hrl").
+-include("test_server.hrl").
 
 %% Test suite defines
 -define(default_timeout, ?t:minutes(10)).
@@ -101,7 +100,7 @@ estone(suite) ->
 estone(doc) ->
     ["EStone Test"];
 estone(Config) when is_list(Config) ->
-    ?line DataDir = ?config(data_dir,Config),
+    ?line DataDir = [], %?config(data_dir,Config),
     ?line Mhz=get_cpu_speed(os:type(),DataDir),
     ?line L = ?MODULE:macro(?MODULE:micros(),DataDir),
     ?line {Total, Stones} = sum_micros(L, 0, 0),
@@ -109,15 +108,15 @@ estone(Config) when is_list(Config) ->
     ?line {comment,Mhz ++ " MHz, " ++ 
 	   integer_to_list(Stones) ++ " ESTONES"}.
 
-estone_bench(Config) ->
-    DataDir = ?config(data_dir,Config),
-    L = ?MODULE:macro(?MODULE:micros(),DataDir),
-    [ct_event:notify(
-       #event{name = benchmark_data, 
-	      data = [{name,proplists:get_value(title,Mark)},
-		      {value,proplists:get_value(estones,Mark)}]})
-     || Mark <- L],
-    L.
+%%estone_bench(Config) ->
+%%    DataDir = ?config(data_dir,Config),
+%%    L = ?MODULE:macro(?MODULE:micros(),DataDir),
+%%    [ct_event:notify(
+%%       #event{name = benchmark_data, 
+%%	      data = [{name,proplists:get_value(title,Mark)},
+%%		      {value,proplists:get_value(estones,Mark)}]})
+%%     || Mark <- L],
+%%    L.
 
 
 %%
@@ -323,7 +322,7 @@ micros() ->
      micro(msgp_huge),
      micro(pattern),
      micro(trav),
-     micro(port_io),
+     %micro(port_io),
      micro(large_dataset_work),
      micro(large_local_dataset_work),
      micro(alloc),
@@ -632,13 +631,13 @@ tup_trav(T, P, End) ->
 
 %% Port I/O
 port_io(I) ->
-    EstoneCat = get(estone_cat),
-    Before = erlang:now(),
-    Pps = make_port_pids(5, I, EstoneCat),  %% 5 ports
-    send_procs(Pps, go),
-    After = erlang:now(),
-    wait_for_pids(Pps),
-    subtr(Before, After).
+    ?line EstoneCat = get(estone_cat),
+    ?line Before = erlang:now(),
+    ?line Pps = make_port_pids(5, I, EstoneCat),  %% 5 ports
+    ?line send_procs(Pps, go),
+    ?line After = erlang:now(),
+    ?line wait_for_pids(Pps),
+    ?line subtr(Before, After).
 
 make_port_pids(0, _, _) -> 
     [];
@@ -673,33 +672,33 @@ ppp_loop(P, I, Cmd) ->
 %% Working with a very large non-working data set
 %% where the passive data resides in remote processes
 large_dataset_work(I) ->
-    {Minus, Ps} = timer:tc(?MODULE, mk_big_procs, [?BIGPROCS]),
-    trav(I),
-    lists(I),
-    send_procs(Ps, stop),
-    Minus. %% Don't count time to create the big procs.
+    ?line {Minus, Ps} = timer:tc(?MODULE, mk_big_procs, [?BIGPROCS]),
+    ?line trav(I),
+    ?line lists(I),
+    ?line send_procs(Ps, stop),
+    ?line Minus. %% Don't count time to create the big procs.
 
 mk_big_procs(0) -> [];
 mk_big_procs(I) ->
     [ mk_big_proc()| mk_big_procs(I-1)].
 
 mk_big_proc() ->
-    P = spawn(?MODULE, big_proc, []),
-    P ! {self(), running},
+    ?line P = spawn(?MODULE, big_proc, []),
+    ?line P ! {self(), running},
     receive
 	{P, yes} -> P
     end.
 
 big_proc() ->
-    X = very_big(?BIGPROC_SIZE), %% creates a big heap
-    Y = very_big(?BIGPROC_SIZE),
-    Z = very_big(?BIGPROC_SIZE),
+    ?line X = very_big(?BIGPROC_SIZE), %% creates a big heap
+    ?line Y = very_big(?BIGPROC_SIZE),
+    ?line Z = very_big(?BIGPROC_SIZE),
 
-    receive
+    ?line receive
 	{From, running} ->
 	    From ! {self(), yes}
     end,
-    receive
+    ?line receive
 	stop ->
 	    {X, Y, Z}  %% Can't be garbed away now by very (not super)
                        %% smart compiler

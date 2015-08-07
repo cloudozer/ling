@@ -4,7 +4,7 @@
 run(Suite) ->
 	Module = erlang:list_to_atom(lists:concat([Suite,"_SUITE"])),
 	Groups = Module:groups(),
-	Config = [{data_dir, lists:concat(["/test/priv/",Module,"_data"])}],
+	Config = [{data_dir, lists:concat(["priv/",Module,"_data"])}],
 	Module:init_per_suite(Config),
 	{Ok, Fail} = lists:foldl(
 		fun

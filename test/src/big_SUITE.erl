@@ -375,7 +375,7 @@ otp_6692(suite) ->
 otp_6692(doc) ->
     ["Tests for DIV/REM bug reported in OTP-6692"];
 otp_6692(Config) when is_list(Config)->
-    ?line loop1(1,1000).
+    ?line loop1(1,100).
 
 fact(N) ->
      fact(N,1).

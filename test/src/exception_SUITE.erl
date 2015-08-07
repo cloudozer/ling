@@ -548,21 +548,21 @@ line_numbers(Config) when is_list(Config) ->
 	      {?MODULE,line_numbers,1,_}|_]}} =
 	(catch line1(a, 41)),
 
-    ModFile = ?MODULE_STRING++".erl",
+    %%MK: ModFile = ?MODULE_STRING++".erl",
     [{?MODULE,maybe_crash,1,[{file,"call.erl"},{line,28}]},
      {?MODULE,call1,0,[{file,"call.erl"},{line,14}]},
      {?MODULE,close_calls,1,[{file,"call.erl"},{line,5}]},
-     {?MODULE,line_numbers,1,[{file,ModFile},{line,_}]}|_] =
+     {?MODULE,line_numbers,1,[{file,_ModFile},{line,_}]}|_] =
 	close_calls(call1),
     [{?MODULE,maybe_crash,1,[{file,"call.erl"},{line,28}]},
      {?MODULE,call2,0,[{file,"call.erl"},{line,18}]},
      {?MODULE,close_calls,1,[{file,"call.erl"},{line,6}]},
-     {?MODULE,line_numbers,1,[{file,ModFile},{line,_}]}|_] =
+     {?MODULE,line_numbers,1,[{file,_ModFile},{line,_}]}|_] =
 	close_calls(call2),
     [{?MODULE,maybe_crash,1,[{file,"call.erl"},{line,28}]},
      {?MODULE,call3,0,[{file,"call.erl"},{line,22}]},
      {?MODULE,close_calls,1,[{file,"call.erl"},{line,7}]},
-     {?MODULE,line_numbers,1,[{file,ModFile},{line,_}]}|_] =
+     {?MODULE,line_numbers,1,[{file,_ModFile},{line,_}]}|_] =
 	close_calls(call3),
     no_crash = close_calls(other),
 
@@ -588,6 +588,13 @@ line_numbers(Config) when is_list(Config) ->
 	      {?MODULE,line_numbers,1,
 	       [{file,ModFile},{line,_}]}|_]}} =
 	(catch build_binary2(8, bad_binary)),
+
+    <<"abc",357:16>> = build_binary3(<<"abc">>),
+    {'EXIT',{badarg,[{?MODULE,build_binary3,1,
+		      [{file,"bit_syntax.erl"},{line,72511}]},
+		     {?MODULE,line_numbers,1,
+		      [{file,ModFile},{line,_}]}|_]}} =
+	(catch build_binary3(no_binary)),
 
     {'EXIT',{function_clause,
 	     [{?MODULE,do_call_abs,[y,y],
@@ -690,6 +697,10 @@ build_binary1(Size) ->				%Line 72501
 build_binary2(Size, Bin) ->			%Line 72505
     id(0),					%Line 72506
     <<7:Size,Bin/binary>>.			%Line 72507
+
+build_binary3(Bin) ->			        %Line 72509
+    id(0),					%Line 72510
+    <<Bin/binary,357:16>>.			%Line 72511
 
 -file("gc_bif.erl", 17).
 do_call_abs(x, Arg) ->				%Line 18
