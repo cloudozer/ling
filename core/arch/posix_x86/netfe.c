@@ -90,6 +90,8 @@ int build_getifaddrs_reply(char *buf, int len)
 	int ret;
 	struct ifaddrs *iflist = NULL, *ifaddr;
 	char *reply = buf;
+	*reply++ = INET_REP_OK;
+	len--;
 
 	ret = getifaddrs(&iflist);
 	if (ret)

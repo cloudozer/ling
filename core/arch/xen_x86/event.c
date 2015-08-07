@@ -31,12 +31,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/*
-**
-**
-**
-*/
-
 #include "event.h"
 
 #include "ling_common.h"
@@ -52,6 +46,8 @@ struct event_handler {
 static struct event_handler event_handlers[NR_EVENTS];
 static uint32_t bound_events[NR_EVENTS];
 static int nr_bound;
+
+int netmap_do_pending(void);
 
 void events_poll(uint64_t timeout)
 {
