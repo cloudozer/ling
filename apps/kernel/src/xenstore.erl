@@ -202,9 +202,7 @@ unpack(error, What) ->
 unpack(transaction_start, What) ->
 	{ok,list_to_integer(What)};
 unpack(directory, What) ->
-	case lists:member(0, What) of
-		false -> {ok,[What]};
-		true  -> {ok,string:tokens(What, [0])} end;
+	{ok,string:tokens(What, [0])};
 unpack(_Tag, "OK") -> ok;
 unpack(_Tag, What) ->
 	case lists:member(0, What) of

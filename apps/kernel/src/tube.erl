@@ -1,7 +1,7 @@
 -module(tube).
 -export([open/1,open/2]).
 -export([accept/0]).
--export([can_send/1]).
+-export([can_send/1,can_send_async/1]).
 -export([close/1]).
 
 -include("tube.hrl").
@@ -19,6 +19,11 @@ can_send(Tube) when is_port(Tube) ->
 	receive {can_send,Tube,closed}   -> {error,closed};
 			{can_send,Tube,NumSlots} -> {ok,NumSlots} end;
 can_send(_) -> {error,badarg}.
+
+can_send_async(Tube) when is_port(Tube) ->
+	[?TUBE_REP_OK] = erlang:port_control(Tube, ?TUBE_REQ_SEND_SLOTS, []),
+	ok;
+can_send_async(_) -> {error,badarg}.
 
 close(Tube) when is_port(Tube) ->
 	gen_server:close(tube_server, {close,Tube});
