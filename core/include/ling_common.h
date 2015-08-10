@@ -141,7 +141,7 @@ extern uint32_t trace_mask;
 extern uint32_t trace_module;	// term_t
 #endif
 
-void domain_poweroff(void); // __attribute__ ((noreturn));
+void domain_poweroff(int status); // __attribute__ ((noreturn));
 void yield(void);
 
 #ifdef LING_DEBUG

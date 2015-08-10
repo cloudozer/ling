@@ -1,11 +1,38 @@
 -module(test).
--export([run/1]).
+-export([run/1, run/2, play/0]).
+
+score() -> [
+%	{lists, all},
+	{bif, [binary_to_atom]}
+].
+
+play() ->
+	{Ok, Fail} =
+		lists:foldl(
+			fun({Suite, Cases}, {Ok, Fail}) ->
+				{O, F} = run(Suite, Cases),
+				{Ok + O, Fail + F}
+			end,
+			{0, 0},
+			score()
+		),
+	io:format("Grand Total: ~p/~p\n", [Ok, Fail]).
 
 run(Suite) ->
+	run(Suite, all).
+
+run(Suite, CaseList) ->
 	Module = erlang:list_to_atom(lists:concat([Suite,"_SUITE"])),
 	Groups = Module:groups(),
 	Config = [{data_dir, lists:concat(["priv/",Module,"_data"])}],
 	Module:init_per_suite(Config),
+
+	CL =
+		case CaseList of
+			all -> Module:all();
+			_ -> CaseList
+		end,
+
 	{Ok, Fail} = lists:foldl(
 		fun
 			({group, Group}, {Ok, Fail}) ->
@@ -24,10 +51,11 @@ run(Suite) ->
 				end			
 		end,
 		{0, 0},
-		Module:all()
+		CL
 	),
 	Module:end_per_suite(Config),
-	io:format("Total: ~p, Ok: ~p, Failed: ~p\n", [Ok + Fail, Ok, Fail]).
+	io:format("Total: ~p, Ok: ~p, Failed: ~p\n", [Ok + Fail, Ok, Fail]),
+	{Ok, Fail}.
 
 exec(Module, Case, Config) ->
 	try

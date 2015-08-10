@@ -660,13 +660,16 @@ term_t cbif_halt2(proc_t *proc, term_t *regs)
 	if (!is_bool(Flush))
 		badarg(Flush);		//TODO: handle higher up
 
+	int status = 0;
 	if (!is_int(Status))
 	{
 		if (is_list(Status))
 			printk("*** halt: %pt\n", T(Status));
 	}
+	else
+		status = int_value(Status);
 
-	domain_poweroff();
+	domain_poweroff(status);
 	
 	return A_TRUE;
 }

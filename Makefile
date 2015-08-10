@@ -1,3 +1,12 @@
+ifeq (,$(wildcard .config))
+$(shell cp doc/default.config .config)
+$(error Default .config created)
+else
+include .config
+endif
+
+default: railing/railing
+
 LING_VER := 0.3.2
 OTP_VER := 17
 ERLC := $(ERLANG_BIN)erlc
@@ -9,10 +18,6 @@ else
 LING_LINUX := 1
 endif
 
-.config:
-	cp doc/default.config .config
-
-include .config
 
 ## TEST
 TEST_ERL := $(wildcard test/src/*.erl)
@@ -84,7 +89,8 @@ CPPFLAGS += -iquote core/include
 CPPFLAGS += -iquote core/bignum
 CPPFLAGS += -iquote core/arch/$(ARCH)/include
 
-CFLAGS   := -Wall -Werror -Wno-nonnull -std=gnu99 -gdwarf-3
+CFLAGS   := -Wall -Werror
+CFLAGS   += -Wno-nonnull -std=gnu99 -gdwarf-3
 CFLAGS   += -fno-omit-frame-pointer
 CFLAGS	 += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
 
@@ -225,7 +231,7 @@ $(STARTUP_OBJ): %.o: %.$(STARTUP_SRC_EXT) .config
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 endif
 
-$(ARCH_OBJ) $(CORE_OBJ) $(BIGNUM_OBJ): %.o: %.c core/include/atom_defs.h core/include/mod_info.inc .config
+$(ARCH_OBJ) $(CORE_OBJ) $(BIGNUM_OBJ): %.o: %.c core/include/atom_defs.h core/include/mod_info.inc  core/lib/nettle/libnettle.a .config
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 $(MISC_OBJ): %.o: %.c .config
@@ -257,7 +263,7 @@ core/gentab/exp_tab.erl: $(CORE_PRELOAD_BEAM) bc/scripts/bif.tab bc/ling_iopvars
 core/include/atom_defs%h core/atoms%inc core/gentab/atoms%erl: core/scripts/atoms.tab core/gentab/exp_tab.beam
 	core/scripts/atoms_gen core/scripts/atoms.tab core/preload core/include/atom_defs.h core/atoms.inc core/gentab/atoms.erl
 
-core/ling_main.c: core/scripts/ling_main_c.et core/scripts/hot_cold_iops $(CORE_GENTAB_BEAM)
+core/ling_main.c: core/scripts/ling_main_c.et core/scripts/hot_cold_iops $(CORE_GENTAB_BEAM) .config
 	core/scripts/main_gen core/scripts/ling_main_c.et core/scripts/hot_cold_iops $@
 
 core/ling_main.o: core/ling_main.c core/include/atom_defs.h $(CORE_INCLUDES)
@@ -266,13 +272,13 @@ core/ling_main.o: core/ling_main.c core/include/atom_defs.h $(CORE_INCLUDES)
 core/include/bif.h: bc/scripts/bif.tab
 	core/scripts/bifs_gen $< $@
 
-core/vmling.o: $(STARTUP_OBJ) $(MISC_AS) $(ALL_OBJ) core/lib/nettle/libnettle.a
+core/vmling.o: $(STARTUP_OBJ) $(MISC_AS) $(ALL_OBJ)
 	$(CC) -o $@ $(STARTUP_OBJ) $(MISC_AS) $(ALL_OBJ) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_FINAL)
 
 core/lib/nettle/libnettle.a: core/lib/nettle/config.h
 	$(MAKE) -C core/lib/nettle libnettle.a
 
-core/lib/nettle/config.h: core/lib/nettle.tar.gz
+core/lib/nettle/config.h: core/lib/nettle.tar.gz .config
 	mkdir -p core/lib/nettle && tar vxzf $< -C core/lib/nettle --strip-components=1 && \
 	cd core/lib/nettle && ./configure --disable-public-key --disable-shared --disable-pic --disable-openssl --disable-documentation $(NETTLE_FLAGS) CC="$(CC)" CPPFLAGS="$(CPPFLAGS)" CFLAGS="$(NETTLE_CFLAGS)" LDFLAGS="$(NETTLE_LDFLAGS)"
 	rm -rf core/lib/nettle/{tools,examples,testsuite}
@@ -315,7 +321,7 @@ $(APPS_ASN1): apps/asn1/ebin/%.beam: apps/asn1/src/%.erl
 railing/railing: $(patsubst %.erl,%.beam,$(wildcard railing/*.erl)) railing/escriptize $(APPS_ALL) core/vmling.o
 	./railing/escriptize $(ARCH)
 
-railing/%.beam: railing/%.erl
+railing/%.beam: railing/%.erl .config
 	$(ERLC) -DLING_VER=\"$(LING_VER)\" -DARCH=\'$(ARCH)\' -DOTP_VER=\"$(OTP_VER)\" -o railing $<
 
 #default: $(TEST_BEAM)

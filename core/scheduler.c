@@ -433,10 +433,6 @@ do_pending:
 
 		scheduler_runtime_update();
 		events_poll(next_ticks);		// LING_INFINITY is big enough
-#ifdef LING_POSIX
-		/* do not make my CPU a frying pan! */
-		sleep_us(5000);
-#endif
 		scheduler_runtime_start();
 
 		goto do_pending;

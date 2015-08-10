@@ -2,7 +2,7 @@
 
 extern void exit(int) __attribute__((noreturn));
 
-void domain_poweroff(void)
+void domain_poweroff(int status)
 {
-	exit(0);
+	exit(status);
 }

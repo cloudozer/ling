@@ -2,7 +2,7 @@
 #include "ling_xen.h"
 #include "arch_console.h"
 
-void domain_poweroff(void)
+void domain_poweroff(int status)
 {
 	printk("\nBye\n");
 	console_done();	// flushes and restores terminal mode
