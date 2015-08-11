@@ -367,12 +367,13 @@ static int tcp_control_open(outlet_t *ol, int family)
  */
 static int tcp_control_bind(outlet_t *ol, const saddr_t *saddr)
 {
+	uint16_t local_port = sockaddr_port(&saddr->saddr);
 	if (saddr->saddr.sa_family == AF_INET)
 	{
 		assert(!is_ipv6_outlet(ol));
 		ip_addr_t addr;
 		sockaddrin_to_ipaddr(&saddr->in, &addr);
-		tcp_bind(ol->tcp, &addr, saddr->in.sin_port); // always succeeds
+		tcp_bind(ol->tcp, &addr, local_port); // always succeeds
 	}
 	else
 	{
@@ -380,7 +381,7 @@ static int tcp_control_bind(outlet_t *ol, const saddr_t *saddr)
 		assert(is_ipv6_outlet(ol));
 		ip6_addr_t addr;
 		sockaddrin6_to_ip6addr(&saddr->in6, &addr);
-		tcp_bind_ip6(ol->tcp, &addr, saddr->in6.sin6_port); // always succeeds
+		tcp_bind_ip6(ol->tcp, &addr, local_port); // always succeeds
 #else
 		return -1;
 #endif
