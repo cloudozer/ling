@@ -340,6 +340,61 @@ NETTLE_ASM := \
 NETTLE_OBJ := $(patsubst %.c,%.o,$(NETTLE_SRC))
 NETTLE_ABJ := $(patsubst %.s,%.o,$(NETTLE_ASM))
 
+ifdef LING_WITH_LIBUV
+CPPFLAGS += -isystem core/lib/libuv/include
+CPPFLAGS += -isystem core/lib/libuv/src
+
+LIBUV_SRC := \
+	core/lib/libuv/src/fs-poll.c \
+	core/lib/libuv/src/inet.c \
+	core/lib/libuv/src/threadpool.c \
+	core/lib/libuv/src/uv-common.c \
+	core/lib/libuv/src/version.c \
+	core/lib/libuv/src/unix/async.c \
+	core/lib/libuv/src/unix/core.c \
+	core/lib/libuv/src/unix/dl.c \
+	core/lib/libuv/src/unix/fs.c \
+	core/lib/libuv/src/unix/getaddrinfo.c \
+	core/lib/libuv/src/unix/getnameinfo.c \
+	core/lib/libuv/src/unix/loop-watcher.c \
+	core/lib/libuv/src/unix/loop.c \
+	core/lib/libuv/src/unix/pipe.c \
+	core/lib/libuv/src/unix/poll.c \
+	core/lib/libuv/src/unix/process.c \
+	core/lib/libuv/src/unix/signal.c \
+	core/lib/libuv/src/unix/stream.c \
+	core/lib/libuv/src/unix/tcp.c \
+	core/lib/libuv/src/unix/thread.c \
+	core/lib/libuv/src/unix/timer.c \
+	core/lib/libuv/src/unix/tty.c \
+	core/lib/libuv/src/unix/udp.c \
+
+ifdef LING_LINUX
+LIBUV_SRC += \
+	core/lib/libuv/src/unix/linux-core.c \
+	core/lib/libuv/src/unix/linux-inotify.c \
+	core/lib/libuv/src/unix/linux-syscalls.c \
+	core/lib/libuv/src/unix/proctitle.c
+endif
+
+ifdef LING_DARWIN
+LIBUV_SRC += \
+	core/lib/libuv/src/unix/darwin.c \
+	core/lib/libuv/src/unix/darwin-proctitle.c \
+	core/lib/libuv/src/unix/fsevents.c \
+	core/lib/libuv/src/unix/kqueue.c \
+	core/lib/libuv/src/unix/proctitle.c
+
+CPPFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
+CPPFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
+endif
+
+LIBUV_OBJ := $(patsubst %.c,%.o,$(LIBUV_SRC))
+
+$(LIBUV_OBJ): %.o: %.c .config
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+endif
 
 $(NETTLE_OBJ): %.o: %.c .config
 	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-unused-value -Wno-implicit-function-declaration -DHAVE_CONFIG_H -Wno-maybe-uninitialized -Wno-return-type -Wno-int-conversion -o $@ -c $<
@@ -347,7 +402,7 @@ $(NETTLE_OBJ): %.o: %.c .config
 $(NETTLE_ABJ): %.o: %.s .config
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 
-ALL_OBJ := $(CORE_OBJ) $(ARCH_OBJ) $(BIGNUM_OBJ) $(MISC_OBJ) $(PCRE_OBJ) $(LWIP_OBJ) $(NETTLE_OBJ) $(NETTLE_ABJ)
+ALL_OBJ := $(CORE_OBJ) $(ARCH_OBJ) $(BIGNUM_OBJ) $(MISC_OBJ) $(PCRE_OBJ) $(LWIP_OBJ) $(NETTLE_OBJ) $(NETTLE_ABJ) $(LIBUV_OBJ)
 ALL_OBJ += core/ling_main.o
 
 ifneq ($(STARTUP_SRC_EXT),)

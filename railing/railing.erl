@@ -270,8 +270,7 @@ embedfs_object(EmbedFsPath, ImgName) ->
 	end,
 	LibOpts = case ?ARCH of
 		posix_x86 ->
-			PkgConfigOutput = string:strip(os:cmd("pkg-config --libs libuv"), right, $\n),
-			["-lm" | string:tokens(PkgConfigOutput, " ")];
+			["-lm", "-lpthread", "-ldl"];
 		_ -> []
 	end,
 	ok = sh(ld() ++ ["vmling.o"] ++ LibOpts ++ [OutPath, "-o", "../" ++ ImgName], CC).
