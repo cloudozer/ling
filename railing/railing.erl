@@ -270,7 +270,7 @@ embedfs_object(EmbedFsPath, ImgName) ->
 	end,
 	LibOpts = case ?ARCH of
 		posix_x86 ->
-			["-lm", "-lpthread", "-ldl"];
+			["-lm", "-lpthread", "-ldl", "-lrt"];
 		_ -> []
 	end,
 	ok = sh(ld() ++ ["vmling.o"] ++ LibOpts ++ [OutPath, "-o", "../" ++ ImgName], CC).
