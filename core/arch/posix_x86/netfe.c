@@ -91,7 +91,6 @@ int build_getifaddrs_reply(char *buf, int len)
 	struct ifaddrs *iflist = NULL, *ifaddr;
 	char *reply = buf;
 	*reply++ = INET_REP_OK;
-	len--;
 
 	ret = getifaddrs(&iflist);
 	if (ret)
@@ -126,12 +125,17 @@ int build_getifaddrs_reply(char *buf, int len)
 		saddr_t *saddr = (saddr_t *)ifaddr->ifa_addr;
 		saddr_t *netmask = (saddr_t *)ifaddr->ifa_netmask;
 		saddr_t *broadaddr = (saddr_t *)ifaddr->ifa_broadaddr;
-		debug("%s: %s, sa_family = %d\n", __FUNCTION__,
-		      ifaddr->ifa_name, saddr->saddr.sa_family);
-		switch (saddr->saddr.sa_family)
+		int family = AF_MAX;
+		if (saddr)          family = saddr->saddr.sa_family;
+		else if (netmask)   family = netmask->saddr.sa_family;
+		else if (broadaddr) family = broadaddr->saddr.sa_family;
+		debug("%s: %s, sa_family = %d\n", __FUNCTION__, ifaddr->ifa_name, family);
+
+		switch (family)
 		{
 		case AF_INET:
-			PUT_REPLY_SOCKADDR4(saddr, INET_IFOPT_ADDR);
+			if (saddr)
+				PUT_REPLY_SOCKADDR4(saddr, INET_IFOPT_ADDR);
 
 			if (netmask)
 				PUT_REPLY_SOCKADDR4(netmask, INET_IFOPT_NETMASK);
@@ -141,7 +145,8 @@ int build_getifaddrs_reply(char *buf, int len)
 			break;
 
 		case AF_INET6:
-			PUT_REPLY_SOCKADDR6(saddr, INET_IFOPT_ADDR);
+			if (saddr)
+				PUT_REPLY_SOCKADDR6(saddr, INET_IFOPT_ADDR);
 
 			if (netmask)
 				PUT_REPLY_SOCKADDR6(netmask, INET_IFOPT_NETMASK);
@@ -177,8 +182,6 @@ int build_getifaddrs_reply(char *buf, int len)
 
 		ifaddr = ifaddr->ifa_next;
 	}
-	CHECK_BUF(1);
-	*reply++ = '\0';
 
 	freeifaddrs(iflist);
 	return reply - buf;
