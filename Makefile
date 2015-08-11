@@ -91,7 +91,8 @@ CPPFLAGS += -iquote core/include
 CPPFLAGS += -iquote core/bignum
 CPPFLAGS += -iquote core/arch/$(ARCH)/include
 
-CFLAGS   := -Wall -Werror
+CFLAGS   := -Wall
+#CFLAGS   += -Werror
 CFLAGS   += -Wno-nonnull -std=gnu99
 CFLAGS   += -fno-omit-frame-pointer
 CFLAGS	 += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
@@ -400,7 +401,7 @@ $(LIBUV_OBJ): %.o: %.c .config
 endif
 
 $(NETTLE_OBJ): %.o: %.c .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-unused-value -Wno-implicit-function-declaration -DHAVE_CONFIG_H -Wno-maybe-uninitialized -Wno-return-type -Wno-int-conversion -o $@ -c $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-uninitialised -Wno-unused-value -Wno-implicit-function-declaration -DHAVE_CONFIG_H -Wno-maybe-uninitialized -Wno-return-type -Wno-int-conversion -o $@ -c $<
 
 $(NETTLE_ABJ): %.o: %.s .config
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
