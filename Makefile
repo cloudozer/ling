@@ -7,6 +7,9 @@ endif
 
 default: railing/railing
 
+test: default
+	cd test && ../railing/railing image -ipriv && ./test.img -s test play
+
 LING_VER := 0.3.2
 OTP_VER := 17
 ERLC := $(ERLANG_BIN)erlc
@@ -89,7 +92,7 @@ CPPFLAGS += -iquote core/bignum
 CPPFLAGS += -iquote core/arch/$(ARCH)/include
 
 CFLAGS   := -Wall -Werror
-CFLAGS   += -Wno-nonnull -std=gnu99 -gdwarf-3
+CFLAGS   += -Wno-nonnull -std=gnu99
 CFLAGS   += -fno-omit-frame-pointer
 CFLAGS	 += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
 
@@ -140,7 +143,7 @@ CFLAGS += -O0
 CPPFLAGS += -DLING_DEBUG=1
 CPPFLAGS += -DDEBUG_UNUSED_MEM=1
 CPPFLAGS += -DTRACE_HARNESS=1
-CPPFLAGS += -g
+CPPFLAGS += -gdwarf-3
 LDFLAGS  += -g
 else
 CFLAGS += -O3
@@ -490,4 +493,4 @@ railing/railing: $(patsubst %.erl,%.beam,$(wildcard railing/*.erl)) railing/escr
 railing/%.beam: railing/%.erl .config
 	$(ERLC) -DLING_VER=\"$(LING_VER)\" -DARCH=\'$(ARCH)\' -DOTP_VER=\"$(OTP_VER)\" -o railing $<
 
-#default: $(TEST_BEAM)
+.PHONY: default test

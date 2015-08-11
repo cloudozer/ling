@@ -2,8 +2,7 @@
 -export([run/1, run/2, play/0]).
 
 score() -> [
-%	{lists, all},
-	{bif, [binary_to_atom]}
+	{lists, all}
 ].
 
 play() ->
@@ -16,7 +15,8 @@ play() ->
 			{0, 0},
 			score()
 		),
-	io:format("Grand Total: ~p/~p\n", [Ok, Fail]).
+	io:format("Grand Total: ~p/~p\n", [Ok, Fail]),
+	halt(Fail).
 
 run(Suite) ->
 	run(Suite, all).
