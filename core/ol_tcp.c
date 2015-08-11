@@ -269,11 +269,11 @@ static err_t lwip_sent_cb(void *arg, struct tcp_pcb *tcp, uint16_t len)
 		return ERR_OK; // outlet has gone already
 
 	assert(ol->tcp == tcp);
+	assert(ol->send_buf_left >= len);
 
 	ol->send_buf_left -= len;
 	ol->send_buf_ack += len;
 	assert(ol->send_buf_ack <= ol->send_buf_off);
-	assert(ol->send_buf_left >= len);
 
 	return tcp_on_send(ol);
 }
@@ -444,6 +444,9 @@ static int tcp_send_buffer(outlet_t *ol)
 	uint16_t write_len = ol->send_buf_left;
 	if (write_len > max_len)
 		write_len = max_len;
+
+	if (ol->send_buf_ack == 0)
+		ol->send_buf_off = 0;
 
 	ol->send_buf_off += write_len;
 
@@ -872,11 +875,6 @@ static int ol_tcp_send(outlet_t *ol, int len, term_t reply_to)
 	assert(buf_len <= ol->max_send_bufsize);
 
 	ol->send_buf_left = buf_len;
-#if LING_WITH_LWIP
-	uint16_t max_len = tcp_sndbuf(ol->tcp);
-	uint16_t write_len = (buf_len > max_len) ?max_len :buf_len;
-	ol->send_buf_off = write_len;
-#endif
 	ol->send_buf_ack = 0;       // start transmission from the start of the buffer
 
 	int ret = tcp_send_buffer(ol);
