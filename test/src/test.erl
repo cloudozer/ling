@@ -2,7 +2,16 @@
 -export([run/1, run/2, play/0]).
 
 score() -> [
-	{lists, all}
+	{big, [big_literals]},
+	{exception,[]}, %% crash if run after next suite
+	{binary, [terms_float,deep]},
+	{decode_packet, []},
+	%{erl_lint,[]}, %% all tests fail
+	{estone,[]},
+	{lists, []},
+	{tuple,[t_insert_element,t_delete_element]},
+	{unicode,[exceptions,binaries_errors,random_lists]}, %% can't survive quad run
+	{bif, [auto_imports,os_env]} %% can't survive double run
 ].
 
 play() ->
@@ -19,19 +28,13 @@ play() ->
 	halt(Fail).
 
 run(Suite) ->
-	run(Suite, all).
+	run(Suite, []).
 
-run(Suite, CaseList) ->
+run(Suite, Skip) ->
 	Module = erlang:list_to_atom(lists:concat([Suite,"_SUITE"])),
 	Groups = Module:groups(),
 	Config = [{data_dir, lists:concat(["priv/",Module,"_data"])}],
 	Module:init_per_suite(Config),
-
-	CL =
-		case CaseList of
-			all -> Module:all();
-			_ -> CaseList
-		end,
 
 	{Ok, Fail} = lists:foldl(
 		fun
@@ -51,7 +54,7 @@ run(Suite, CaseList) ->
 				end			
 		end,
 		{0, 0},
-		CL
+		lists:subtract(Module:all(), Skip)
 	),
 	Module:end_per_suite(Config),
 	io:format("Total: ~p, Ok: ~p, Failed: ~p\n", [Ok + Fail, Ok, Fail]),
