@@ -111,13 +111,13 @@ void printk(const char *fmt, ...); // __attribute__ ((format (printf, 1, 2)));
 void fatal_error(const char *fmt, ...) __attribute__ ((noreturn)); // __attribute__ ((format (printf, 1, 2)))
 
 #ifdef LING_DEBUG
-#	ifdef LING_XEN
-#		define debug(fmt, ...) printk(fmt, ## __VA_ARGS__)
-#	else
-		int debug(const char *fmt, ...);
-#	endif
+#  if LING_POSIX
+     int debug(const char *fmt, ...);
+#  elif LING_XEN
+#    define debug(...)  printk(__VA_ARGS__)
+#  endif
 #else
-#define debug(fmt, ...)
+#  define debug(fmt, ...)
 #endif
 
 #define ssi(what)				sys_stats_inc((what))

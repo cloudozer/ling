@@ -138,6 +138,8 @@ int is_term_smaller(term_t a, term_t b);
 extern uint32_t zero;
 #define ZERO_TUPLE	(tag_tuple(&zero))
 
+#define MAX_TUPLE_ARITY  16777215
+
 // Primary and immediate tagging:
 //
 // xxxx00	cons

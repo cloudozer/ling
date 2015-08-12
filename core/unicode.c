@@ -102,16 +102,27 @@ static term_t decode_utf8(bits_t *bs)
 		if (!bits_has_octet(bs))
 			return A_INCOMPLETE;
 		bits_get_octet(bs, cont1);
+
+		// one octet is sometimes enough to detect an error
+		if ((cont1 & 0xc0) != 0x80)
+			return A_BADARG;
+		uint32_t n1 = (((uint32_t)(leading_octet & 0xf)) << 12) |
+					  (((uint32_t)(cont1 & 0x3f)) << 6);
+		if (n1 <= 0x07ff)
+			return A_BADARG;	// see check below
+
 		if (!bits_has_octet(bs))
 			return A_INCOMPLETE;
 		bits_get_octet(bs, cont2);
-		if ((cont1 & 0xc0) != 0x80 || (cont2 & 0xc0) != 0x80)
+
+		if ((cont2 & 0xc0) != 0x80)
 			return A_BADARG;
 		uint32_t n = (((uint32_t)(leading_octet & 0xf)) << 12) |
 					 (((uint32_t)(cont1 & 0x3f)) << 6) |
 					 (cont2 & 0x3f);
 		if (n <= 0x07ff)
 			return A_BADARG;	// overlong form
+
 		if (n >= 0xd800 && n <= 0xdfff)
 			return A_BADARG;	// reserved for UTF-16
 		return tag_int(n);
@@ -490,6 +501,10 @@ static int cradle_put(struct cradle_t *cr,
 	else
 	{
 		assert(out_enc == A_UTF32);
+		if (pt < 0 || pt > 0x10ffff)
+			return -BAD_ARG;
+		if (pt > 0xd7ff && pt < 0xe000)
+			return -BAD_ARG;
 		uint8_t *to = cr->data +cr->off;
 		if (is_little_out)
 			PUT_UINT_32_LE(to, pt);
@@ -635,4 +650,3 @@ error:
 	return cradle_to_bin(&points, hp);
 }
 
-//EOF

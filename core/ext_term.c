@@ -480,7 +480,7 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		else
 			es->heap_size += (sizeof(t_heap_bin_t) + len+3) / 4;
 		// additional sub binary is needed for odd binaries
-		if (bits > 0)
+		if (len > 0 && bits < 8)
 			es->heap_size += WSIZE(t_sub_bin_t);
 		break;
 	}
@@ -983,9 +983,9 @@ static term_t ext_term_decode2(ext_term_scan_t *es)
 		uint8_t *data = es->enc_data;
 		MoreSkip2(len);
 
-		if (bits > 7)
-			return noval;
 		if (len == 0 && bits > 0)
+			return noval;
+		if (bits > 8)
 			return noval;
 
 		term_t bin = tag_boxed(es->htop);
@@ -1007,7 +1007,7 @@ static term_t ext_term_decode2(ext_term_scan_t *es)
 			is_writable = 0;
 		}
 
-		if (bits > 0)
+		if (len > 0 && bits < 8)
 		{
 			term_t t = tag_boxed(es->htop);
 			box_sub_bin(es->htop, bin, 0, len*8 -8 +bits, is_writable);

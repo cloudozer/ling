@@ -248,7 +248,7 @@ boot(Start,Flags0,Args) ->
 
 	IsNetworked = setup_networking(Flags), %%MK
 
-	%%MK: if the code should be ready to load .beam files dynamically which is
+	%%MK: if the code must be ready to load .beam files dynamically which is
 	%% the default, a few modules must be loaded not to trip the check in the
 	%% code_server.
 	case search('-nobeam',Flags) of

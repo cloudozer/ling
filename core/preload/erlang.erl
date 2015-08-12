@@ -108,6 +108,8 @@
 -define(LING_COMPAT_REL, 17).
 -define(LING_COMPAT_OTP_RELEASE, "17").	%% do not forget to update this
 
+-define(SLICE_REDUCTIONS, 1000).
+
 get_module_info(Module) when is_atom(Module) ->
 	Items = [exports,imports,attributes,compile],
 	[{Item,erlang:get_module_info(Module, Item)}
@@ -293,8 +295,8 @@ binary_to_term(T, Opts) ->
 	erlang:error(badarg, [T,Opts]).
 
 term_to_binary(T) ->
-	%% defaults to no compression and zero minor version
-	erlang:'term_to_binary$'(T, 0, 0).
+	%% defaults to no compression and minor version 1
+	erlang:'term_to_binary$'(T, 0, 1).
 
 term_to_binary(T, Opts) when is_list(Opts) ->
 	{Compression,Version} = lists:foldl(fun(compressed, {_C,V}) ->
@@ -305,17 +307,17 @@ term_to_binary(T, Opts) when is_list(Opts) ->
 		{C,M};
 	(_, _) ->
 		erlang:error(badarg, [T,Opts])
-	end, {0,0}, Opts),
+	end, {0,1}, Opts),	%% default minor version is 1 since R17
 	erlang:'term_to_binary$'(T, Compression, Version);
 
 term_to_binary(T, Opts) ->
 	erlang:error(badarg, [T,Opts]).
 
 external_size(T) ->
-	erlang:'external_size$'(T, 0).
+	erlang:'external_size$'(T, 1).	%% default version is 1 since R17
 
 external_size(T, []) ->
-	erlang:'external_size$'(T, 0);
+	erlang:'external_size$'(T, 1);
 external_size(T, [{minor_version,Ver}]) when is_integer(Ver), Ver >= 0, Ver =< 1 ->
 	erlang:'external_size$'(T, Ver);
 external_size(T, Opts) ->
@@ -582,14 +584,16 @@ system_info(wordsize) -> 4;
 system_info({wordsize,internal}) -> 4;
 system_info({wordsize,external}) -> 4;
 system_info(smp_support) -> false;
+system_info(snifs) -> [];
 system_info(heap_type) -> private;
 system_info(schedulers) -> 1;
 system_info(schedulers_online) -> 1;
+system_info(context_reductions) -> ?SLICE_REDUCTIONS;
 system_info({allocator,ets_alloc}) -> false;
 system_info(ets_always_compress) -> false;
 system_info(thread_pool_size) -> 0;
 system_info(process_count) -> length(processes());
-system_info(hipe_architecture) -> none;
+system_info(hipe_architecture) -> undefined;
 system_info(machine) -> "LING";
 system_info(logical_processors) -> 1;
 system_info(break_ignored) -> false.
@@ -772,12 +776,14 @@ halt(_, _) ->
 
 atom_to_binary(Atom, Enc) ->
 	Chars = atom_to_list(Atom),
-	unicode:characters_to_binary(Chars, Enc).
+	unicode:characters_to_binary(Chars, latin1, Enc).
 
+binary_to_atom(Bin, _) when byte_size(Bin) > 255 -> erlang:error(system_limit); %% relaxed
 binary_to_atom(Bin, Enc) ->
 	List = unicode:characters_to_list(Bin, Enc),
 	list_to_atom(List).
 
+binary_to_existing_atom(Bin, _) when byte_size(Bin) > 255 -> erlang:error(system_limit); %% relaxed
 binary_to_existing_atom(Bin, Enc) ->
 	List = unicode:characters_to_list(Bin, Enc),
 	list_to_existing_atom(List).

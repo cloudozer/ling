@@ -382,9 +382,6 @@ do_pending:
 	etimer_expired(ticks);
 	// 'hardware' events
 	int nr_fired = events_do_pending();
-#if LING_XEN
-	nr_fired += netmap_do_pending();
-#endif
 	update_event_times(nr_fired, ticks);
 	set_phase(PHASE_NEXT);
 
