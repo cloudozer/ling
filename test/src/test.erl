@@ -1,12 +1,13 @@
 -module(test).
 -export([run/1, run/2, play/0]).
 
+%% Suites to play and their tests to skip.
 score() -> [
 	{big, [big_literals]},
 	{binary, [terms_float,deep]},
 	{decode_packet, []},
 	%{erl_lint,[]}, %% all tests fail
-	%{estone,[]}, %% assert crash on travis
+	%{estone,[]}, %% crash with assert on travis (proc.c inter_link_break)
 	{exception,[pending_errors,exception_with_heap_frag]}, 
 	{lists, []},
 	{tuple,[t_insert_element,t_delete_element]},
