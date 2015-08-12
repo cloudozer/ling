@@ -21,7 +21,6 @@ else
 LING_LINUX := 1
 endif
 
-
 ## TEST
 TEST_ERL := $(wildcard test/src/*.erl)
 TEST_BEAM := $(TEST_ERL:test/src/%.erl=test/ebin/%.beam)
@@ -84,8 +83,6 @@ endif
 
 CPPFLAGS += -D_ISOC99_SOURCE -D_GNU_SOURCE
 CPPFLAGS += -DLING_VER=$(LING_VER)
-CPPFLAGS += -isystem core/lib/nettle
-CPPFLAGS += -isystem core/lib/pcre
 CPPFLAGS += -isystem core/lib
 CPPFLAGS += -iquote core/include
 CPPFLAGS += -iquote core/bignum
@@ -107,12 +104,9 @@ XEN_INTERFACE_VERSION := 0x00030205
 CPPFLAGS += -DLING_XEN
 #CPPFLAGS += -DLING_CONFIG_DISK
 CPPFLAGS += -D__XEN_INTERFACE_VERSION__=$(XEN_INTERFACE_VERSION)
-CPPFLAGS += -isystem core/lib/misc/include
 
 CFLAGS   += -std=gnu99
 CFLAGS   += -fexcess-precision=standard -frounding-math -mfpmath=sse -msse2
-#CFLAGS   += -O3
-#CFLAGS   += -flto
 CFLAGS   += -Wno-nonnull -Wno-strict-aliasing
 
 LDFLAGS  += -T core/arch/xen_x86/ling.lds
@@ -153,136 +147,23 @@ CFLAGS += -flto
 endif
 endif
 
+include core/lib/misc.mk
+include core/lib/nettle.mk
+include core/lib/pcre.mk
+
 ifdef LING_WITH_LWIP
-CPPFLAGS += -DLING_WITH_LWIP=1
-CPPFLAGS += -iquote core/lib/lwip/src/include
-CPPFLAGS += -iquote core/lib/lwip/src/include/ipv4
-CPPFLAGS += -iquote core/lib/lwip/src/include/ipv6
-CPPFLAGS += -iquote core/lib/lwip/ling
-COMMON_CFLAGS := -fno-stack-protector -U_FORTIFY_SOURCE -fno-omit-frame-pointer
-
-LWIP_DIR := \
-	core/lib/lwip/src/api \
-	core/lib/lwip/src/core \
-	core/lib/lwip/src/core/ipv4 \
-	core/lib/lwip/src/core/ipv6 \
-	core/lib/lwip/src/netif
-
-LWIP_SRC := $(foreach dir,$(LWIP_DIR),$(wildcard $(dir)/*.c))
-LWIP_OBJ := $(patsubst %.c,%.o,$(LWIP_SRC))
-LWIP_DEP := $(patsubst %.c,%.d,$(LWIP_SRC))
--include $(LWIP_DEP)
-
-$(LWIP_OBJ): %.o: %.c .config
-	$(CC) -MMD -MP $(CFLAGS) $(CPPFLAGS) -Wno-char-subscripts -o $@ -c $<
+include core/lib/lwip.mk
 endif
 
 ifdef LING_WITH_LIBUV
-CPPFLAGS += -DLING_WITH_LIBUV=1
+include core/lib/libuv.mk
 endif
 
 ARCH_OBJ := $(patsubst %.c,%.o,$(wildcard core/arch/$(ARCH)/*.c))
 CORE_OBJ := $(filter-out core/ling_main.%,$(patsubst %.c,%.o,$(wildcard core/*.c))) core/preload/literals.o
 BIGNUM_OBJ := $(patsubst %.c,%.o,$(wildcard core/bignum/*.c))
 
-MISC_SRC :=
-MISC_SRC += __cos.c __expo2.c __rem_pio2.c __rem_pio2_large.c __sin.c __tan.c
-MISC_SRC += acos.c asin.c atan.c atan2.c atof.c cos.c cosh.c exp.c expm1.c fabs.c
-MISC_SRC += floor.c log.c log10.c memcmp.c modf.c pow.c
-MISC_SRC += qsort.c scalbln.c scalbn.c sin.c sinh.c stpcpy.c strcat.c strchr.c
-MISC_SRC += strchrnul.c strcmp.c strcpy.c strlen.c strncmp.c strtod.c tan.c tanh.c
-
-ifdef LIBMISC_ARCH
-ifneq ($(LIBMISC_ARCH),x86)
-MISC_SRC += memcpy.c memmove.c memset.c sqrt.c
-endif
-MISC_OBJ := $(patsubst %.c,%.o,$(addprefix core/lib/misc/,$(MISC_SRC)))
-MISC_AS := $(patsubst %.s,%.o,$(wildcard core/lib/misc/arch/$(LIBMISC_ARCH)/*.s))
-else
-MISC_OBJ :=
-MISC_AS :=
-endif
-
-PCRE_OBJ := \
-	core/lib/pcre/pcre_chartables.o \
-	core/lib/pcre/pcre_compile.o \
-	core/lib/pcre/pcre_config.o \
-	core/lib/pcre/pcre_dfa_exec.o \
-	core/lib/pcre/pcre_exec.o \
-	core/lib/pcre/pcre_fullinfo.o \
-	core/lib/pcre/pcre_get.o \
-	core/lib/pcre/pcre_globals.o \
-	core/lib/pcre/pcre_maketables.o \
-	core/lib/pcre/pcre_newline.o \
-	core/lib/pcre/pcre_ord2utf8.o \
-	core/lib/pcre/pcre_study.o \
-	core/lib/pcre/pcre_tables.o \
-	core/lib/pcre/pcre_try_flipped.o \
-	core/lib/pcre/pcre_ucp_searchfuncs.o \
-	core/lib/pcre/pcre_valid_utf8.o \
-	core/lib/pcre/pcre_version.o \
-	core/lib/pcre/pcre_xclass.o
-
-
-ifdef LING_WITH_LIBUV
-CPPFLAGS += -isystem core/lib/libuv/include
-CPPFLAGS += -isystem core/lib/libuv/src
-
-LIBUV_SRC := \
-	core/lib/libuv/src/fs-poll.c \
-	core/lib/libuv/src/inet.c \
-	core/lib/libuv/src/threadpool.c \
-	core/lib/libuv/src/uv-common.c \
-	core/lib/libuv/src/version.c \
-	core/lib/libuv/src/unix/async.c \
-	core/lib/libuv/src/unix/core.c \
-	core/lib/libuv/src/unix/dl.c \
-	core/lib/libuv/src/unix/fs.c \
-	core/lib/libuv/src/unix/getaddrinfo.c \
-	core/lib/libuv/src/unix/getnameinfo.c \
-	core/lib/libuv/src/unix/loop-watcher.c \
-	core/lib/libuv/src/unix/loop.c \
-	core/lib/libuv/src/unix/pipe.c \
-	core/lib/libuv/src/unix/poll.c \
-	core/lib/libuv/src/unix/process.c \
-	core/lib/libuv/src/unix/signal.c \
-	core/lib/libuv/src/unix/stream.c \
-	core/lib/libuv/src/unix/tcp.c \
-	core/lib/libuv/src/unix/thread.c \
-	core/lib/libuv/src/unix/timer.c \
-	core/lib/libuv/src/unix/tty.c \
-	core/lib/libuv/src/unix/udp.c \
-
-ifdef LING_LINUX
-LIBUV_SRC += \
-	core/lib/libuv/src/unix/linux-core.c \
-	core/lib/libuv/src/unix/linux-inotify.c \
-	core/lib/libuv/src/unix/linux-syscalls.c \
-	core/lib/libuv/src/unix/proctitle.c
-endif
-
-ifdef LING_DARWIN
-LIBUV_SRC += \
-	core/lib/libuv/src/unix/darwin.c \
-	core/lib/libuv/src/unix/darwin-proctitle.c \
-	core/lib/libuv/src/unix/fsevents.c \
-	core/lib/libuv/src/unix/kqueue.c \
-	core/lib/libuv/src/unix/proctitle.c
-
-CPPFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
-CPPFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
-endif
-
-LIBUV_OBJ := $(patsubst %.c,%.o,$(LIBUV_SRC))
-
-$(LIBUV_OBJ): %.o: %.c .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
-
-endif
-
-include core/lib/nettle.mk
-
-ALL_OBJ += $(CORE_OBJ) $(ARCH_OBJ) $(BIGNUM_OBJ) $(MISC_OBJ) $(PCRE_OBJ) $(LWIP_OBJ) $(LIBUV_OBJ)
+ALL_OBJ += $(CORE_OBJ) $(ARCH_OBJ) $(BIGNUM_OBJ)
 ALL_OBJ += core/ling_main.o
 
 ifneq ($(STARTUP_SRC_EXT),)
@@ -294,15 +175,6 @@ endif
 
 $(ARCH_OBJ) $(CORE_OBJ) $(BIGNUM_OBJ): %.o: %.c core/include/atom_defs.h core/include/mod_info.inc .config
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
-
-$(MISC_OBJ): %.o: %.c .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
-
-$(MISC_AS): %.o: %.s .config
-	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
-
-$(PCRE_OBJ): %.o: %.c .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DHAVE_CONFIG_H -o $@ -c $<
 
 CORE_GENTAB_ERL := core/gentab/atoms.erl core/gentab/exp_tab.erl
 CORE_GENTAB_BEAM := $(patsubst %.erl,%.beam,$(sort $(wildcard core/gentab/*.erl) $(CORE_GENTAB_ERL)))
@@ -333,8 +205,8 @@ core/ling_main.o: core/ling_main.c core/include/atom_defs.h $(CORE_INCLUDES)
 core/include/bif.h: bc/scripts/bif.tab
 	core/scripts/bifs_gen $< $@
 
-core/vmling.o: $(STARTUP_OBJ) $(MISC_AS) $(ALL_OBJ)
-	$(CC) -o $@ $(STARTUP_OBJ) $(MISC_AS) $(ALL_OBJ) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_FINAL)
+core/vmling.o: $(STARTUP_OBJ) $(ALL_OBJ)
+	$(CC) -o $@ $(STARTUP_OBJ) $(ALL_OBJ) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_FINAL)
 
 ## APPS
 APPS_STDLIB := $(patsubst apps/stdlib/src/%.erl,apps/stdlib/ebin/%.beam,$(wildcard apps/stdlib/src/*.erl))

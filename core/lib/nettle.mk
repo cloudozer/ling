@@ -122,4 +122,6 @@ $(NETTLE_SRC): %.o: %.c .config
 $(NETTLE_ASM): %.o: %.s .config
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 
+CPPFLAGS += -isystem $(NETTLE_DIR)
+
 ALL_OBJ += $(NETTLE_SRC) $(NETTLE_ASM)
