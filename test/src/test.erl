@@ -2,7 +2,7 @@
 -export([run/1, run/2, play/0]).
 
 score() -> [
-	{exception,[]},
+	{exception,[pending_errors,exception_with_heap_frag]},
 	{big, [big_literals]},
 	{binary, [terms_float,deep]},
 	{decode_packet, []},
