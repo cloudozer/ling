@@ -2,8 +2,8 @@
 -export([run/1, run/2, play/0]).
 
 score() -> [
+	{exception,[]},
 	{big, [big_literals]},
-	{exception,[]}, %% crash if run after next suite
 	{binary, [terms_float,deep]},
 	{decode_packet, []},
 	%{erl_lint,[]}, %% all tests fail
