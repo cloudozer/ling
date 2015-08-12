@@ -166,16 +166,15 @@ void xenstore_complete(void)
 
 void xenstore_response(char *buffer, int len)
 {
-	int cons = store_intf->rsp_cons;
 	while (len > 0)
 	{
-		while (store_intf->rsp_prod - cons == 0)
+		while (store_intf->rsp_prod - store_intf->rsp_cons == 0)
 			mb();
 		
-		*buffer++ = store_intf->rsp[MASK_XENSTORE_IDX(cons++)];
+		*buffer++ = store_intf->rsp[MASK_XENSTORE_IDX(store_intf->rsp_cons++)];
 		len--;
+		mb();
 	}
-	store_intf->rsp_cons = cons;
 }
 
 int xenstore_write(const char *key, char *value)
