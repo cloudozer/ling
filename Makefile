@@ -223,126 +223,6 @@ PCRE_OBJ := \
 	core/lib/pcre/pcre_version.o \
 	core/lib/pcre/pcre_xclass.o
 
-NETTLE_SRC := \
-	core/lib/nettle/aes-decrypt.c \
-	core/lib/nettle/aes-encrypt.c \
-	core/lib/nettle/aes-encrypt-table.c \
-	core/lib/nettle/aes-set-encrypt-key.c \
-	core/lib/nettle/aes-set-decrypt-key.c \
-	core/lib/nettle/aes-meta.c \
-	core/lib/nettle/arcfour.c \
-	core/lib/nettle/arcfour-crypt.c \
-	core/lib/nettle/arcfour-meta.c \
-	core/lib/nettle/arctwo.c \
-	core/lib/nettle/arctwo-meta.c \
-	core/lib/nettle/gosthash94-meta.c \
-	core/lib/nettle/base16-encode.c \
-	core/lib/nettle/base16-decode.c \
-	core/lib/nettle/base16-meta.c \
-	core/lib/nettle/base64-encode.c \
-	core/lib/nettle/base64-decode.c \
-	core/lib/nettle/base64-meta.c \
-	core/lib/nettle/camellia-crypt.c \
-	core/lib/nettle/camellia-set-encrypt-key.c \
-	core/lib/nettle/camellia-set-decrypt-key.c \
-	core/lib/nettle/camellia-table.c \
-	core/lib/nettle/camellia-meta.c \
-	core/lib/nettle/cast128.c \
-	core/lib/nettle/cast128-meta.c \
-	core/lib/nettle/blowfish.c \
-	core/lib/nettle/cbc.c \
-	core/lib/nettle/ctr.c \
-	core/lib/nettle/gcm.c \
-	core/lib/nettle/gcm-aes.c \
-	core/lib/nettle/des.c \
-	core/lib/nettle/des3.c \
-	core/lib/nettle/des-compat.c \
-	core/lib/nettle/hmac.c \
-	core/lib/nettle/hmac-md5.c \
-	core/lib/nettle/hmac-ripemd160.c \
-	core/lib/nettle/hmac-sha1.c \
-	core/lib/nettle/hmac-sha224.c \
-	core/lib/nettle/hmac-sha256.c \
-	core/lib/nettle/hmac-sha384.c \
-	core/lib/nettle/hmac-sha512.c \
-	core/lib/nettle/pbkdf2.c \
-	core/lib/nettle/pbkdf2-hmac-sha1.c \
-	core/lib/nettle/pbkdf2-hmac-sha256.c \
-	core/lib/nettle/knuth-lfib.c \
-	core/lib/nettle/md2.c \
-	core/lib/nettle/md2-meta.c \
-	core/lib/nettle/md4.c \
-	core/lib/nettle/md4-meta.c \
-	core/lib/nettle/md5.c \
-	core/lib/nettle/md5-compress.c \
-	core/lib/nettle/md5-compat.c \
-	core/lib/nettle/md5-meta.c \
-	core/lib/nettle/gosthash94.c \
-	core/lib/nettle/ripemd160.c \
-	core/lib/nettle/ripemd160-compress.c \
-	core/lib/nettle/ripemd160-meta.c \
-	core/lib/nettle/salsa20r12-crypt.c \
-	core/lib/nettle/salsa20-set-key.c \
-	core/lib/nettle/sha1.c \
-	core/lib/nettle/sha1-meta.c \
-	core/lib/nettle/sha256.c \
-	core/lib/nettle/sha224-meta.c \
-	core/lib/nettle/sha256-meta.c \
-	core/lib/nettle/sha512.c \
-	core/lib/nettle/sha384-meta.c \
-	core/lib/nettle/sha512-meta.c \
-	core/lib/nettle/sha3.c \
-	core/lib/nettle/sha3-224.c \
-	core/lib/nettle/sha3-224-meta.c \
-	core/lib/nettle/sha3-256.c \
-	core/lib/nettle/sha3-256-meta.c \
-	core/lib/nettle/sha3-384.c \
-	core/lib/nettle/sha3-384-meta.c \
-	core/lib/nettle/sha3-512.c \
-	core/lib/nettle/sha3-512-meta.c \
-	core/lib/nettle/serpent-set-key.c \
-	core/lib/nettle/serpent-meta.c \
-	core/lib/nettle/twofish.c \
-	core/lib/nettle/twofish-meta.c \
-	core/lib/nettle/umac-l2.c \
-	core/lib/nettle/umac-l3.c \
-	core/lib/nettle/umac-poly64.c \
-	core/lib/nettle/umac-poly128.c \
-	core/lib/nettle/umac-set-key.c \
-	core/lib/nettle/umac32.c \
-	core/lib/nettle/umac64.c \
-	core/lib/nettle/umac96.c \
-	core/lib/nettle/umac128.c \
-	core/lib/nettle/yarrow256.c \
-	core/lib/nettle/yarrow_key_event.c \
-	core/lib/nettle/buffer.c \
-	core/lib/nettle/nettle-meta-hashes.c \
-	core/lib/nettle/nettle-meta-ciphers.c \
-	core/lib/nettle/nettle-meta-armors.c \
-	core/lib/nettle/write-be32.c \
-	core/lib/nettle/write-le32.c \
-	core/lib/nettle/write-le64.c
-#core/lib/nettle/realloc.c \
-#core/lib/nettle/buffer-init.c \
-
-NETTLE_ASM := \
-	core/lib/nettle/aes-decrypt-internal.s \
-	core/lib/nettle/aes-encrypt-internal.s \
-	core/lib/nettle/camellia-crypt-internal.s \
-	core/lib/nettle/salsa20-core-internal.s \
-	core/lib/nettle/salsa20-crypt.s \
-	core/lib/nettle/sha1-compress.s \
-	core/lib/nettle/sha256-compress.s \
-	core/lib/nettle/sha512-compress.s \
-	core/lib/nettle/sha3-permute.s \
-	core/lib/nettle/serpent-encrypt.s \
-	core/lib/nettle/serpent-decrypt.s \
-	core/lib/nettle/umac-nh.s \
-	core/lib/nettle/umac-nh-n.s \
-	core/lib/nettle/memxor.s
-
-NETTLE_OBJ := $(patsubst %.c,%.o,$(NETTLE_SRC))
-NETTLE_ABJ := $(patsubst %.s,%.o,$(NETTLE_ASM))
 
 ifdef LING_WITH_LIBUV
 CPPFLAGS += -isystem core/lib/libuv/include
@@ -400,13 +280,9 @@ $(LIBUV_OBJ): %.o: %.c .config
 
 endif
 
-$(NETTLE_OBJ): %.o: %.c .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-uninitialised -Wno-unused-value -Wno-implicit-function-declaration -DHAVE_CONFIG_H -Wno-maybe-uninitialized -Wno-return-type -Wno-int-conversion -o $@ -c $<
+include core/lib/nettle.mk
 
-$(NETTLE_ABJ): %.o: %.s .config
-	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
-
-ALL_OBJ := $(CORE_OBJ) $(ARCH_OBJ) $(BIGNUM_OBJ) $(MISC_OBJ) $(PCRE_OBJ) $(LWIP_OBJ) $(NETTLE_OBJ) $(NETTLE_ABJ) $(LIBUV_OBJ)
+ALL_OBJ += $(CORE_OBJ) $(ARCH_OBJ) $(BIGNUM_OBJ) $(MISC_OBJ) $(PCRE_OBJ) $(LWIP_OBJ) $(LIBUV_OBJ)
 ALL_OBJ += core/ling_main.o
 
 ifneq ($(STARTUP_SRC_EXT),)
