@@ -107,7 +107,7 @@ void counters_init(void);
 static void spawn_init_start(int argc, char **cmd_line);
 
 // both domain and host name
-char my_domain_name[256];
+char my_domain_name[DOMAIN_NAME_MAX_SIZE];
 
 #ifdef LING_XEN
 /* defined by startup.[sSc] calling conventions */

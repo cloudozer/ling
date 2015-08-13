@@ -74,6 +74,7 @@ typedef uint8_t byte_t;
 
 extern uint64_t start_of_day_wall_clock;
 
+#define DOMAIN_NAME_MAX_SIZE  256
 extern char my_domain_name[];
 
 // returned by recursive functions
