@@ -460,22 +460,22 @@ static int tcp_send_buffer(outlet_t *ol)
 	return tcp_output(ol->tcp);
 }
 
-int ol_tcp_getsockname(outlet_t *ol, saddr_t *saddr) {
+int ol_tcp_getsockname(outlet_t *ol, saddr_t *saddr)
 {
 	if (is_ipv6_outlet(ol))
 	{
 #if LWIP_IPV6
-		sockaddr->saddr.sa_family = AF_INET6;
-		sockaddr->in6.sin6_port = htons(ol->tcp->local_port);
-		memcpy(sockaddr->in6.sin6_addr, (void *)&ol->tcp->local_ip, 16);
+		saddr->saddr.sa_family = AF_INET6;
+		saddr->in6.sin6_port = htons(ol->tcp->local_port);
+		memcpy(saddr->in6.sin6_addr.s6_addr, (void *)&ol->tcp->local_ip, 16);
 		return 0;
 #else
 		return -1;
 #endif
 	}
-	sockaddr->saddr.sa_family = AF_INET;
-	sockaddr->in.sin_port = htons(ol->tcp->local_port);
-	sockaddr->in.sin_addr.s_addr = *(uint32_t *)&ol->tcp->local_ip;
+	saddr->saddr.sa_family = AF_INET;
+	saddr->in.sin_port = htons(ol->tcp->local_port);
+	saddr->in.sin_addr.s_addr = *(uint32_t *)&ol->tcp->local_ip;
 	return 0;
 }
 
