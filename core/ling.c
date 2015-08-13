@@ -67,6 +67,10 @@
 #include "grant.h"
 #endif
 
+#ifdef LING_POSIX
+#include <stdio.h>
+#endif
+
 // PRNG
 #include "mtwist.h"
 
@@ -243,11 +247,12 @@ void fatal_error(const char *fmt, ...)
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 		
-	printk("*** CRASH: %s\r\n", buffer);
 
 #ifdef LING_POSIX
+	fprintf(stderr, "*** CRASH: %s\n", buffer);
 	exit(42);
 #endif
+	printk("*** CRASH: %s\r\n", buffer);
 	while (1)
 	{
 #ifdef LING_DEBUG
