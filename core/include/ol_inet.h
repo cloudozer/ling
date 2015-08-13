@@ -218,6 +218,7 @@ void inet_reply_error(term_t oid, term_t reply_to, term_t reason);
 
 void ol_tcp_animate(outlet_t *new_ol, acc_pend_t *pend);
 int ol_tcp_set_nodelay(outlet_t *ol, bool nodelay);
+int ol_tcp_getsockname(outlet_t *ol, saddr_t *saddr);
 
 void ol_tcp_close(outlet_t *ol);
 int ol_realloc_recvbuf(outlet_t *ol, size_t size);

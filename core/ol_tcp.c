@@ -460,6 +460,25 @@ static int tcp_send_buffer(outlet_t *ol)
 	return tcp_output(ol->tcp);
 }
 
+int ol_tcp_getsockname(outlet_t *ol, saddr_t *saddr) {
+{
+	if (is_ipv6_outlet(ol))
+	{
+#if LWIP_IPV6
+		sockaddr->saddr.sa_family = AF_INET6;
+		sockaddr->in6.sin6_port = htons(ol->tcp->local_port);
+		memcpy(sockaddr->in6.sin6_addr, (void *)&ol->tcp->local_ip, 16);
+		return 0;
+#else
+		return -1;
+#endif
+	}
+	sockaddr->saddr.sa_family = AF_INET;
+	sockaddr->in.sin_port = htons(ol->tcp->local_port);
+	sockaddr->in.sin_addr.s_addr = *(uint32_t *)&ol->tcp->local_ip;
+	return 0;
+}
+
 void ol_tcp_close(outlet_t *ol)
 {
 	if (ol->tcp == NULL)
@@ -779,11 +798,11 @@ static inline int tcp_control_peername(outlet_t *ol, saddr_t *saddr)
 {
 	assert(ol->tcp);
 	int namelen = sizeof(saddr_t);
-	//memset(saddr, 0, sizeof(saddr_t));
 	int ret = uv_tcp_getpeername(ol->tcp, &saddr->saddr, &namelen);
 	if (ret) debug("%s() failed: %s\n", __FUNCTION__, uv_strerror(ret));
 	return ret;
 }
+
 
 static int tcp_send_buffer(outlet_t *ol)
 {
@@ -794,6 +813,15 @@ static int tcp_send_buffer(outlet_t *ol)
 	uv_buf_t buf = { .base = (char *)ol->send_buffer, .len = ol->send_buf_left };
 
 	return uv_write(req, (uv_stream_t *)ol->tcp, &buf, 1, uv_on_tcp_send);
+}
+
+int ol_tcp_getsockname(outlet_t *ol, saddr_t *saddr)
+{
+	assert(ol->tcp);
+	int namelen = sizeof(saddr_t);
+	int ret = uv_tcp_getsockname(ol->tcp, &saddr->saddr, &namelen);
+	if (ret) debug("%s() failed: %s\n", __FUNCTION__, uv_strerror(ret));
+	return ret;
 }
 
 void ol_tcp_close(outlet_t *ol)
@@ -1019,35 +1047,30 @@ static term_t ol_tcp_control(outlet_t *ol,
 	break;
 
 	case INET_REQ_NAME:
-#if LING_WITH_LWIP
 	if (is_outlet_closed(ol))
 		REPLY_INET_ERROR("enotconn");
 	else
 	{
-		*reply++ = INET_REP_OK;
-		int is_ipv6 = is_ipv6_outlet(ol);
-		*reply++ = (is_ipv6) ?INET_AF_INET6 :INET_AF_INET;
-		uint16_t name_port = ol->tcp->local_port;
-		PUT_UINT_16(reply, name_port);
-		reply += 2;
-		if (is_ipv6)
-		{
-			ip_addr_set_hton((ip_addr_t *)reply, (ip_addr_t *)&ol->tcp->local_ip);
-			reply += 4;
-		}
-		else
-		{
-#if LWIP_IPV6
-			ip6_addr_set_hton((ip6_addr_t *)reply, (ip6_addr_t *)&ol->tcp->local_ip);
-			reply += 16;
-#else
+		saddr_t sockaddr;
+		if (ol_tcp_getsockname(ol, &sockaddr))
 			goto error;
-#endif
+
+		int family;
+		switch (sockaddr.saddr.sa_family) {
+		case AF_INET:  family = INET_AF_INET;  break;
+		case AF_INET6: family = INET_AF_INET6; break;
+		default: goto error;
 		}
+		*reply++ = INET_REP_OK;
+		*reply++ = family;
+
+		PUT_UINT_16(reply, sockaddr_port(&sockaddr.saddr));
+		reply += 2;
+
+		size_t alen = saddr_to_ipaddr(&sockaddr, (ipX_addr_t *)reply);
+		reply += alen;
 	}
-#else  //!LING_WITH_LWIP
-	REPLY_INET_ERROR("enotimpl");
-#endif
+
 	break;
 
 	case INET_REQ_BIND:
