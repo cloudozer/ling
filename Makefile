@@ -8,7 +8,10 @@ endif
 default: railing/railing
 
 test: default
-	cd test && ../railing/railing image -ipriv && ./test.img -home /test -s test play
+	cd test && ../railing/railing image -ipriv
+
+play: test
+	./test/test.img -home /test -s test play
 
 LING_VER := 0.3.2
 OTP_VER := 17
