@@ -10,7 +10,7 @@ ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp
 	$(error Erlang/OTP $(OTP_VER) not found)
 endif
 
-bc: test
+bc:
 	$(MAKE) -C bc
 
 core: bc
