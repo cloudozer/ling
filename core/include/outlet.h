@@ -33,10 +33,6 @@
 
 #pragma once
 
-//
-//
-//
-
 #include "term.h"
 #include "proc.h"
 
@@ -223,4 +219,3 @@ void outlet_close(outlet_t *ol, term_t reason);
 void outlet_destroy(outlet_t *ol);
 int outlet_notify_owner(outlet_t *ol, term_t what);
 
-//EOF

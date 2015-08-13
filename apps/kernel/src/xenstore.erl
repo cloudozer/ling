@@ -131,90 +131,100 @@ domid() ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
-	XS = open_port(xenstore, []),
-    {ok,{XS,[]}}.
+	XS = pore_xs:open(),
+	{ok,XS}.
 
-handle_call({watch,Path,Caller}, _From, {XS,Watches} =St) ->
-	Token = integer_to_list(length(Watches)),
-	case ctl_cmd(XS, ?XS_WATCH, 0, [Path,Token]) of
-		ok -> {reply,ok,{XS,[{Token,Path,Caller}|Watches]}};
-		Error -> {reply,Error,St} end;
+handle_call(_What, _From, St) -> {reply,todo,St}.
 
-handle_call({unwatch,Path,Caller}, _From, {XS,Watches}) ->
-	{Watches1,Q} = stop_watches(XS, Path, Caller, Watches),
-	{reply,Q,{XS,Watches1}};
+handle_cast(_What, St) -> {noreply,St}. %%TODO
 
-handle_call({Op,PL,Tid}, _From, {XS,_} =St) ->
-	Q = ctl_cmd(XS, Op, Tid, PL),
-	{reply,Q,St};
+handle_info(_What, St) -> {noreply,St}. %%TODO
 
-handle_call(_Request, _From, St) ->
-    {reply,ok,St}.
+terminate(_Reason, XS) ->
+	true = pore:close(XS),
+	ok.
 
-handle_cast(_Msg, St) ->
-    {noreply,St}.
+code_change(_OldVsn, St, _Extra) -> {ok,St}.
 
-handle_info({watch_event,_,Result}, {_,Watches} =St) ->
-	[Path,Token] = string:tokens(Result, [0]),
-	Callers = [ Caller || {Token1,_,Caller} <- Watches, Token1 =:= Token ],
-	lists:foreach(fun(Caller) -> Caller ! {watch,Path} end, Callers),
-    {noreply,St}.
-
-terminate(_Reason, {XS,_}) ->
-	port_close(XS),
-    ok.
-
-code_change(_OldVsn, St, _Extra) ->
-    {ok,St}.
-
-%% ------------------------------------------------------------------
-%% Internal Function Definitions
-%% ------------------------------------------------------------------
-
-ctl_cmd(XS, Op, Tid, PL) ->
-	Data = pack(Op, Tid, PL),
-	port_control(XS, Op, Data),
-	Tag = op_tag(Op),
-	receive {error,XS,What} -> unpack(error, What);
-			{Tag,XS,What}   -> unpack(Tag, What) end.
-
-pack(?XS_WRITE, Tid, [P,V]) ->
-	list_to_binary([<<Tid:32>>,P,0,V]);	%% XS_WRITE is special
-pack(_, Tid, [V|_] = PL) when is_list(V) ->
-	list_to_binary([<<Tid:32>>,[ [X,0] || X <- PL ]]);
-pack(_, Tid, V) ->
-	list_to_binary([<<Tid:32>>,V,0]).
-
-op_tag(?XS_READ)	  -> read;
-op_tag(?XS_WRITE)	  -> write;
-op_tag(?XS_MKDIR)	  -> mkdir;
-op_tag(?XS_RM)		  -> rm;
-op_tag(?XS_DIRECTORY) -> directory;
-op_tag(?XS_GET_PERMS) -> get_perms;
-op_tag(?XS_SET_PERMS) -> set_perms;
-op_tag(?XS_WATCH)	  -> watch;
-op_tag(?XS_UNWATCH)	  -> unwatch;
-op_tag(?XS_TRANSACTION_START) -> transaction_start;
-op_tag(?XS_TRANSACTION_END)   -> transaction_end.
-
-unpack(error, What) ->
-	{error,list_to_atom(string:to_lower(What))};
-unpack(transaction_start, What) ->
-	{ok,list_to_integer(What)};
-unpack(directory, What) ->
-	{ok,string:tokens(What, [0])};
-unpack(_Tag, "OK") -> ok;
-unpack(_Tag, What) ->
-	case lists:member(0, What) of
-		false -> {ok,What};
-		true  -> {ok,string:tokens(What, [0])} end.
-
-stop_watches(XS, Path, Caller, Watches) -> stop_watches(XS, Path, Caller, Watches, [], ok).
-stop_watches(_XS, _Path, _Caller, [], Acc, Last) -> {lists:reverse(Acc),Last};
-stop_watches(XS, Path, Caller, [{Token,Path,Caller}|Watches], Acc, Last) ->
-	case ctl_cmd(XS, ?XS_UNWATCH, 0, [Path,Token]) of
-		ok  -> stop_watches(XS, Path, Caller, Watches, Acc, Last);
-		Err -> stop_watches(XS, Path, Caller, Watches, Acc, Err) end;
-stop_watches(XS, Path, Caller, [Watch|Watches], Acc, Last) ->
-	stop_watches(XS, Path, Caller, Watches, [Watch|Acc], Last).
+%%
+%%
+%%	
+%%    {ok,{XS,[]}}.
+%%
+%%handle_call({watch,Path,Caller}, _From, {XS,Watches} =St) ->
+%%	Token = integer_to_list(length(Watches)),
+%%	case ctl_cmd(XS, ?XS_WATCH, 0, [Path,Token]) of
+%%		ok -> {reply,ok,{XS,[{Token,Path,Caller}|Watches]}};
+%%		Error -> {reply,Error,St} end;
+%%
+%%handle_call({unwatch,Path,Caller}, _From, {XS,Watches}) ->
+%%	{Watches1,Q} = stop_watches(XS, Path, Caller, Watches),
+%%	{reply,Q,{XS,Watches1}};
+%%
+%%handle_call({Op,PL,Tid}, _From, {XS,_} =St) ->
+%%	Q = ctl_cmd(XS, Op, Tid, PL),
+%%	{reply,Q,St};
+%%
+%%handle_call(_Request, _From, St) ->
+%%    {reply,ok,St}.
+%%
+%%handle_cast(_Msg, St) ->
+%%    {noreply,St}.
+%%
+%%handle_info({watch_event,_,Result}, {_,Watches} =St) ->
+%%	[Path,Token] = string:tokens(Result, [0]),
+%%	Callers = [ Caller || {Token1,_,Caller} <- Watches, Token1 =:= Token ],
+%%	lists:foreach(fun(Caller) -> Caller ! {watch,Path} end, Callers),
+%%    {noreply,St}.
+%%
+%%%% ------------------------------------------------------------------
+%%%% Internal Function Definitions
+%%%% ------------------------------------------------------------------
+%%
+%%ctl_cmd(XS, Op, Tid, PL) ->
+%%	Data = pack(Op, Tid, PL),
+%%	port_control(XS, Op, Data),
+%%	Tag = op_tag(Op),
+%%	receive {error,XS,What} -> unpack(error, What);
+%%			{Tag,XS,What}   -> unpack(Tag, What) end.
+%%
+%%pack(?XS_WRITE, Tid, [P,V]) ->
+%%	list_to_binary([<<Tid:32>>,P,0,V]);	%% XS_WRITE is special
+%%pack(_, Tid, [V|_] = PL) when is_list(V) ->
+%%	list_to_binary([<<Tid:32>>,[ [X,0] || X <- PL ]]);
+%%pack(_, Tid, V) ->
+%%	list_to_binary([<<Tid:32>>,V,0]).
+%%
+%%op_tag(?XS_READ)	  -> read;
+%%op_tag(?XS_WRITE)	  -> write;
+%%op_tag(?XS_MKDIR)	  -> mkdir;
+%%op_tag(?XS_RM)		  -> rm;
+%%op_tag(?XS_DIRECTORY) -> directory;
+%%op_tag(?XS_GET_PERMS) -> get_perms;
+%%op_tag(?XS_SET_PERMS) -> set_perms;
+%%op_tag(?XS_WATCH)	  -> watch;
+%%op_tag(?XS_UNWATCH)	  -> unwatch;
+%%op_tag(?XS_TRANSACTION_START) -> transaction_start;
+%%op_tag(?XS_TRANSACTION_END)   -> transaction_end.
+%%
+%%unpack(error, What) ->
+%%	{error,list_to_atom(string:to_lower(What))};
+%%unpack(transaction_start, What) ->
+%%	{ok,list_to_integer(What)};
+%%unpack(directory, What) ->
+%%	{ok,string:tokens(What, [0])};
+%%unpack(_Tag, "OK") -> ok;
+%%unpack(_Tag, What) ->
+%%	case lists:member(0, What) of
+%%		false -> {ok,What};
+%%		true  -> {ok,string:tokens(What, [0])} end.
+%%
+%%stop_watches(XS, Path, Caller, Watches) -> stop_watches(XS, Path, Caller, Watches, [], ok).
+%%stop_watches(_XS, _Path, _Caller, [], Acc, Last) -> {lists:reverse(Acc),Last};
+%%stop_watches(XS, Path, Caller, [{Token,Path,Caller}|Watches], Acc, Last) ->
+%%	case ctl_cmd(XS, ?XS_UNWATCH, 0, [Path,Token]) of
+%%		ok  -> stop_watches(XS, Path, Caller, Watches, Acc, Last);
+%%		Err -> stop_watches(XS, Path, Caller, Watches, Acc, Err) end;
+%%stop_watches(XS, Path, Caller, [Watch|Watches], Acc, Last) ->
+%%	stop_watches(XS, Path, Caller, Watches, [Watch|Acc], Last).
 

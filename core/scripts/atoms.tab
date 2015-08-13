@@ -294,6 +294,7 @@ unwatch
 transaction_start
 transaction_end
 can_send
+irq
 
 #ETS tables
 set

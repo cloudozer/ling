@@ -147,7 +147,7 @@ extern uint32_t zero;
 // 100011	catch index
 // 001011	short pid
 // 010011	short oid
-// 011011	(unused) (was short ref)
+// 011011	short eid
 // 101011	(unused) overloaded as reg X
 // 110011	(unused) overloaded as slot Y
 // 111011	nil,noval,rip
@@ -170,8 +170,8 @@ extern uint32_t zero;
 #define is_catch(t)	(((t) & TAG_IMMED2_MASK) == 0x23)
 
 #define is_short_pid(t)		(((t) & TAG_IMMED2_MASK) == 0xb)
-#define is_short_oid(t)		(((t) & TAG_IMMED2_MASK) == 0x13)
-//#define is_short_ref(t)		(((t) & TAG_IMMED2_MASK) == 0x1b)
+#define is_short_oid(t)		(((t) & 0x17) == 0x13)
+#define is_short_eid(t)		(((t) & TAG_IMMED2_MASK) == 0x1b)
 
 #define MAX_INT_VALUE	((1 << (32 - TAG_IMMED1_SIZE - 1)) - 1)
 #define MIN_INT_VALUE	(-1 << (32 - TAG_IMMED1_SIZE - 1))
@@ -276,7 +276,7 @@ extern uint32_t zero;
 #define tag_catch(i)		(((term_t)(i) << TAG_IMMED2_SIZE) | 0x23)
 #define tag_short_pid(i)	(((term_t)(i) << TAG_IMMED2_SIZE) | 0xb)
 #define tag_short_oid(i)	(((term_t)(i) << TAG_IMMED2_SIZE) | 0x13)
-//#define tag_short_ref(i)	(((term_t)(i) << TAG_IMMED2_SIZE) | 0x1b)
+#define tag_short_eid(i)	(((term_t)(i) << TAG_IMMED2_SIZE) | 0x1b)
 
 #define int_value(t)		((int)(t) >> TAG_IMMED1_SIZE)
 #define atom_index(t)		((uint32_t)(t) >> TAG_IMMED2_SIZE)

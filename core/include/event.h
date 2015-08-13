@@ -31,10 +31,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef EVENT_H
-#define EVENT_H
+#pragma once
 
 #include "ling_xen.h"
+
+#define NO_EVENT	((uint32_t)-1)
 
 typedef void (*event_entry_t)(uint32_t port, void *data);
 
@@ -59,6 +60,4 @@ static inline void event_mask(uint32_t port)
     shared_info_t *s = HYPERVISOR_shared_info;
     synch_set_bit(port, &s->evtchn_mask[0]);
 }
-
-#endif
 

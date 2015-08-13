@@ -33,83 +33,33 @@
 
 #pragma once
 
-#include "bif.h"
-
-#include "ling_common.h"
-
-#include <math.h>
-#include <stdlib.h>
-
-#include <nettle/md5.h>
-#include <nettle/sha.h>
-#include <nettle/hmac.h>
-#include <nettle/aes.h>
-#include <nettle/cbc.h>
-#include <nettle/ctr.h>
-
-#include "crc32.h"
-#include "adler32.h"
-
-#include "mm.h"
-#include "atom_defs.h"
-#include "bits.h"
-#include "getput.h"
-#include "mixed.h"
-#include "term_util.h"
-#include "list_util.h"
-#include "map_util.h"
-#include "unicode.h"
-#include "catch_tab.h"
-
-#include "atoms.h"
-#include "ext_term.h"
-#include "time.h"
-#include "scheduler.h"
-#include "code_base.h"
-#include "string.h"
-#include "strings.h"
-#include "bignum.h"
-#include "snprintf.h"
-#include "stringify.h"
-#include "hash.h"
-#include "cluster.h"
-#include "decode.h"
-
-#include "pore.h"
-#include "event.h"
-
-#include "monitors.h"
-#include "timers.h"
-#include "xenstore.h"
-#include "console.h"
-#include "netfe.h"
-#include "netif.h"
-#include "disk.h"
-#include "ser_cons.h"
-#include "ets.h"
-#include "counters.h"
-#include "embed.h"
-#include "mtwist.h"
-#include "prof.h"
-
-#include "lwip/ip_addr.h"
-#include "lwip/stats.h"
-#include "lwip/netif.h"
+#include "term.h"
+#include "nalloc.h"
 
 #include "xen/io/xs_wire.h"
 
-#define fail(reason) do { \
-	proc->bif_excep_reason = (reason); \
-	return noval; \
-} while (0)
+typedef struct proc_t proc_t;
 
-#define bif_not_implemented() do { \
-	proc->bif_excep_reason = A_NOT_IMPLEMENTED; \
-	return noval; \
-} while (0)
+typedef struct pore_t pore_t;
+struct pore_t {
+	term_t eid;
+	term_t tag;		// A_XENSTORE, etc
+	term_t owner;	// pid
+	void (*destroy_private)(pore_t *);
+	memnode_t *home;
+	uint32_t evtchn;
+	pore_t **ref;
+	pore_t *next;
+};
 
-#define badarg(arg) do { \
-	proc->bif_excep_reason = A_BADARG; \
-	return noval; \
-} while (0)
+typedef struct pore_xs_t pore_xs_t;
+struct pore_xs_t {
+	pore_t parent;
+	struct xenstore_domain_interface *intf;
+};
+
+pore_t *pore_make_N(term_t tag,
+	uint32_t size, term_t owner, void (*destroy_private)(pore_t *), uint32_t evtchn);
+pore_t *pore_lookup(term_t eid);
+void pore_destroy(pore_t *pore);
 

@@ -31,85 +31,98 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-
-#include "bif.h"
+#include "pore.h"
 
 #include "ling_common.h"
-
-#include <math.h>
-#include <stdlib.h>
-
-#include <nettle/md5.h>
-#include <nettle/sha.h>
-#include <nettle/hmac.h>
-#include <nettle/aes.h>
-#include <nettle/cbc.h>
-#include <nettle/ctr.h>
-
-#include "crc32.h"
-#include "adler32.h"
-
-#include "mm.h"
-#include "atom_defs.h"
-#include "bits.h"
-#include "getput.h"
-#include "mixed.h"
-#include "term_util.h"
-#include "list_util.h"
-#include "map_util.h"
-#include "unicode.h"
-#include "catch_tab.h"
-
-#include "atoms.h"
-#include "ext_term.h"
-#include "time.h"
-#include "scheduler.h"
-#include "code_base.h"
-#include "string.h"
-#include "strings.h"
-#include "bignum.h"
-#include "snprintf.h"
-#include "stringify.h"
-#include "hash.h"
-#include "cluster.h"
-#include "decode.h"
-
-#include "pore.h"
+#include <string.h>
 #include "event.h"
+#include "scheduler.h"
+#include "atom_defs.h"
 
-#include "monitors.h"
-#include "timers.h"
-#include "xenstore.h"
-#include "console.h"
-#include "netfe.h"
-#include "netif.h"
-#include "disk.h"
-#include "ser_cons.h"
-#include "ets.h"
-#include "counters.h"
-#include "embed.h"
-#include "mtwist.h"
-#include "prof.h"
+static uint32_t next_pore_id = 0;
+static pore_t *active_pores = 0;
 
-#include "lwip/ip_addr.h"
-#include "lwip/stats.h"
-#include "lwip/netif.h"
+static void pore_universal_handler(uint32_t evtchn, void *data);
 
-#include "xen/io/xs_wire.h"
+pore_t *pore_make_N(term_t tag,
+		uint32_t size, term_t owner, void (*destroy_private)(pore_t *), uint32_t evtchn)
+{
+	memnode_t *home = nalloc_N(size);
+	if (home == 0)
+		return 0;
+	pore_t *np = (pore_t *)home->starts;
+	memset(np, 0, size);
 
-#define fail(reason) do { \
-	proc->bif_excep_reason = (reason); \
-	return noval; \
-} while (0)
+	np->eid = tag_short_eid(next_pore_id++);
+	np->tag = tag;
+	np->owner = owner;
+	np->destroy_private = destroy_private;
+	np->home = home;
+	np->evtchn = evtchn;
 
-#define bif_not_implemented() do { \
-	proc->bif_excep_reason = A_NOT_IMPLEMENTED; \
-	return noval; \
-} while (0)
+	if (evtchn != NO_EVENT)
+		event_bind(evtchn, pore_universal_handler, np);
 
-#define badarg(arg) do { \
-	proc->bif_excep_reason = A_BADARG; \
-	return noval; \
-} while (0)
+	if (active_pores != 0)
+		active_pores->ref = &np->next;
+	np->ref = &active_pores;
+	np->next = active_pores;
+	active_pores = np;
+
+	return np;
+}
+
+static void pore_universal_handler(uint32_t evtchn, void *data)
+{
+	assert(data != 0);
+	pore_t *pore = (pore_t *)data;
+	proc_t *proc = scheduler_lookup(pore->owner);
+	if (proc == 0)
+		return;	// drop
+
+	// {irq,Pore}
+	uint32_t *p = heap_alloc_N(&proc->hp, 3);
+	if (p == 0)
+		goto no_memory;
+	term_t irq = tag_tuple(p);
+	*p++ = 2;
+	*p++ = A_IRQ;
+	*p++ = pore->eid;
+	heap_set_top(&proc->hp, p);
+
+	if (scheduler_new_local_mail_N(proc, irq) < 0)
+		goto no_memory;
+	return;
+
+no_memory:
+	scheduler_signal_exit_N(proc, pore->eid, A_NO_MEMORY);
+}
+
+pore_t *pore_lookup(term_t eid)
+{
+	assert(is_short_eid(eid));
+	pore_t *pr = active_pores;
+	while (pr != 0)
+	{
+		if (pr->eid == eid)
+			return pr;
+		pr = pr->next;
+	}
+	return 0;
+}
+
+void pore_destroy(pore_t *pore)
+{
+	if (pore->evtchn != NO_EVENT)
+		event_unbind(pore->evtchn);
+
+	*pore->ref = pore->next;
+	if (pore->next != 0)
+		pore->next->ref = pore->ref;
+
+	if (pore->destroy_private != 0)
+		pore->destroy_private(pore);
+
+	nfree(pore->home);
+}
 
