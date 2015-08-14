@@ -327,10 +327,12 @@ unused_ip() ->
 
 unused_ip(_, _, _, 255) -> error;
 unused_ip(A, B, C, D) ->
-    case inet:gethostbyaddr({A, B, C, D}) of
-	{ok, _} -> unused_ip(A, B, C, D+1);
-	{error, _} -> {ok, {A, B, C, D}}
-    end.
+    %% krant
+    %case inet:gethostbyaddr({A, B, C, D}) of
+	%{ok, _} -> unused_ip(A, B, C, D+1);
+	%{error, _} -> {ok, {A, B, C, D}}
+    %end.
+    {ok, {A, B, C, D}}.
 
 ok({ok,V}) -> V.
 

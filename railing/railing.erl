@@ -177,7 +177,7 @@ main(Args) ->
 	%% we can't pass {cwd, cache_dir()} to unzip here
 	%% because 'keep_old_files' stops working for unknown reason
 	file:set_cwd(".railing"),
-	zip:unzip(Archive, [keep_old_files]),
+	zip:unzip(Archive),%[keep_old_files]),
 	file:set_cwd(".."),
 
 	PrjName = project_name(Config),

@@ -1,3 +1,9 @@
 language: erlang
 otp_release: 17.5
-script: make; make test && touch .config && rm -rf test/.railing && make test LING_USE_LTO= && touch .config && rm -rf test/.railing && make test LING_USE_LTO= LING_DEBUG=1 && touch .config && rm -rf test/.railing && make test LING_XEN= LING_POSIX=1 && touch .config && rm -rf test/.railing && make test LING_XEN= LING_POSIX=1 LING_USE_LTO= && touch .config && rm -rf test/.railing && make test LING_XEN= LING_POSIX=1 LING_USE_LTO= LING_DEBUG=1 && make play
+script:
+  - make test ARCH=xen CONF=dbg
+  - make test ARCH=xen CONF=opt
+  - make test ARCH=xen CONF=lto
+  - make test ARCH=posix CONF=dbg
+  - make test ARCH=posix CONF=opt
+  - make play ARCH=posix CONF=lto

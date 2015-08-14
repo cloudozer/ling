@@ -1,9 +1,46 @@
-ifeq (,$(wildcard .config))
-$(shell cp doc/default.config .config)
-$(error Default .config created)
-else
-include .config
+ARCH ?= xen
+CONF ?= opt
+LING_VER := 0.3.2
+OTP_VER := 17
+ERLC := $(ERLANG_BIN)erlc
+ESCRIPT := $(ERLANG_BIN)escript
+
+-include .config
+rebuild =
+ifneq ($(ARCH),$(_ARCH))
+	rebuild = yes
 endif
+ifneq ($(CONF),$(_CONF))
+	rebuild = yes
+endif
+ifdef rebuild
+$(shell echo -e "_ARCH=$(ARCH)\n_CONF=$(CONF)" > .config )
+endif
+
+ifeq ($(shell uname -s),Darwin)
+LING_DARWIN := 1
+else
+LING_LINUX := 1
+endif
+
+ifeq ($(ARCH),xen)
+LING_XEN=1
+else ifeq ($(ARCH),posix)
+LING_POSIX=1
+else
+$(error Unknown ARCH)
+endif
+
+ifeq ($(CONF),dbg)
+LING_DEBUG=1
+else ifeq ($(CONF),lto)
+LING_LTO=1
+else ifeq ($(CONF),opt)
+# do nothing
+else
+$(error Unknown CONF)
+endif
+
 
 default: railing/railing
 
@@ -12,17 +49,6 @@ test: default
 
 play: test
 	./test/test.img -home /test -s test play
-
-LING_VER := 0.3.2
-OTP_VER := 17
-ERLC := $(ERLANG_BIN)erlc
-ESCRIPT := $(ERLANG_BIN)escript
-
-ifeq ($(shell uname -s),Darwin)
-LING_DARWIN := 1
-else
-LING_LINUX := 1
-endif
 
 ## TEST
 TEST_ERL := $(wildcard test/src/*.erl)
