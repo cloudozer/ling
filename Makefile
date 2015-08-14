@@ -1,6 +1,6 @@
 ARCH ?= xen
 CONF ?= opt
-LING_VER := 0.3.2
+LING_VER := 0.5.0
 OTP_VER := 17
 ERLC := $(ERLANG_BIN)erlc
 ESCRIPT := $(ERLANG_BIN)escript
