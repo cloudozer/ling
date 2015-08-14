@@ -88,7 +88,7 @@ bc/ling_iopvars.beam: bc/ling_iopvars.erl
 ifdef LING_XEN
 LING_PLATFORM := xen
 LING_OS := ling
-ARCH := xen_x86
+CORE_ARCH := xen_x86
 LIBMISC_ARCH := x86
 ifdef LING_LINUX
 CC := gcc
@@ -99,7 +99,7 @@ endif
 
 ifdef LING_POSIX
 LING_PLATFORM := unix
-ARCH := posix_x86
+CORE_ARCH := posix_x86
 ifdef LING_LINUX
 CC := gcc
 LDFLAGS += -nostdlib
@@ -115,7 +115,7 @@ CPPFLAGS += -DLING_VER=$(LING_VER)
 CPPFLAGS += -isystem core/lib
 CPPFLAGS += -iquote core/include
 CPPFLAGS += -iquote core/bignum
-CPPFLAGS += -iquote core/arch/$(ARCH)/include
+CPPFLAGS += -iquote core/arch/$(CORE_ARCH)/include
 
 CFLAGS   := -Wall
 #CFLAGS   += -Werror
@@ -188,7 +188,7 @@ ifdef LING_WITH_LIBUV
 include core/lib/libuv.mk
 endif
 
-ARCH_OBJ := $(patsubst %.c,%.o,$(wildcard core/arch/$(ARCH)/*.c))
+ARCH_OBJ := $(patsubst %.c,%.o,$(wildcard core/arch/$(CORE_ARCH)/*.c))
 CORE_OBJ := $(filter-out core/ling_main.%,$(patsubst %.c,%.o,$(wildcard core/*.c))) core/preload/literals.o
 BIGNUM_OBJ := $(patsubst %.c,%.o,$(wildcard core/bignum/*.c))
 
@@ -198,7 +198,6 @@ ALL_OBJ += core/ling_main.o
 ifneq ($(STARTUP_SRC_EXT),)
 # this is a c file in posix
 $(STARTUP_OBJ): %.o: %.$(STARTUP_SRC_EXT) .config
-	echo $(ARCH)
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 endif
 
@@ -266,9 +265,9 @@ $(APPS_ASN1): apps/asn1/ebin/%.beam: apps/asn1/src/%.erl
 
 ## RAILING
 railing/railing: $(patsubst %.erl,%.beam,$(wildcard railing/*.erl)) railing/escriptize $(APPS_ALL) core/vmling.o
-	./railing/escriptize $(ARCH)
+	./railing/escriptize $(CORE_ARCH)
 
 railing/%.beam: railing/%.erl .config
-	$(ERLC) -DLING_VER=\"$(LING_VER)\" -DARCH=\'$(ARCH)\' -DOTP_VER=\"$(OTP_VER)\" -o railing $<
+	$(ERLC) -DLING_VER=\"$(LING_VER)\" -DARCH=\'$(CORE_ARCH)\' -DOTP_VER=\"$(OTP_VER)\" -o railing $<
 
 .PHONY: default test
