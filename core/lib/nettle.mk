@@ -100,21 +100,41 @@ NETTLE_SRC := \
 	$(NETTLE_DIR)/write-le32.o \
 	$(NETTLE_DIR)/write-le64.o
 
+ifdef LING_LINUX
 NETTLE_ASM := \
-	$(NETTLE_DIR)/aes-decrypt-internal.o \
-	$(NETTLE_DIR)/aes-encrypt-internal.o \
-	$(NETTLE_DIR)/camellia-crypt-internal.o \
-	$(NETTLE_DIR)/salsa20-core-internal.o \
-	$(NETTLE_DIR)/salsa20-crypt.o \
-	$(NETTLE_DIR)/sha1-compress.o \
-	$(NETTLE_DIR)/sha256-compress.o \
-	$(NETTLE_DIR)/sha512-compress.o \
-	$(NETTLE_DIR)/sha3-permute.o \
-	$(NETTLE_DIR)/serpent-encrypt.o \
-	$(NETTLE_DIR)/serpent-decrypt.o \
-	$(NETTLE_DIR)/umac-nh.o \
-	$(NETTLE_DIR)/umac-nh-n.o \
-	$(NETTLE_DIR)/memxor.o
+	$(NETTLE_DIR)/linux/aes-decrypt-internal.o \
+	$(NETTLE_DIR)/linux/aes-encrypt-internal.o \
+	$(NETTLE_DIR)/linux/camellia-crypt-internal.o \
+	$(NETTLE_DIR)/linux/salsa20-core-internal.o \
+	$(NETTLE_DIR)/linux/salsa20-crypt.o \
+	$(NETTLE_DIR)/linux/sha1-compress.o \
+	$(NETTLE_DIR)/linux/sha256-compress.o \
+	$(NETTLE_DIR)/linux/sha512-compress.o \
+	$(NETTLE_DIR)/linux/sha3-permute.o \
+	$(NETTLE_DIR)/linux/serpent-encrypt.o \
+	$(NETTLE_DIR)/linux/serpent-decrypt.o \
+	$(NETTLE_DIR)/linux/umac-nh.o \
+	$(NETTLE_DIR)/linux/umac-nh-n.o \
+	$(NETTLE_DIR)/linux/memxor.o
+endif
+
+ifdef LING_DARWIN
+NETTLE_ASM := \
+	$(NETTLE_DIR)/darwin/aes-decrypt-internal.o \
+	$(NETTLE_DIR)/darwin/aes-encrypt-internal.o \
+	$(NETTLE_DIR)/darwin/camellia-crypt-internal.o \
+	$(NETTLE_DIR)/darwin/salsa20-core-internal.o \
+	$(NETTLE_DIR)/darwin/salsa20-crypt.o \
+	$(NETTLE_DIR)/darwin/sha1-compress.o \
+	$(NETTLE_DIR)/darwin/sha256-compress.o \
+	$(NETTLE_DIR)/darwin/sha512-compress.o \
+	$(NETTLE_DIR)/darwin/sha3-permute.o \
+	$(NETTLE_DIR)/darwin/serpent-encrypt.o \
+	$(NETTLE_DIR)/darwin/serpent-decrypt.o \
+	$(NETTLE_DIR)/darwin/umac-nh.o \
+	$(NETTLE_DIR)/darwin/umac-nh-n.o \
+	$(NETTLE_DIR)/darwin/memxor.o
+endif
 
 $(NETTLE_SRC): %.o: %.c .config
 	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-uninitialised -Wno-unused-value -Wno-implicit-function-declaration -DHAVE_CONFIG_H -Wno-maybe-uninitialized -Wno-return-type -Wno-int-conversion -o $@ -c $<
