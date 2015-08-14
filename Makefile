@@ -54,6 +54,9 @@ test: default
 play: test
 	./test/test.img -home /test -s test play
 
+install: railing/railing
+	install railing/railing /usr/bin
+
 ## TEST
 TEST_ERL := $(wildcard test/src/*.erl)
 TEST_BEAM := $(TEST_ERL:test/src/%.erl=test/ebin/%.beam)
@@ -276,4 +279,4 @@ railing/%.beam: railing/%.erl .config
 
 .config:
 
-.PHONY: default test play
+.PHONY: default test play install
