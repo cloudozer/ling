@@ -92,14 +92,18 @@ sockaddrin6_to_ip6addr(const struct sockaddr_in6 *sin6, ip6_addr_t *addr)
 	addr->addr[3] = addrptr[3];
 }
 
-static inline void
+static inline size_t
 saddr_to_ipaddr(const saddr_t *saddr, ipX_addr_t *addr)
 {
 	switch (saddr->saddr.sa_family) {
-	case AF_INET:   sockaddrin_to_ipaddr(&saddr->in, &addr->ip4); break;
-	case AF_INET6:  sockaddrin6_to_ip6addr(&saddr->in6, &addr->ip6); break;
-	default: assert(0); /* unknown sockaddr.sa_family */
+	case AF_INET:
+		sockaddrin_to_ipaddr(&saddr->in, &addr->ip4);
+		return 4;
+	case AF_INET6:
+		sockaddrin6_to_ip6addr(&saddr->in6, &addr->ip6);
+		return 16;
 	}
+	return 0;
 }
 
 #endif //__LING_CORE_SOCKADDR_H__

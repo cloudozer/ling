@@ -430,31 +430,24 @@ static term_t ol_tcp_acc_control(outlet_t *ol,
 
 	case INET_REQ_NAME:
 	{
-#if LING_WITH_LWIP
-		//TODO: exactly the same as in ol_tcp_control() - refactor?
-		*reply++ = INET_REP_OK;
-		int is_ipv6 = is_ipv6_outlet(ol);
-		*reply++ = (is_ipv6) ?INET_AF_INET6 :INET_AF_INET;
-		uint16_t name_port = ol->tcp->local_port;
-		PUT_UINT_16(reply, name_port);
-		reply += 2;
-		if (PCB_ISIPV6(ol->tcp))
-		{
-			ip_addr_set_hton((ip_addr_t *)reply, (ip_addr_t *)&ol->tcp->local_ip);
-			reply += 4;
-		}
-		else
-		{
-#if LWIP_IPV6
-			ip6_addr_set_hton((ip6_addr_t *)reply, (ip6_addr_t *)&ol->tcp->local_ip);
-			reply += 16;
-#else
+		saddr_t sockaddr;
+		if (ol_tcp_getsockname(ol, &sockaddr))
 			goto error;
-#endif
+
+		int family;
+		switch (sockaddr.saddr.sa_family) {
+		case AF_INET:  family = INET_AF_INET;  break;
+		case AF_INET6: family = INET_AF_INET6; break;
+		default: goto error;
 		}
-#else
-		REPLY_INET_ERROR("enotimpl");
-#endif
+		*reply++ = INET_REP_OK;
+		*reply++ = family;
+
+		PUT_UINT_16(reply, sockaddr_port(&sockaddr.saddr));
+		reply += 2;
+
+		size_t alen = saddr_to_ipaddr(&sockaddr, (ipX_addr_t *)reply);
+		reply += alen;
 	}
 	break;
 

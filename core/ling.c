@@ -67,6 +67,10 @@
 #include "grant.h"
 #endif
 
+#ifdef LING_POSIX
+#include <stdio.h>
+#endif
+
 // PRNG
 #include "mtwist.h"
 
@@ -103,7 +107,7 @@ void counters_init(void);
 static void spawn_init_start(int argc, char **cmd_line);
 
 // both domain and host name
-char my_domain_name[256];
+char my_domain_name[DOMAIN_NAME_MAX_SIZE];
 
 #ifdef LING_XEN
 /* defined by startup.[sSc] calling conventions */
@@ -240,11 +244,12 @@ void fatal_error(const char *fmt, ...)
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 		
-	printk("*** CRASH: %s\r\n", buffer);
 
 #ifdef LING_POSIX
+	fprintf(stderr, "*** CRASH: %s\n", buffer);
 	exit(42);
 #endif
+	printk("*** CRASH: %s\r\n", buffer);
 	while (1)
 	{
 #ifdef LING_DEBUG

@@ -16,6 +16,10 @@ else ifeq ($(UNAME),Darwin)
 	LING_OS := darwin
 endif
 
+ifeq ($(LING_DEBUG),)
+	CFLAGS += -O2
+endif
+
 CPPFLAGS      += -DLING_POSIX
 STARTUP_OBJ   :=
 

@@ -45,7 +45,7 @@ void mm_init(void)
 #endif
 	mem_start = mmap(MMAP_ADDR, MEMORY_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
 	if (mem_start == MAP_FAILED) {
-		exit(43);
+		fatal_error("failed to mmap %d bytes\n", MEMORY_SIZE);
 	}
 	mem_end = (void *)((char *)mem_start + MEMORY_SIZE);
 	free_page = mem_start;
