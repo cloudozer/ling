@@ -5,6 +5,10 @@ OTP_VER := 17
 ERLC := $(ERLANG_BIN)erlc
 ESCRIPT := $(ERLANG_BIN)escript
 
+ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp_release)),erlang:halt(0)."))
+	$(error Erlang/OTP $(OTP_VER) not found)
+endif
+
 -include .config
 rebuild =
 ifneq ($(ARCH),$(_ARCH))
@@ -270,4 +274,6 @@ railing/railing: $(patsubst %.erl,%.beam,$(wildcard railing/*.erl)) railing/escr
 railing/%.beam: railing/%.erl .config
 	$(ERLC) -DLING_VER=\"$(LING_VER)\" -DARCH=\'$(CORE_ARCH)\' -DOTP_VER=\"$(OTP_VER)\" -o railing $<
 
-.PHONY: default test
+.config:
+
+.PHONY: default test play
