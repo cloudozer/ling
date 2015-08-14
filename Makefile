@@ -5,8 +5,8 @@ OTP_VER := 17
 ERLC := $(ERLANG_BIN)erlc
 ESCRIPT := $(ERLANG_BIN)escript
 
-ifneq ($(OTP_VER) , $(shell erl -noshell -eval "io:format(erlang:system_info(otp_release)),erlang:halt(0)."))
-	$(error Erlang/OTP $(OTP_VER) not found)
+ifneq (ok,$(shell erl -noshell -eval "Otp = erlang:system_info(otp_release), io:format(if Otp >= $(OTP_VER) -> ok; else -> old end),erlang:halt(0)."))
+$(error Erlang/OTP $(OTP_VER) or newer required)
 endif
 
 -include .config
@@ -18,7 +18,7 @@ ifneq ($(CONF),$(_CONF))
 	rebuild = yes
 endif
 ifdef rebuild
-$(shell echo -e "_ARCH=$(ARCH)\n_CONF=$(CONF)" > .config )
+$(shell /bin/echo -e "_ARCH=$(ARCH)\n_CONF=$(CONF)" > .config )
 endif
 
 ifeq ($(shell uname -s),Darwin)
