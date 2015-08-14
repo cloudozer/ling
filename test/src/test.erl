@@ -3,7 +3,7 @@
 
 %% Suites to play and their tests to skip.
 score() -> [
-	{gen_tcp_api,[{group, t_connect},t_shutdown_write,t_shutdown_both,t_shutdown_error,t_fdopen,t_fdconnect,t_recv_timeout]},
+	{gen_tcp_api,[{group, t_connect},t_shutdown_write,t_shutdown_both,t_shutdown_error,t_fdopen,t_fdconnect,t_recv_timeout,t_recv_timeout]},
 	%{gen_tcp_echo,[]}, %% just hangs
 	%{gen_tcp_misc,[]}, %% relying on nodes
 	{big, [big_literals]},
