@@ -136,8 +136,13 @@ NETTLE_ASM := \
 	$(NETTLE_DIR)/darwin/memxor.o
 endif
 
+NETTLE_CFLAGS = $(CFLAGS) $(CPPFLAGS) -Wno-uninitialized -Wno-unused-value -Wno-implicit-function-declaration -DHAVE_CONFIG_H -Wno-return-type -Wno-int-conversion
+ifneq ($(CC),clang)
+NETTLE_CFLAGS += -Wno-maybe-uninitialized
+endif
+
 $(NETTLE_SRC): %.o: %.c .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -Wno-uninitialised -Wno-unused-value -Wno-implicit-function-declaration -DHAVE_CONFIG_H -Wno-maybe-uninitialized -Wno-return-type -Wno-int-conversion -o $@ -c $<
+	$(CC) $(NETTLE_CFLAGS) -o $@ -c $<
 
 $(NETTLE_ASM): %.o: %.s .config
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@

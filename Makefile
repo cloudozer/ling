@@ -1,4 +1,3 @@
-ARCH ?= xen
 CONF ?= opt
 LING_VER := 0.5.0
 OTP_VER := 17
@@ -10,6 +9,10 @@ $(error Erlang/OTP $(OTP_VER) or newer required)
 endif
 
 -include .config
+ifeq ($(ARCH),)
+_ARCH ?= xen
+ARCH  := $(_ARCH)
+endif
 rebuild =
 ifneq ($(ARCH),$(_ARCH))
 	rebuild = yes
