@@ -28,6 +28,7 @@
 #include <stdlib.h> /* abort */
 #include <string.h> /* strrchr */
 #include <fcntl.h>  /* O_CLOEXEC, may be */
+#include <limits.h>
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline

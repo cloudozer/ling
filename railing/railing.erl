@@ -80,7 +80,7 @@ image_name(Config) ->
 
 main(Args) ->
 	case erlang:system_info(otp_release) of
-		?OTP_VER ->
+		OtpVer when ?OTP_VER =< OtpVer ->
 			ok;
 		OtpVer ->
 			io:format("Error: incompatible Erlang/OTP version: required ~s, found ~s\n", [?OTP_VER, OtpVer]),

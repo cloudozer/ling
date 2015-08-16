@@ -18,7 +18,7 @@ ifneq ($(CONF),$(_CONF))
 	rebuild = yes
 endif
 ifdef rebuild
-$(shell /bin/echo -e "_ARCH=$(ARCH)\n_CONF=$(CONF)" > .config )
+$(shell printf "_ARCH=$(ARCH)\n_CONF=$(CONF)" > .config )
 endif
 
 ifeq ($(shell uname -s),Darwin)
@@ -257,6 +257,8 @@ $(APPS_STDLIB): apps/stdlib/ebin/%.beam: apps/stdlib/src/%.erl
 
 apps/kernel/src/ling_%.erl: ../code/ling_%.erl
 	cp $< $@
+
+apps/kernel/src/ling_iopvars.erl: bc/ling_iopvars.erl
 
 $(APPS_KERNEL): apps/kernel/ebin/%.beam: apps/kernel/src/%.erl
 	$(ERLC) -o apps/kernel/ebin $<
