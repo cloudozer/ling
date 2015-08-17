@@ -354,6 +354,7 @@ term_t cbif_ling_memory2(proc_t *proc, term_t *regs)
 	if (!is_int(From) || !is_int(To))
 		return heap_tuple2(&proc->hp, A_ERROR, A_EINVAL);
 
+	/* this initialization produces a warning, and rightly so */
 	uintptr_t from = int_value(From);
 	uintptr_t to = int_value(To);
 	if (from > to)
@@ -374,7 +375,7 @@ term_t cbif_ling_memb1(proc_t *proc, term_t *regs)
 	if (!is_int(Addr))
 		return heap_tuple2(&proc->hp, A_ERROR, A_EINVAL);
 
-	uint8_t *addr = int_value(Addr);
+	uint8_t *addr = (uint8_t *)int_value(Addr);
 	return heap_tuple2(&proc->hp, A_OK, tag_int(addr[0]));
 }
 
@@ -384,7 +385,7 @@ term_t cbif_ling_meml1(proc_t *proc, term_t *regs)
 	if (!is_int(Addr))
 		return heap_tuple2(&proc->hp, A_ERROR, A_EINVAL);
 
-	uint32_t *addr = int_value(Addr);
+	uint32_t *addr = (uint32_t *)int_value(Addr);
 	return heap_tuple2(&proc->hp, A_OK, tag_int(addr[0]));
 }
 #else // !LING_XEN
