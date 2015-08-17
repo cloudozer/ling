@@ -1,4 +1,3 @@
-CONF ?= opt
 LING_VER := 0.5.0
 OTP_VER := 17
 ERLC := $(ERLANG_BIN)erlc
@@ -9,13 +8,17 @@ $(error Erlang/OTP $(OTP_VER) or newer required)
 endif
 
 -include .config
+rebuild =
 ifeq ($(ARCH),)
 _ARCH ?= xen
 ARCH  := $(_ARCH)
 endif
-rebuild =
 ifneq ($(ARCH),$(_ARCH))
 	rebuild = yes
+endif
+ifeq ($(CONF),)
+_CONF ?= opt
+CONF  := $(_CONF)
 endif
 ifneq ($(CONF),$(_CONF))
 	rebuild = yes
