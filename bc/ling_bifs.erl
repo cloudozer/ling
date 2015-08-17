@@ -187,6 +187,7 @@ is_builtin(ling, b1, 0) -> true;
 is_builtin(ling, domain_name, 0) -> true;
 is_builtin(pore, close, 1) -> true;
 is_builtin(pore, poke, 1) -> true;
+is_builtin(pore_xs, avail, 1) -> true;
 is_builtin(pore_xs, read, 1) -> true;
 is_builtin(pore_xs, write, 2) -> true;
 is_builtin(pore_xs, open, 0) -> true;

@@ -75,8 +75,7 @@ term_t cbif_pore_xs_write2(proc_t *proc, term_t *regs)
 	wmb();
 	intf->req_prod += size;
 
-	//assert(fits_int(cons));
-	return tag_int(cons);
+	return A_OK;
 }
 
 term_t cbif_pore_xs_read1(proc_t *proc, term_t *regs)
@@ -103,6 +102,23 @@ term_t cbif_pore_xs_read1(proc_t *proc, term_t *regs)
 	intf->rsp_cons += avail;
 
 	return bin;
+}
+
+term_t cbif_pore_xs_avail1(proc_t *proc, term_t *regs)
+{
+	term_t Pore = regs[0];
+	if (!is_short_eid(Pore))
+		badarg(Pore);
+	pore_t *pr = pore_lookup(Pore);
+	if (pr == 0 || pr->tag != A_XENSTORE)
+		badarg(Pore);
+
+	pore_xs_t *xp = (pore_xs_t *)pr;
+	struct xenstore_domain_interface *intf = xp->intf;
+	int qa = XENSTORE_RING_SIZE -intf->req_prod +intf->req_cons;
+	int ra = intf->rsp_prod -intf->rsp_cons;
+	
+	return heap_tuple2(&proc->hp, tag_int(qa), tag_int(ra));
 }
 
 term_t cbif_pore_poke1(proc_t *proc, term_t *regs)

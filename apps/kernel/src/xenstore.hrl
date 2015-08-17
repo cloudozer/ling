@@ -1,4 +1,6 @@
 
+-define(XS_RING_SIZE, 1024).
+
 -define(XS_DEBUG, 0).
 -define(XS_DIRECTORY, 1).
 -define(XS_READ, 2).
