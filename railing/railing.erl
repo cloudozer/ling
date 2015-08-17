@@ -17,7 +17,7 @@ opt_spec() -> [
 
 cc() -> cc(?ARCH).
 cc(arm) -> ["arm-none-eabi-gcc", "-mfpu=vfp", "-mfloat-abi=hard"];
-cc(xen_x86) ->
+cc(xen) ->
 	case os:type() of
 		{unix, darwin} -> ["x86_64-pc-linux-gcc"];
 		_ -> ["cc"]
@@ -29,12 +29,12 @@ gold(Prog) -> [Prog, "-T", "ling.lds", "-nostdlib"].
 
 ld() -> ld(?ARCH).
 ld(arm) -> gold("arm-none-eabi-ld");
-ld(xen_x86) ->
+ld(xen) ->
 	case os:type() of
 		{unix, darwin} -> ["x86_64-pc-linux-ld"];
 		_ -> gold()
 	end;
-ld(posix_x86) ->
+ld(posix) ->
 	case os:type() of
 		{unix, darwin} -> [
 			"clang",
@@ -251,7 +251,7 @@ main(Args) ->
 	ok = embedfs_object(EmbedFsPath, ImgName),
 
 	case ?ARCH of
-		posix_x86 -> nevermind;
+		posix -> nevermind;
 		_ -> ok = domain_config(CustomBucks, Config)
 	end.
 
@@ -259,7 +259,7 @@ embedfs_object(EmbedFsPath, ImgName) ->
 	CC = [{cd, cache_dir()}],
 	OutPath = filename:join(filename:absname(cache_dir()), "embedfs.o"),
 	case ?ARCH of
-		xen_x86 ->
+		xen ->
 			[Ld | _] = ld(),
 			ok = sh(Ld ++ " -r -b binary -o " ++ OutPath ++ " embed.fs", CC);
 		_ ->
@@ -269,7 +269,7 @@ embedfs_object(EmbedFsPath, ImgName) ->
 			ok = sh(cc() ++ ["-o", OutPath, "-c", EmbedCPath])
 	end,
 	LibOpts = case ?ARCH of
-		posix_x86 ->
+		posix ->
 			case os:type() of
 				{unix, linux} -> ["-lrt"];
 				{unix, _} -> []
