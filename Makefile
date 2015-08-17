@@ -222,7 +222,7 @@ $(STARTUP_OBJ): %.o: %.$(STARTUP_SRC_EXT) .config
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 endif
 
-$(ARCH_OBJ) $(CORE_OBJ) $(BIGNUM_OBJ): %.o: %.c core/include/atom_defs.h core/include/mod_info.inc .config
+$(ARCH_OBJ) $(CORE_OBJ) $(BIGNUM_OBJ): %.o: %.c core/include/atom_defs.h core/include/mod_info.inc core/include/bif.h .config
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 CORE_GENTAB_ERL := core/gentab/atoms.erl core/gentab/exp_tab.erl
@@ -248,7 +248,7 @@ core/include/atom_defs%h core/atoms%inc core/gentab/atoms%erl: core/scripts/atom
 core/ling_main.c: core/scripts/ling_main_c.et core/scripts/hot_cold_iops $(CORE_GENTAB_BEAM) .config
 	$(ESCRIPT) core/scripts/main_gen core/scripts/ling_main_c.et core/scripts/hot_cold_iops $@
 
-core/ling_main.o: core/ling_main.c core/include/atom_defs.h $(CORE_INCLUDES)
+core/ling_main.o: core/ling_main.c core/include/atom_defs.h core/include/bif.h $(CORE_INCLUDES)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(F_NO_REORDER_BLOCKS) -o $@ -c $<
 
 core/include/bif.h: bc/scripts/bif.tab
