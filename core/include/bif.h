@@ -624,5 +624,13 @@ term_t cbif_re_run2(proc_t *proc, term_t *regs);
 term_t cbif_re_compile2(proc_t *proc, term_t *regs);
 // re:compile/1 [311]
 term_t cbif_re_compile1(proc_t *proc, term_t *regs);
+// ling:exec_info/0 [312]
+term_t cbif_ling_execinfo0(proc_t *proc, term_t *regs);
+// ling:memory/2 [313]
+term_t cbif_ling_memory2(proc_t *proc, term_t *regs);
+// ling:peek8/1 [314]
+term_t cbif_ling_memb1(proc_t *proc, term_t *regs);
+// ling:peek32/1 [315]
+term_t cbif_ling_meml1(proc_t *proc, term_t *regs);
 
 //EOF
