@@ -7,3 +7,6 @@ script:
   - make test ARCH=posix CONF=dbg
   - make test ARCH=posix CONF=opt
   - make play ARCH=posix CONF=lto
+branches:
+  only:
+    - master
