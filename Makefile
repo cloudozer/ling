@@ -109,7 +109,6 @@ bc/ling_iopvars.beam: bc/ling_iopvars.erl
 ifdef LING_XEN
 LING_PLATFORM := xen
 LING_OS := ling
-CORE_ARCH := xen_x86
 LIBMISC_ARCH := x86
 ifdef LING_LINUX
 CC := gcc
@@ -120,7 +119,6 @@ endif
 
 ifdef LING_POSIX
 LING_PLATFORM := unix
-CORE_ARCH := posix_x86
 ifdef LING_LINUX
 CC := gcc
 LDFLAGS += -nostdlib
@@ -136,7 +134,7 @@ CPPFLAGS += -DLING_VER=$(LING_VER)
 CPPFLAGS += -isystem core/lib
 CPPFLAGS += -iquote core/include
 CPPFLAGS += -iquote core/bignum
-CPPFLAGS += -iquote core/arch/$(CORE_ARCH)/include
+CPPFLAGS += -iquote core/arch/$(ARCH)/include
 
 CFLAGS   := -Wall
 #CFLAGS   += -Werror
@@ -159,14 +157,14 @@ CFLAGS   += -std=gnu99
 CFLAGS   += -fexcess-precision=standard -frounding-math -mfpmath=sse -msse2
 CFLAGS   += -Wno-nonnull -Wno-strict-aliasing
 
-LDFLAGS  += -T core/arch/xen_x86/ling.lds
+LDFLAGS  += -T core/arch/xen/ling.lds
 LDFLAGS  += -static
 LDFLAGS  += -Xlinker --build-id=none
 LDFLAGS  += -Xlinker --cref -Xlinker -Map=core/ling.map
 LDFLAGS  += -nostdlib
 LDFLAGS_FINAL += -lgcc
 
-STARTUP_OBJ     := core/arch/xen_x86/startup.o
+STARTUP_OBJ     := core/arch/xen/startup.o
 STARTUP_SRC_EXT := S
 
 LING_WITH_LWIP := 1
@@ -209,7 +207,7 @@ ifdef LING_WITH_LIBUV
 include core/lib/libuv.mk
 endif
 
-ARCH_OBJ := $(patsubst %.c,%.o,$(wildcard core/arch/$(CORE_ARCH)/*.c))
+ARCH_OBJ := $(patsubst %.c,%.o,$(wildcard core/arch/$(ARCH)/*.c))
 CORE_OBJ := $(filter-out core/ling_main.%,$(patsubst %.c,%.o,$(wildcard core/*.c))) core/preload/literals.o
 BIGNUM_OBJ := $(patsubst %.c,%.o,$(wildcard core/bignum/*.c))
 
@@ -288,10 +286,10 @@ $(APPS_ASN1): apps/asn1/ebin/%.beam: apps/asn1/src/%.erl
 
 ## RAILING
 railing/railing: $(patsubst %.erl,%.beam,$(wildcard railing/*.erl)) railing/escriptize $(APPS_ALL) core/vmling.o
-	$(ESCRIPT) ./railing/escriptize $(CORE_ARCH)
+	$(ESCRIPT) ./railing/escriptize $(ARCH)
 
 railing/%.beam: railing/%.erl .config
-	$(ERLC) -DLING_VER=\"$(LING_VER)\" -DARCH=\'$(CORE_ARCH)\' -DOTP_VER=\"$(OTP_VER)\" -o railing $<
+	$(ERLC) -DLING_VER=\"$(LING_VER)\" -DARCH=\'$(ARCH)\' -DOTP_VER=\"$(OTP_VER)\" -o railing $<
 
 .config:
 
