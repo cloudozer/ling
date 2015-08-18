@@ -211,6 +211,9 @@ ARCH_OBJ := $(patsubst %.c,%.o,$(wildcard core/arch/$(ARCH)/*.c))
 CORE_OBJ := $(filter-out core/ling_main.%,$(patsubst %.c,%.o,$(wildcard core/*.c))) core/preload/literals.o
 BIGNUM_OBJ := $(patsubst %.c,%.o,$(wildcard core/bignum/*.c))
 
+CORE_DEP := $(patsubst %.o,%.d,$(CORE_OBJ) $(ARCH_OBJ) $(BIGNUM_OBJ) core/ling_main.o)
+-include $(CORE_DEP)
+
 ALL_OBJ += $(CORE_OBJ) $(ARCH_OBJ) $(BIGNUM_OBJ)
 ALL_OBJ += core/ling_main.o
 
@@ -221,7 +224,7 @@ $(STARTUP_OBJ): %.o: %.$(STARTUP_SRC_EXT) .config
 endif
 
 $(ARCH_OBJ) $(CORE_OBJ) $(BIGNUM_OBJ): %.o: %.c core/include/atom_defs.h core/include/mod_info.inc core/include/bif.h .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+	$(CC) -MMD -MP $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 CORE_GENTAB_ERL := core/gentab/atoms.erl core/gentab/exp_tab.erl
 CORE_GENTAB_BEAM := $(patsubst %.erl,%.beam,$(sort $(wildcard core/gentab/*.erl) $(CORE_GENTAB_ERL)))
@@ -232,9 +235,9 @@ CORE_PRELOAD_BEAM := $(patsubst %.erl,%.beam,$(wildcard core/preload/*.erl))
 $(CORE_PRELOAD_BEAM): %.beam: %.erl .config
 	$(ERLC) -DLING_VER=\"$(LING_VER)\" -DLING_PLATFORM=$(LING_PLATFORM) -DLING_OS=$(LING_OS) -o core/preload $<
 
-CORE_INCLUDES := core/premod.inc core/code_base.inc core/include/mod_info.inc core/preload/literals.c core/catch_tab.inc
-CORE_INCLUDES2 = core/premod%inc core/code_base%inc core/include/mod_info%inc core/preload/literals%c core/catch_tab%inc
-$(CORE_INCLUDES2): core/gentab/atoms.beam core/gentab/exp_tab.beam core/include/atom_defs.h $(CORE_PRELOAD_BEAM)
+# use pattern rule (%) to avoid multiple premod_gen invocation in parralel builds
+CORE_INCLUDES = core/premod.%nc core/code_base.%nc core/include/mod_info.%nc core/preload/l%terals.c core/catch_tab.%nc
+$(CORE_INCLUDES): core/gentab/atoms.beam core/gentab/exp_tab.beam core/include/atom_defs.h $(CORE_PRELOAD_BEAM)
 	$(ESCRIPT) core/scripts/premod_gen core/preload core/premod.inc core/code_base.inc core/include/mod_info.inc core/preload/literals.c core/catch_tab.inc copy
 
 core/gentab/exp_tab.erl: $(CORE_PRELOAD_BEAM) bc/scripts/bif.tab bc/ling_iopvars.beam
@@ -246,8 +249,8 @@ core/include/atom_defs%h core/atoms%inc core/gentab/atoms%erl: core/scripts/atom
 core/ling_main.c: core/scripts/ling_main_c.et core/scripts/hot_cold_iops $(CORE_GENTAB_BEAM) .config
 	$(ESCRIPT) core/scripts/main_gen core/scripts/ling_main_c.et core/scripts/hot_cold_iops $@
 
-core/ling_main.o: core/ling_main.c core/include/atom_defs.h core/include/bif.h $(CORE_INCLUDES)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(F_NO_REORDER_BLOCKS) -o $@ -c $<
+core/ling_main.o: core/ling_main.c core/include/atom_defs.h core/include/bif.h core/include/mod_info.inc core/premod.inc
+	$(CC) -MMD -MP $(CFLAGS) $(CPPFLAGS) $(F_NO_REORDER_BLOCKS) -o $@ -c $<
 
 core/include/bif.h: bc/scripts/bif.tab
 	$(ESCRIPT) core/scripts/bifs_gen $< $@
@@ -293,4 +296,21 @@ railing/%.beam: railing/%.erl .config
 
 .config:
 
-.PHONY: default test play install
+clean:
+	@rm -rf \
+		$(TEST_BEAM) $(BC_BEAM) $(BC_SAMPLE_BEAM) \
+		bc/gentab/iops_tab.erl bc/scripts/iopvars.tab \
+		bc/ling_iopvars.erl bc/ling_iopvars.beam \
+		$(STARTUP_OBJ) $(ALL_OBJ) \
+		$(CORE_GENTAB_BEAM) $(CORE_PRELOAD_BEAM) \
+		core/premod.inc core/code_base.inc core/include/mod_info.inc core/preload/literals.c core/catch_tab.inc \
+		core/gentab/exp_tab.erl \
+		core/include/atom_defs.h core/atoms.inc core/gentab/atoms.erl \
+		core/ling_main.c core/ling_main.o \
+		core/include/bif.h \
+		core/vmling.o \
+		$(APPS_ALL) \
+		railing/railing railing/railing.beam railing/getopt.beam \
+		$(CORE_DEP) $(LIBUV_DEP) $(LWIP_DEP) $(MISC_DEP) $(NETTLE_DEP) $(PCRE_DEP)
+
+.PHONY: default test play install clean

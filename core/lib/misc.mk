@@ -22,8 +22,11 @@ MISC_OBJ :=
 MISC_AS :=
 endif
 
+MISC_DEP := $(patsubst %.c,%.d,$(MISC_SRC))
+-include $(MISC_DEP)
+
 $(MISC_OBJ): %.o: %.c .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+	$(CC) -MMD -MP $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 $(MISC_AS): %.o: %.s .config
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@

@@ -141,8 +141,11 @@ ifneq ($(CC),clang)
 NETTLE_CFLAGS += -Wno-maybe-uninitialized
 endif
 
+NETTLE_DEP := $(patsubst %.o,%.d,$(NETTLE_SRC))
+-include $(NETTLE_DEP)
+
 $(NETTLE_SRC): %.o: %.c .config
-	$(CC) $(NETTLE_CFLAGS) -o $@ -c $<
+	$(CC) -MMD -MP $(NETTLE_CFLAGS) -o $@ -c $<
 
 $(NETTLE_ASM): %.o: %.s .config
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
