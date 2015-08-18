@@ -1,12 +1,13 @@
 language: erlang
 otp_release: 17.5
 script:
-  - make test ARCH=xen CONF=dbg
-  - make test ARCH=xen CONF=opt
-  - make test ARCH=xen CONF=lto
-  - make test ARCH=posix CONF=dbg
-  - make test ARCH=posix CONF=opt
-  - make play ARCH=posix CONF=lto
+  - make -j2 test ARCH=xen CONF=dbg
+  - make -j2 test ARCH=xen CONF=opt
+  - make -j2 test ARCH=xen CONF=lto
+  - make -j2 test ARCH=posix CONF=dbg
+  - make -j2 test ARCH=posix CONF=opt
+  - make -j2 play ARCH=posix CONF=lto
 branches:
   only:
     - master
+sudo: false
