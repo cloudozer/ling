@@ -70,7 +70,7 @@ outlet_t *ol_tube_factory(proc_t *cont_proc, uint32_t bit_opts);
 outlet_t *ol_disk_factory(proc_t *cont_proc, uint32_t bit_opts);
 #endif
 
-#define NUM_DRIVERS	10
+#define NUM_DRIVERS	9
 
 drv_spec_t outlet_drivers[NUM_DRIVERS] = {
 	{ .name = A_ECHO,			.factory = ol_echo_factory },

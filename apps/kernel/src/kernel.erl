@@ -167,7 +167,7 @@ init([]) ->
 	    {ok, {SupFlags,
 		  [Rpc, Global, InetDb | DistAC] ++ 
 		  [NetSup, Glo_grp] ++
-		  [P9Server, P9Mounter | GooFS] ++ %%MK
+		  [P9Server, P9Mounter | GooFS] ++
 		  [SafeSupervisor | MinimalServers] ++ Timer}}
     end;
 init(safe) ->

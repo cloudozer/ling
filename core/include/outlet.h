@@ -33,10 +33,6 @@
 
 #pragma once
 
-//
-//
-//
-
 #include "term.h"
 #include "proc.h"
 
@@ -223,11 +219,6 @@ struct outlet_t {
 	struct tube_t *tube;
 	int slots_in_progress;
 	int slots_reply_to;
-
-	// Xenstore
-	uint32_t xstore_pend_op;
-	uint32_t xstore_pend_req_id;
-	uint32_t xstore_pend_tx_id;
 #endif
 };
 
@@ -258,4 +249,3 @@ void outlet_close(outlet_t *ol, term_t reason);
 void outlet_destroy(outlet_t *ol);
 int outlet_notify_owner(outlet_t *ol, term_t what);
 
-//EOF

@@ -293,6 +293,8 @@ unwatch
 transaction_start
 transaction_end
 can_send
+xenstore
+irq
 
 #ETS tables
 set

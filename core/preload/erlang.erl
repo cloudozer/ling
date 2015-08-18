@@ -471,7 +471,6 @@ open_port(PortName, Opts) ->
 	erlang:port_open(Drv, BitOpts).
 
 port_driver(echo)	  -> echo;
-port_driver(xenstore) -> xenstore;
 port_driver(vif)	  -> vif;
 port_driver(tube)	  -> tube;
 port_driver(disk)	  -> disk;
