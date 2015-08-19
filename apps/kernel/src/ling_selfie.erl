@@ -28,11 +28,45 @@
 
 -define(EV_CURRENT, 1).	% ELF version
 
+-define(SHT_NULL,     0).
+-define(SHT_PROGBITS, 1).
+-define(SHT_SYMTAB,   2).
+-define(SHT_STRTAB,   3).
+-define(SHT_NOTE,     7).
+-define(SHT_NOBITS,   8).
+
+-define(STB_LOCAL,  (0 bsl 4)).
+-define(STB_GLOBAL, (1 bsl 4)).
+-define(STB_WEAK,   (2 bsl 4)).
+
+-define(STT_NOTYPE, 0).
+-define(STT_OBJECT, 1).
+-define(STT_FUNC,   2).
+-define(STT_SECTION, 3).
+-define(STT_FILE,   4).
+
+-define(SHN_UNDEF,  0).
+-define(SHN_ABS,    16#fff1).
+-define(SHN_COMMON, 16#fff2).
+
+-define(SHF_WRITE,   (1 bsl 0)).
+-define(SHF_ALLOC,   (1 bsl 1)).
+-define(SHF_EXEC,    (1 bsl 2)).
+-define(SHF_STRINGS, (1 bsl 5)).
+
 % for testing
--export([make_elf_ident/1]).
--export([make_shstrtab/0]).
+-export([make_elf_ident/1, make_elf_skeleton/3, materialize_sections/1]).
+-export([make_symbols/1, make_strtab/1, make_symtab/2]).
+-export([pad_to/2, info/0]).
 
 -record(elfmeta, {class, data, machine}).
+
+elf_comment() ->
+	Signiture = erlang:system_info(system_version),
+	list_to_binary(io_lib:format("Made by ~s, (c) Cloudozer\n", [Signiture])).
+
+elf_xenguest_contents() ->
+	<<"GUEST_OS=Ling,XEN_VER=xen-3.0,VIRT_BASE=0x0,ELF_PADDR_OFFSET=0x0,HYPERCALL_PAGE=0x1,LOADER=generic">>.
 
 elf_class(#elfmeta{ class = 32 }) -> ?ELFCLASS32;
 elf_class(#elfmeta{ class = 64 }) -> ?ELFCLASS64.
@@ -46,44 +80,18 @@ elf_shentsize(?ELFCLASS64) -> 64.
 
 elf_sect_num() -> record_info(size, elfsects) - 1.
 
--record(elfoffs, {
-		hdr,	%% ELF header
-		pht, 	%% Program Header Table
-		segs,	%% Segments: {SegOff, #elfsects -> Offset}
-		sht, 	%% Section Header Table
-		eof		%% End Of File
-	}).
+-record(elfsecthdr,	%% section header
+	{name, type, flags, addr, offset, size, link = 0, info = 0, addralign, entsize = 0, contents}).
 
-sect_name(text)      -> <<".text">>;
-sect_name(rodata)    -> <<".rodata">>;
-sect_name(eh_frame)  -> <<".eh_frame">>;
-sect_name(data)      -> <<".data">>;
-sect_name(bss)       -> <<".bss">>;
-sect_name(xen_guest) -> <<"__xen_guest">>;
-sect_name(comment)   -> <<".comment">>;
-sect_name(shstrtab)  -> <<".shstrtab">>;
-sect_name(symtab)    -> <<".symtab">>;
-sect_name(strtab)    -> <<".strtab">>.
-
-sect_align(text)     -> ?PAGE_SIZE;
-sect_align(rodata)   -> 32;
-sect_align(eh_frame) -> 8;
-sect_align(data)     -> 32;
-sect_align(bss)      -> 32;
-sect_align(xen_guest) -> 1;
-sect_align(comment)   -> 1;
-sect_align(shstrtab)  -> 16;
-sect_align(symtab)	  -> 16;
-sect_align(strtab)   -> 16.
+-record(elfsym, %% ~ symtab entry
+	{name, bindntype, sectndx, value, size}).
 
 align(Addr, To) when Addr rem To =:= 0 -> Addr;
 align(Addr, To) -> To * (Addr div To + 1).
 
-align_section(Sect, Addr) when is_atom(Sect) ->
-	align(Addr, sect_align(Sect)).
-
 pad_to(Bin, Size) when is_binary(Bin) ->
-	<<Bin/binary, 0:(Size - size(Bin))/binary>>.
+	PadSize = Size - size(Bin),
+	<<Bin/binary, 0:PadSize>>.
 
 
 
@@ -99,7 +107,7 @@ make_elf_header(Meta, EntryAddr, PHT, SHTOff) when is_record(Meta, elfmeta) ->
 	E_flags = 0,
 	E_ident = make_elf_ident(Meta),
 	16 = size(E_ident),
-	<<	E_ident/binary, ?ET_EXEC:?Elf_Half/little,
+	ElfHdr = << E_ident/binary, ?ET_EXEC:?Elf_Half/little,
 		(Meta#elfmeta.machine):?Elf_Half/little,
 		?EV_CURRENT:?Elf_Word/little,
 		EntryAddr:?Elf64_Addr/little,
@@ -107,105 +115,249 @@ make_elf_header(Meta, EntryAddr, PHT, SHTOff) when is_record(Meta, elfmeta) ->
 		SHTOff:?Elf64_Off/little,
 		E_flags:?Elf_Word/little,
 		(elf_hdr_size(Eclass)):?Elf_Half/little,
-		(elf_phentsize(Eclass)):?Elf_Half/little, 
+		(elf_phentsize(Eclass)):?Elf_Half/little,
 		(length(PHT)):?Elf_Half/little,
-		(elf_shentsize(Eclass)):?Elf_Half/little, 
+		(elf_shentsize(Eclass)):?Elf_Half/little,
 		(elf_sect_num()):?Elf_Half/little,
 		(#elfsects.shstrtab - 2):?Elf_Half/little
-	>>.
-
-section_size(Sections, Sect) when is_atom(Sect) ->
-	section_size(Sections, sect_name(Sect));
-section_size(Sections, Sect) when is_binary(Sect) ->
-	case proplists:lookup(Sect, Sections) of
-		{ Sect, Start, End } -> End - Start;
-		none -> error
-	end.
+	>>,
+	HdrSz = size(ElfHdr),
+	HdrSz = elf_hdr_size(elf_class(Meta)),
+	ElfHdr.
 
 %% calculate offsets
 make_elf_skeleton(Meta, Sections, PHT) when is_record(Meta, elfmeta) ->
 	Eclass = elf_class(Meta),
 	HdrsLen = elf_hdr_size(Eclass) + elf_phentsize(Eclass) * length(PHT),
 
-	%% boring and long list, be cautious changing it
-	SegsStart = align_section(text, HdrsLen),
-	RodataStart = align_section(rodata, SegsStart + section_size(Sections, text)),
-	EhframeStart = align_section(eh_frame, RodataStart + section_size(Sections, rodata)),
-	DataStart = align_section(data, EhframeStart + section_size(Sections, eh_frame)),
-	BssStart = align_section(bss, DataStart + section_size(Sections, data)),
-	XenGuestStart = align_section(xen_guest, BssStart + 0),
-	CommentStart = align_section(comment, XenGuestStart + section_size(Sections, xen_guest)),
-	ShStrTabStart = align_section(shstrtab, CommentStart + section_size(Sections, comment)),
-	SymtabStart = align_section(symtab, ShStrTabStart + section_size(Sections, shstrtab)),
-	StrtabStart = align_section(strtab, SymtabStart + section_size(Sections, symtab)),
+	SectionEnd = fun(#elfsecthdr{flags=Flags, offset=Off}) when Flags band ?SHF_ALLOC =:= 0 -> Off;
+	                (#elfsecthdr{offset=Off, size=Siz}) -> Off + Siz
+	             end,
 
-	SegOffsets = #elfsects {
-		text = SegsStart, 
-		rodata = RodataStart,
-		eh_frame = EhframeStart,
-		data = DataStart,
-		bss = BssStart,
-		xen_guest = XenGuestStart,
-		comment = CommentStart,
-		shstrtab = ShStrTabStart,
-		symtab = SymtabStart,
-		strtab = StrtabStart
-	},
-	SHTOff = align(StrtabStart + section_size(Sections, strtab), 16),
-	EOFOff = SHTOff + elf_shentsize(Eclass) *  elf_sect_num(),
-		
-	#elfoffs{
-		hdr = 0,
-		pht = elf_hdr_size(Eclass),
-		segs = {SegsStart, SegOffsets},
-		sht = SHTOff,
-		eof = EOFOff
-	}.
-
-make_shstrtab() ->
-	{ShstrtabOffs, Shstrtab, _Len} = lists:foldl(
-		fun(Sect, {ShOffs, ShBin, Off}) -> 
-			Name = sect_name(Sect),
-			{[{Sect, Off} | ShOffs], <<ShBin/binary, Name/binary>>, Off + size(Name) }
+	SectionsWithOffsReversed = lists:foldl(
+		fun(Sect0, [PrevSect0 | SectAcc]) ->
+			AlignedOffset = align(SectionEnd(PrevSect0), Sect0#elfsecthdr.addralign),
+			PrevSize = AlignedOffset - PrevSect0#elfsecthdr.offset,
+			PrevSect = PrevSect0#elfsecthdr{ size=PrevSize },
+			Sect = Sect0#elfsecthdr{ offset=AlignedOffset },
+			[Sect, PrevSect | SectAcc]
 		end,
-		{[], <<0>>, 1},
-		record_info(fields, elfsects)),
-	{ok, ShstrtabOffs, Shstrtab}.
+		[#elfsecthdr{offset=0, size=HdrsLen}],
+		Sections),
+	[_Zero | SectionsWithOffs] = lists:reverse(SectionsWithOffsReversed),
+
+	LastSect = lists:last(SectionsWithOffs),
+	SHTOff = align(SectionEnd(LastSect), 16),
+	EOFOff = SHTOff + elf_shentsize(Eclass) * elf_sect_num(),
+
+	{SectionsWithOffs, SHTOff, EOFOff}.
+
+make_symbols(Sections) ->
+	ZeroSym = #elfsym {name=(<<>>), bindntype=(?STT_NOTYPE bor ?STB_LOCAL),
+	                   sectndx=?SHN_UNDEF, value=0, size=0},
+
+	{SectEntries, _} = lists:foldl(
+		fun({_SectName, {Start, _End}}, {Syms, Num}) ->
+			Sym = #elfsym {name=(<<"">>), bindntype=(?STT_SECTION bor ?STB_LOCAL),
+			               sectndx=Num, value=Start, size=0},
+			{[Sym | Syms], Num + 1}
+		end,
+		{[], 1},
+		Sections),
+
+	SectSyms = lists:foldl(
+		fun({SectName, {Start, End}}, Syms) ->
+			SymInf = fun(Sym, Ndx, Off) ->
+					#elfsym {name=Sym, bindntype=(?STT_NOTYPE bor ?STB_GLOBAL),
+					         sectndx=Ndx, value=Off, size=0}
+				end,
+			SymsForSect =
+				fun(Ndx, Sym1, Sym2) ->
+					[SymInf(Sym1, Ndx, Start), SymInf(Sym2, Ndx, End)]
+				end,
+			case SectName of
+			<<".text">>   -> SymsForSect(1, <<"_text">>, <<"_etext">>) ++ Syms;
+			<<".rodata">> -> SymsForSect(2, <<"_rodata">>, <<"_erodata">>) ++ Syms;
+			<<".data">>   -> SymsForSect(3, <<"_data">>, <<"_edata">>) ++ Syms;
+			<<".bss">>    -> SymsForSect(4, <<"_bss">>, <<"_ebss">>) ++ Syms
+			end
+		end,
+		[], Sections),
+
+	[ZeroSym] ++ lists:reverse(SectEntries) ++ lists:reverse(SectSyms).
+
+make_strtab(Symnames) ->
+	{StrOffs, _Len2, Strtab} = lists:foldl(
+		fun(Name, {Offs, Off, Bin}) ->
+			{[{Name, Off} | Offs],
+			  Off + size(Name) + 1,
+			  <<Bin/binary, Name/binary, 0>>}
+		end,
+		{[], 1, <<0>>},
+		Symnames),
+	%% StrOffs is a proplist from binary names to offsets in strtab
+	{ok, StrOffs, Strtab}.
+
+make_symtab(Syms, StrOffs) ->
+	lists:foldl(
+		fun(#elfsym{name=Name, bindntype=STInfo, sectndx=STShNdx, value=STValue, size=STSize}, Bin) ->
+			StrOff = case proplists:lookup(Name, StrOffs) of
+				{Name, Off} -> Off;
+				none -> 0
+			end,
+			SymBin = <<StrOff:?Elf_Word/little, STInfo, 0, STShNdx:?Elf_Half/little,
+			           STValue:?Elf64_Addr/little, STSize:?Elf64_Xword/little>>,
+			<<Bin/binary, SymBin/binary>>
+		end,
+		<<>>, Syms).
 
 make_elf_pht(_PHTNames) ->
 	<<"TODO">>.
 
-make_elf_segments(ElfSegsOffs) when is_record(ElfSegsOffs, elfoffs) ->
+make_elf_segments(_ElfSegs) ->
 	<<"TODO">>.
 
-make_elf_sht(ElfSegsOffs) when is_record(ElfSegsOffs, elfoffs) ->
-	<<"TODO">>.
+materialize_sections(Sections) ->
+	{<<".text">>, {TextStart, TextEnd}} = proplists:lookup(<<".text">>, Sections),
+	{<<".rodata">>, {RodataStart, RodataEnd}} = proplists:lookup(<<".rodata">>, Sections),
+	{<<".data">>, {DataStart, DataEnd}} = proplists:lookup(<<".data">>, Sections),
+	{<<".bss">>, {BssStart, BssEnd}} = proplists:lookup(<<".bss">>, Sections),
+
+	{ok, TextBin} = ling:memory(TextStart, TextEnd),
+	Text = #elfsecthdr { name = <<".text">>,
+		type = ?SHT_PROGBITS, flags = ?SHF_ALLOC bor ?SHF_EXEC,
+		addr = TextStart, size = TextEnd - TextStart, addralign = ?PAGE_SIZE,
+		contents = TextBin
+	},
+	{ok, RodataBin} = ling:memory(RodataStart, RodataEnd),
+	Rodata = #elfsecthdr { name = <<".rodata">>,
+		type = ?SHT_PROGBITS, flags = ?SHF_ALLOC,
+		addr = RodataStart, size = RodataStart - RodataStart, addralign = 32,
+		contents = RodataBin
+	},
+	{ok, DataBin} = ling:memory(DataStart, DataEnd),
+	Data = #elfsecthdr { name = <<".data">>,
+		type = ?SHT_PROGBITS, flags = ?SHF_ALLOC bor ?SHF_WRITE,
+		addr = DataStart, size = DataEnd - DataStart, addralign = 32,
+		contents = DataBin
+	},
+	Bss = #elfsecthdr { name = <<".bss">>,
+		type = ?SHT_NOBITS, flags = ?SHF_ALLOC bor ?SHF_WRITE,
+		addr = BssStart, size = BssEnd - BssStart, addralign = 32,
+		contents = <<>>
+	},
+
+	XenGuestBin = elf_xenguest_contents(),
+	XenGuest = #elfsecthdr { name = <<"__xen_guest">>,
+		type = ?SHT_PROGBITS, flags = 0,
+		addr = 0, size = size(XenGuestBin), addralign = 1,
+		contents = XenGuestBin
+	},
+
+	CommentBin = elf_comment(),
+	Comment = #elfsecthdr { name = <<".comment">>,
+		type = ?SHT_PROGBITS, flags = ?SHF_STRINGS,
+		addr = 0, size = size(CommentBin), addralign = 1,
+		contents = CommentBin
+	},
+
+	Shstrtab0 = #elfsecthdr { name = <<".shstrtab">>,
+		type = ?SHT_STRTAB, flags = 0,
+		addr = 0, addralign = 1
+	},
+
+	Syms = make_symbols(Sections),
+	Symnames = lists:filter(fun(<<>>) -> false; (_) -> true end,
+	                        lists:map(fun(#elfsym{name=Name}) -> Name end, Syms)),
+	io:write("Symnames = ~p\n", [Symnames]),
+	{ok, StrOffs, StrtabBin} = make_strtab(Symnames),
+	Strtab = #elfsecthdr { name = <<".strtab">>,
+		type = ?SHT_STRTAB, flags = 0,
+		addr = 0, size = size(StrtabBin), addralign = 1,
+		contents = StrtabBin
+	},
+
+	SymtabBin = make_symtab(Syms, StrOffs),
+	Symtab0 = #elfsecthdr { name = <<".symtab">>,
+		type = ?SHT_SYMTAB, flags = 0,
+		addr = 0, size = size(SymtabBin), addralign = 8,
+		entsize = size(SymtabBin) div length(Syms), contents = SymtabBin
+	},
+
+	AllSections0 = [Text, Rodata, Data, Bss, XenGuest, Comment, Shstrtab0, Symtab0, Strtab],
+
+	SectNames = lists:map(fun(#elfsecthdr{name=Name}) -> Name end, AllSections0),
+	{ok, ShstrOffs, ShstrtabBin} = make_strtab(SectNames),
+	Shstrtab = Shstrtab0#elfsecthdr{ contents = ShstrtabBin, size = size(ShstrtabBin) },
+
+	Symtab = Symtab0,  % #elfsecthdr { link = StrtabNdx, info = 0},
+
+	AllSections = [Text, Rodata, Data, Bss, XenGuest, Comment, Shstrtab, Symtab, Strtab],
+	{ShstrOffs, AllSections}.
+
+
+make_elf_sht(Eclass, AllSections, ShstrtabOffs) ->
+	Zero = #elfsecthdr{name=(<<>>), type=?SHT_NULL, flags=0, addr=0, size=0,
+	                   link=0, info=0, addralign=0},
+
+	MakeSHTEntry =
+		fun(#elfsecthdr{name=SectName, type=Type, flags=Flags, addr=Addr,
+		                offset=Off, size=Siz, link=Lnk, info=Inf, addralign=Align,
+		                entsize=Entsiz}) ->
+			{SectName, NameOff} = proplists:lookup(SectName, ShstrtabOffs),
+			Bin = case Eclass of
+				?ELFCLASS64 ->
+					<<NameOff:?Elf_Word/little, Type:?Elf_Word/little,
+			          Flags:?Elf64_Xword/little, Addr:?Elf64_Addr/little, Off:?Elf64_Off/little,
+				 	  Siz:?Elf64_Xword/little, Lnk:?Elf_Word/little, Inf:?Elf_Word/little,
+					  Align:?Elf64_Xword/little, Entsiz:?Elf64_Xword/little>>
+				end,
+			BinSiz = size(Bin), BinSiz = elf_shentsize(Eclass),
+			Bin
+		end,
+
+	lists:foldl(
+		fun(Section, AccBin) -> <<AccBin/binary, (MakeSHTEntry(Section))/binary>> end,
+		<<>>, [Zero | AllSections]).
 
 make_elf(Meta, Sections) ->
+	Eclass = elf_class(Meta),
+
 	PHT = [<<"LOAD">>, <<"GNU_STACK">>],
 
-	ElfOffs = make_elf_skeleton(Meta, Sections, PHT),
-	#elfoffs{ segs = {SegsStart, ElfSegsOffs} } = ElfOffs,
+	{ShstrtabOffs, AllSectionsNoOffs} = materialize_sections(Sections),
+	{AllSections, SHTOff, _EOFOff} = make_elf_skeleton(Meta, AllSectionsNoOffs, PHT),
 
-	{<<".text">>, EntryAddr, _} = proplists:lookup(<<".text">>, Sections),
-	ElfHdr = make_elf_header(Meta, EntryAddr, PHT, ElfOffs#elfoffs.sht),
-	HdrSz = size(ElfHdr),
-	HdrSz = elf_hdr_size(elf_class(Meta)),
+	{<<".text">>, {EntryAddr, _}} = proplists:lookup(<<".text">>, Sections),
+	ElfHdr = make_elf_header(Meta, EntryAddr, PHT, SHTOff),
 
-	ElfPHT = pad_to(make_elf_pht(PHT), SegsStart),
-	ElfSegs = make_elf_segments(ElfSegsOffs),
+	ElfPHT = make_elf_pht(PHT),
 
-	ElfSHT = make_elf_sht(ElfSegsOffs),
-	<<ElfHdr/binary, ElfPHT/binary, ElfSegs/binary, ElfSHT/binary>>.
+	[FstSect | _] = AllSections,
+	SegsPadding = FstSect#elfsecthdr.offset - size(ElfHdr) - size(ElfPHT),
 
-make() ->
+	ElfSegsBin = make_elf_segments(AllSections),
+	ElfSHT = make_elf_sht(Eclass, AllSections, ShstrtabOffs),
+
+	<<ElfHdr/binary, ElfPHT/binary, 0:SegsPadding, ElfSegsBin/binary, ElfSHT/binary>>.
+
+info() ->
 	case ling:exec_info() of
-	{elf, Meta, Sections} ->
-		{ok, make_elf(Meta, Sections)};
+	{elf, Meta, LSections} ->
+		Sections = lists:map(fun({N, S, E}) -> {erlang:list_to_binary(N), {S, E}} end, LSections),
+		{elf, Meta, Sections};
 	{Fmt, _,    _} ->
 		{error, {unknown_format, Fmt}};
-	_ ->
-		{error, whut}
+	{error, E} ->
+		{error, E};
+	_ -> {error, whut}
 	end.
+
+make() ->
+	case info() of
+	{elf, Meta, Sections} -> make_elf(Meta, Sections);
+	Other -> Other
+	end.
+
 
 share(_Addr) -> todo.
