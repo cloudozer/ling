@@ -56,8 +56,21 @@ handle_call({open,Domid}, _From, St) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info({watch,WatchKey}, #sm{top =StrawTop} =St) ->
+	case lists:prefix(StrawTop, WatchKey) of
+		true  -> Suffux = lists:nthtail(length(StrawTop), WatchKey),
+				 case string:tokens(Suffix, "/") of
+					[X,"warts"] ->
+						%% peer wants to communicate
+						{ok,WartsDir} = xenstore:read(WatchKey),
+						Domid = list_to_integer(X),
+						knock_knock(Domid, WartsDir, lc([StrawTop,"/",X]), St);
+					_ -> {noreply,St} end;
+		false -> straw_state(WatchKey, St) end;
+
+handle_info(_Mgs, St) ->
+	io:format("strawman: msg ~p\n", [_Msg]),
+	{noreply,St}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -105,6 +118,52 @@ do_open(Domid, WartsDir, StrawDir, #sm{straws =Straws} =St) ->
 					SI = {StrawPore,StrawState,WartsDir},
 					{reply,{ok,StrawPore},St#sm{straws =[SI|Straws]}} end end.
 
+knock_knock(Domid, WartsDir, StrawDir, #sm{straws =Straws} =St) ->
+	WartsState = lc(WartsDir, "/state"),
+	ok = xenstore:watch(WartsState),
+	StrawState = lc(StrawDir, "/state"),
+	ok = xenstore:write(StrawState, ?STATE_INITIALISING),
+	case wait_peer(WartsState, ?STATE_INIT_WAIT) of
+		{error,_} ->
+			ok = xenstore:delete(StrawDir),
+			ok = xenstore:unwatch(WartsState),
+			{noreply,St};
+		ok ->
+			StrawPore = pore_straw:open(),
+			InRefs  = pore_straw:refs(0),
+			OutRefs = pore_straw:refs(1),
+			Channel = pore_straw:channel(),
+			
+			{ok,Tid} = xenstore:transaction(),
+			lists:foreach(fun({N,Ref}) -> ok = xenstore:write(lc([StrawDir,"/in-ref-",N]), Ref, Tid) end,
+							lists:zip(lists:seq(1, ?NUM_STRAW_REFS), InRefs)),
+			lists:foreach(fun({N,Ref}) -> ok = xenstore:write(lc([StrawDir,"/out-ref-",N]), Ref, Tid) end,
+							lists:zip(lists:seq(1, ?NUM_STRAW_REFS), OutRefs)),
+			ok = xenstore:write(lc(StrawDir, "/event-channel"), Channel, Tid),
+			ok = xenstore:write(StrawState, ?STATE_INITIALISED, Tid),
+			ok = xenstore:commit(Tid),
+			ok = wait_peer(WartsState, ?STATE_CONNECTED),
+
+			SI = {StrawPore,WartsState,StrawDir},
+			St1 = St#sm{straws = [SI|Straws]},
+
+			%%TODO
+
+			{noreply,St1} end end.
+
+straw_state(WatchKey, #sm{straws =Straws} =St) ->
+	{StrawPort,StatePath,_} = lists:keyfind(WatchKey, 2, Straws),
+	case xenstore:read(StatePath) of
+		{ok,?STATE_CONNECTED} -> {noreply,St};
+		_ -> St1 = close_straw(StraPore, St), {noreply,St1} end.
+
+close_straw(StrawPore, #sm{straws =Straws} =St) ->
+	{value,{_,StatePath,DataDir},Straws1} = lists:keytake(StrawPore, 1, Straws),
+	ok = xenstore:unwatch(StatePath),
+	true = pore:close(StrawPore),
+	ok = xenstore:delete(DataDir),
+	St#sm{straws =Straws1}.
+
 %%TODO: the function is the same as in tube_server.erl
 wait_peer(Path, Target) ->
 	receive {watch,Path} ->
@@ -113,4 +172,7 @@ wait_peer(Path, Target) ->
 			{ok,Target}	   -> ok;
 			{ok,_}		   -> wait_peer(Path, Target);
 			{error,_} =Err -> Err end end.
+
+lc(X) -> lists:concat(X).
+lc(X, Y) -> lists:concat([X,Y]).
 

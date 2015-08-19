@@ -66,10 +66,10 @@ possible to send messages to the following pseudo-addresses represented as 2- or
 `Machine` are not defined yet.
 
 Thus if you expect that the machine has a container named 'lincx' and it has a process registered as
-'strawman' you may safely send the message as:
+'buddy' you may safely send the message as:
 
 ```
-{lincx,strawman} ! Hello
+{lincx,buddy} ! Hello
 ```
 
 In the course of the message exchange thus initiated you may receive long Pids and then use them as
@@ -78,7 +78,7 @@ a destination for further messages.
 # Strawman
 
 The 'strawman' is the component that manages inter-domain message passing. When a process what to
-send a message to another container it puts the message to an envelop:
+send a message to another container it puts the message to an envelop and sends it to the strawman.
 
 ```
 {envelope,Address,Message}
@@ -87,7 +87,7 @@ send a message to another container it puts the message to an envelop:
 The `Address` is either a long Pid or a tuple described above. The `Message` is the message contents
 serialised using `term_to_binary()`.
 
-The strawman retrieves the container id from the address and checks whether where is an active
+The strawman retrieves the container id from the address and checks whether there is an active
 connection -- or a 'straw' -- with that container. If there no straw, it create one using a standard
 negotiation using Xenstore. Straws are never deliberately closed. They go away when one of the
 communicating domains shut down.
