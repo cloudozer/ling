@@ -132,7 +132,7 @@ do_open(Domid, NockDir, TipDir, Caller, #ts{tubes =Tubes} =St) ->
 				ok ->
 					%% TipState is being watched
 					TI = {Tube,TipState,NockDir},
-					{reply,{ok,Tube},St#ts{tubes = [TI|Tubes]}} end end.
+					{reply,{ok,Tube},St#ts{tubes =[TI|Tubes]}} end end.
 
 wait_peer(Path, Target) ->
 	receive {watch,Path} ->
