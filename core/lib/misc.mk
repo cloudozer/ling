@@ -9,14 +9,15 @@ MISC_SRC += strchrnul.c strcmp.c strcpy.c strlen.c strncmp.c strtod.c tan.c tanh
 
 ifdef LING_XEN
 CPPFLAGS += -isystem $(MISC_DIR)/include
+MISC_ARCH := x86
 endif
 
-ifdef LIBMISC_ARCH
-ifneq ($(LIBMISC_ARCH),x86)
+ifdef MISC_ARCH
+ifneq ($(MISC_ARCH),x86)
 MISC_SRC += memcpy.c memmove.c memset.c sqrt.c
 endif
 MISC_OBJ := $(patsubst %.c,%.o,$(addprefix $(MISC_DIR)/,$(MISC_SRC)))
-MISC_AS := $(patsubst %.s,%.o,$(wildcard $(MISC_DIR)/arch/$(LIBMISC_ARCH)/*.s))
+MISC_AS := $(patsubst %.s,%.o,$(wildcard $(MISC_DIR)/arch/$(MISC_ARCH)/*.s))
 else
 MISC_OBJ :=
 MISC_AS :=

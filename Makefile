@@ -109,7 +109,6 @@ bc/ling_iopvars.beam: bc/ling_iopvars.erl
 ifdef LING_XEN
 LING_PLATFORM := xen
 LING_OS := ling
-LIBMISC_ARCH := x86
 ifdef LING_LINUX
 CC := gcc
 else ifdef LING_DARWIN
