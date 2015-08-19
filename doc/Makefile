@@ -4,7 +4,7 @@
 PDFs := $(patsubst %.md,%.pdf,$(wildcard *.md))
 
 #default: $(PDFs)
-default: pores.pdf
+default: interdom.pdf
 
 %.tex: %.md
 	multimarkdown -b -t latex $<
