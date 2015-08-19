@@ -20,8 +20,11 @@ PCRE_SRC := \
 	$(PCRE_DIR)/pcre_version.o \
 	$(PCRE_DIR)/pcre_xclass.o
 
+PCRE_DEP := $(patsubst %.o,%.d,$(PCRE_SRC))
+-include $(PCRE_DEP)
+
 $(PCRE_SRC): %.o: %.c .config
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DHAVE_CONFIG_H -o $@ -c $<
+	$(CC) -MMD -MP $(CFLAGS) $(CPPFLAGS) -DHAVE_CONFIG_H -o $@ -c $<
 
 CPPFLAGS += -isystem $(PCRE_DIR)
 

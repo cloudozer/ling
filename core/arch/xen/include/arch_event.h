@@ -36,6 +36,8 @@
 
 #include "ling_xen.h"
 
+#define NO_EVENT	((uint32_t)-1)
+
 typedef void (*event_entry_t)(uint32_t port, void *data);
 
 void events_init(void);
