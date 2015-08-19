@@ -238,7 +238,7 @@ $(CORE_PRELOAD_BEAM): %.beam: %.erl .config
 
 # use pattern rule (%) to avoid multiple premod_gen invocation in parralel builds
 CORE_INCLUDES = core/premod.%nc core/code_base.%nc core/include/mod_info.%nc core/preload/l%terals.c core/catch_tab.%nc
-$(CORE_INCLUDES): core/gentab/atoms.beam core/gentab/exp_tab.beam core/include/atom_defs.h $(CORE_PRELOAD_BEAM)
+$(CORE_INCLUDES): core/gentab/atoms.beam core/gentab/exp_tab.beam core/include/atom_defs.h $(CORE_PRELOAD_BEAM) bc/scripts/bif.tab
 	$(ESCRIPT) core/scripts/premod_gen core/preload core/premod.inc core/code_base.inc core/include/mod_info.inc core/preload/literals.c core/catch_tab.inc copy
 
 core/gentab/exp_tab.erl: $(CORE_PRELOAD_BEAM) bc/scripts/bif.tab bc/ling_iopvars.beam
