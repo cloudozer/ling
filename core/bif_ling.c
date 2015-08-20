@@ -242,7 +242,8 @@ term_t cbif_stats0(proc_t *proc, term_t *regs)
 #endif
 }
 
-#if LING_XEN
+#if (1)
+//LING_XEN
 enum elfnames {
 	ElfElf,
 	ElfClass,
@@ -337,8 +338,8 @@ term_t cbif_ling_execinfo0(proc_t *proc, term_t *regs)
 	for (i = 0; i < nsect; ++i)
 	{
 		term_t sectname = heap_strz(&proc->hp, sections[i].name);
-		term_t startaddr = tag_int(sections[i].start);
-		term_t endaddr = tag_int(sections[i].end);
+		term_t startaddr = int_to_term(sections[i].start, &proc->hp);
+		term_t endaddr = int_to_term(sections[i].end, &proc->hp);
 		sectvec[i] = heap_tuple3(&proc->hp, sectname, startaddr, endaddr);
 	}
 	term_t sectlist = heap_vector_to_list(&proc->hp, sectvec, nsect);
@@ -357,12 +358,15 @@ term_t cbif_ling_memory2(proc_t *proc, term_t *regs)
 	/* this initialization produces a warning, and rightly so */
 	uintptr_t from = int_value(From);
 	uintptr_t to = int_value(To);
+	printk("%s: from=%x, to=%x\n", __FUNCTION__, from, to);
 	if (from > to)
 		return heap_tuple2(&proc->hp, A_ERROR, heap_strz(&proc->hp, "From after To"));
 	size_t len = to - from;
+	printk("%s: len=%d\n", __FUNCTION__, len);
 
 	uint8_t *data = NULL;
 	term_t bin = heap_make_bin(&proc->hp, len, &data);
+	printk("%s: bin=0x%x, data=*%x\n", __FUNCTION__, bin, (uintptr_t)data);
 
 	memcpy(data, (void *)from, len);
 

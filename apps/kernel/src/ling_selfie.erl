@@ -218,24 +218,29 @@ make_elf_segments(_ElfSegs) ->
 	<<"TODO">>.
 
 materialize_sections(Sections) ->
+	io:format("materialize_sections(~p)\n", [Sections]),
 	{<<".text">>, {TextStart, TextEnd}} = proplists:lookup(<<".text">>, Sections),
 	{<<".rodata">>, {RodataStart, RodataEnd}} = proplists:lookup(<<".rodata">>, Sections),
 	{<<".data">>, {DataStart, DataEnd}} = proplists:lookup(<<".data">>, Sections),
 	{<<".bss">>, {BssStart, BssEnd}} = proplists:lookup(<<".bss">>, Sections),
+	io:format("materialize_sections: matched\n"),
+	TextRet = ling:memory(TextStart, TextEnd),
+	io:format("materialize_sections: TextRet=~p\n", [TextRet]),
+	{ok, TextBin} = TextRet,
+	{ok, RodataBin} = ling:memory(RodataStart, RodataEnd),
+	{ok, DataBin} = ling:memory(DataStart, DataEnd),
+	io:format("materialize_sections: binaries loaded\n"),
 
-	{ok, TextBin} = ling:memory(TextStart, TextEnd),
 	Text = #elfsecthdr { name = <<".text">>,
 		type = ?SHT_PROGBITS, flags = ?SHF_ALLOC bor ?SHF_EXEC,
 		addr = TextStart, size = TextEnd - TextStart, addralign = ?PAGE_SIZE,
 		contents = TextBin
 	},
-	{ok, RodataBin} = ling:memory(RodataStart, RodataEnd),
 	Rodata = #elfsecthdr { name = <<".rodata">>,
 		type = ?SHT_PROGBITS, flags = ?SHF_ALLOC,
 		addr = RodataStart, size = RodataStart - RodataStart, addralign = 32,
 		contents = RodataBin
 	},
-	{ok, DataBin} = ling:memory(DataStart, DataEnd),
 	Data = #elfsecthdr { name = <<".data">>,
 		type = ?SHT_PROGBITS, flags = ?SHF_ALLOC bor ?SHF_WRITE,
 		addr = DataStart, size = DataEnd - DataStart, addralign = 32,
@@ -269,7 +274,7 @@ materialize_sections(Sections) ->
 	Syms = make_symbols(Sections),
 	Symnames = lists:filter(fun(<<>>) -> false; (_) -> true end,
 	                        lists:map(fun(#elfsym{name=Name}) -> Name end, Syms)),
-	io:write("Symnames = ~p\n", [Symnames]),
+	io:format("Symnames = ~p\n", [Symnames]),
 	{ok, StrOffs, StrtabBin} = make_strtab(Symnames),
 	Strtab = #elfsecthdr { name = <<".strtab">>,
 		type = ?SHT_STRTAB, flags = 0,
@@ -342,8 +347,10 @@ make_elf(Meta, Sections) ->
 	<<ElfHdr/binary, ElfPHT/binary, 0:SegsPadding, ElfSegsBin/binary, ElfSHT/binary>>.
 
 info() ->
+	io:format("info()\n"),
 	case ling:exec_info() of
 	{elf, Meta, LSections} ->
+		io:format("info(): elf\n"),
 		Sections = lists:map(fun({N, S, E}) -> {erlang:list_to_binary(N), {S, E}} end, LSections),
 		{elf, Meta, Sections};
 	{Fmt, _,    _} ->
@@ -354,8 +361,10 @@ info() ->
 	end.
 
 make() ->
+	io:format("make()\n"),
 	case info() of
-	{elf, Meta, Sections} -> make_elf(Meta, Sections);
+	{elf, Meta, Sections} ->
+		make_elf(Meta, Sections);
 	Other -> Other
 	end.
 
