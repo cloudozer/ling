@@ -11,8 +11,8 @@ ERLC := $(ERL_BIN)/erlc
 ESCRIPT := $(ERL_BIN)/escript
 endif
 
-ifneq (ok,$(shell $(ERL) -noshell -eval "Otp = erlang:system_info(otp_release), io:format(if Otp >= $(OTP_VER) -> ok; else -> old end),erlang:halt(0)."))
-$(error Erlang/OTP $(OTP_VER) or newer required)
+ifneq (true,$(shell $(ERL) -noshell -eval "io:format(list_to_integer(erlang:system_info(otp_release)) == $(OTP_VER)),halt(0)."))
+$(error Erlang/OTP $(OTP_VER) required)
 endif
 
 -include .config
@@ -139,7 +139,6 @@ CFLAGS   := -Wall
 #CFLAGS   += -Werror
 CFLAGS   += -Wno-nonnull -std=gnu99
 CFLAGS   += -fno-omit-frame-pointer
-CFLAGS	 += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
 
 # relocatable (partial linking)
 LDFLAGS  += -Xlinker -r
@@ -155,6 +154,7 @@ CPPFLAGS += -D__XEN_INTERFACE_VERSION__=$(XEN_INTERFACE_VERSION)
 CFLAGS   += -std=gnu99
 CFLAGS   += -fexcess-precision=standard -frounding-math -mfpmath=sse -msse2
 CFLAGS   += -Wno-nonnull -Wno-strict-aliasing
+CFLAGS	 += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
 
 LDFLAGS  += -T core/arch/xen/ling.lds
 LDFLAGS  += -static

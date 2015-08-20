@@ -48,12 +48,10 @@ CPPFLAGS += -DLING_WITH_LIBUV=1
 CPPFLAGS += -isystem $(LIBUV_DIR)/include
 CPPFLAGS += -isystem $(LIBUV_DIR)/src
 
-LIBUV_CFLAGS := -Wall -O2
-
 LIBUV_DEP := $(patsubst %.o,%.d,$(LIBUV_SRC))
 -include $(LIBUV_DEP)
 
 $(LIBUV_SRC): %.o: %.c .config
-	$(CC) -MMD -MP $(LIBUV_CFLAGS) $(CPPFLAGS) -o $@ -c $<
+	$(CC) -MMD -MP $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 ALL_OBJ += $(LIBUV_SRC)
