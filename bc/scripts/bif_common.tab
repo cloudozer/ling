@@ -1,5 +1,6 @@
 #
-#	Builtin functions
+#	Builtin functions for all LING architectures
+#	Arch specific functions defined in bif_<arch name>.tab files
 #
 #####################
 
@@ -168,14 +169,6 @@ erlang:port_get_data(Port)				cbif_port_get_data1
 erlang:decode_packet$(Type,Bin,PackSize,LineLen)	cbif_decode_packet4
 
 lwip:setup(IpAddr,NetMask,Gateway,Dhcp)		cbif_setup4
-
-#bif_pore.c
-#pore_xs:open()					cbif_pore_xs_open0
-#pore_xs:write(Pore,Data)		cbif_pore_xs_write2
-#pore_xs:read(Pore)				cbif_pore_xs_read1
-#pore_xs:avail(Pore)				cbif_pore_xs_avail1
-#pore:poke(Pore)					cbif_pore_poke1
-#pore:close(Pore)				cbif_pore_close1
 
 # bif_ling.c
 ling:domain_name()			cbif_domain_name0
@@ -411,6 +404,3 @@ crypto:aes_ctr_stream_crypt(Key,IVec,Data)		cbif_aes_ctr_stream_crypt3
 
 crypto:rand_bytes(N)		cbif_rand_bytes1
 crypto:exor(Bin1,Bin2)		cbif_exor2
-
-#EOF
-
