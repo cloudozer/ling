@@ -1,3 +1,8 @@
+#
+#	Builtin functions specific for LING on Xen
+#
+#####################
+
 #bif_pore.c
 pore_xs:open()					cbif_pore_xs_open0
 pore_xs:write(Pore,Data)		cbif_pore_xs_write2
