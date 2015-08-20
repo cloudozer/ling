@@ -139,6 +139,9 @@ CFLAGS   := -Wall
 #CFLAGS   += -Werror
 CFLAGS   += -Wno-nonnull -std=gnu99
 CFLAGS   += -fno-omit-frame-pointer
+ifndef LING_DARWIN
+CFLAGS	 += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
+endif
 
 # relocatable (partial linking)
 LDFLAGS  += -Xlinker -r
@@ -154,7 +157,6 @@ CPPFLAGS += -D__XEN_INTERFACE_VERSION__=$(XEN_INTERFACE_VERSION)
 CFLAGS   += -std=gnu99
 CFLAGS   += -fexcess-precision=standard -frounding-math -mfpmath=sse -msse2
 CFLAGS   += -Wno-nonnull -Wno-strict-aliasing
-CFLAGS	 += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
 
 LDFLAGS  += -T core/arch/xen/ling.lds
 LDFLAGS  += -static
