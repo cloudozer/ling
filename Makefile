@@ -87,6 +87,8 @@ BC_SAMPLE_BEAM := $(BC_SAMPLE_ERL:%.erl=%.beam)
 bc/%.beam: bc/%.erl
 	$(ERLC) -o bc $<
 
+bc/ling_code.beam: bc/ling_bifs.beam
+
 bc/sample/%.beam: bc/sample/%.erl
 	$(ERLC) -o bc/sample $<
 
@@ -98,6 +100,12 @@ bc/gentab/%.beam: bc/gentab/%.erl
 
 bc/scripts/iopvars.tab: bc/scripts/beam.src bc/scripts/bif.tab bc/gentab/iops_tab.beam $(BC_SAMPLE_BEAM) $(TEST_BEAM)
 	$(ESCRIPT) bc/scripts/iopvars_gen bc/scripts/beam.src bc/scripts/bif.tab $@
+
+bc/ling_bifs.erl: bc/scripts/bif.tab
+	bc/scripts/bifs2_gen $< $@
+
+bc/ling_bifs.beam: bc/ling_bifs.erl
+	$(ERLC) -o bc $<
 
 bc/ling_iopvars.erl: bc/scripts/iopvars.tab bc/scripts/iopvars_erl.et
 	$(ESCRIPT) bc/scripts/reorder_iopvars bc/scripts/iopvars.tab bc/scripts/hot_cold_iops bc/scripts/iopvars_erl.et $@
@@ -279,9 +287,11 @@ clean:
 		$(TEST_BEAM) $(BC_BEAM) $(BC_SAMPLE_BEAM) \
 		bc/gentab/iops_tab.erl bc/scripts/iopvars.tab \
 		bc/ling_iopvars.erl bc/ling_iopvars.beam \
+		bc/ling_bifs.erl bc/ling_bifs.beam \
 		$(STARTUP_OBJ) $(ALL_OBJ) \
 		$(CORE_GENTAB_BEAM) $(CORE_PRELOAD_BEAM) \
-		core/premod.inc core/code_base.inc core/include/mod_info.inc core/preload/literals.c core/catch_tab.inc \
+		core/premod.inc core/code_base.inc core/include/mod_info.inc \
+		core/preload/literals.c core/catch_tab.inc \
 		core/gentab/exp_tab.erl \
 		core/include/atom_defs.h core/atoms.inc core/gentab/atoms.erl \
 		core/ling_main.c core/ling_main.o \
