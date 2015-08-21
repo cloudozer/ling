@@ -47,3 +47,9 @@ f6(#{a := _, b := _}) -> two.
 
 %% l_bs_init_bits
 g(X) -> <<127:7, X:64>>.
+
+%% update_map_assoc
+h() -> #{a => b:c()}.
+
+%% l_m_div
+i(A) -> C = A/A,{A,(-A)/C}.
