@@ -2,6 +2,7 @@
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
 
+-include("xenstore.hrl").
 -include("tube.hrl").
 
 %% ------------------------------------------------------------------
@@ -108,7 +109,7 @@ do_open(Domid, NockDir, TipDir, Caller, #ts{tubes =Tubes} =St) ->
 	ok = xenstore:commit(Tid),
 	TipState = lc(TipDir, "/state"),
 	ok = xenstore:watch(TipState),
-	case wait_peer(TipState, ?STATE_INITIALISED) of
+	case xenstore:wait(TipState, ?STATE_INITIALISED) of
 		{error,_} =Error -> %% peer gone
 			ok = xenstore:delete(NockDir),
 			ok = xenstore:unwatch(TipState),
@@ -122,7 +123,7 @@ do_open(Domid, NockDir, TipDir, Caller, #ts{tubes =Tubes} =St) ->
 			[?TUBE_REP_OK] = erlang:port_control(Tube, ?TUBE_REQ_ATTACH, Info),
 			true = port_connect(Tube, Caller),
 			ok = xenstore:write(lc(NockDir, "/state"), ?STATE_CONNECTED),
-			case wait_peer(TipState, ?STATE_CONNECTED) of
+			case xenstore:wait(TipState, ?STATE_CONNECTED) of
 				{error,_} =Error ->
 					true = port_connect(Tube, self()), %% spare the caller
 					true = erlang:port_close(Tube),
@@ -134,20 +135,12 @@ do_open(Domid, NockDir, TipDir, Caller, #ts{tubes =Tubes} =St) ->
 					TI = {Tube,TipState,NockDir},
 					{reply,{ok,Tube},St#ts{tubes =[TI|Tubes]}} end end.
 
-wait_peer(Path, Target) ->
-	receive {watch,Path} ->
-		case xenstore:read(Path) of
-			{error,enoent} -> wait_peer(Path, Target);		%% ignore
-			{ok,Target}	   -> ok;
-			{ok,_}		   -> wait_peer(Path, Target);
-			{error,_} =Err -> Err end end.
-
 knock_knock(Domid, NockDir, TipDir, #ts{tubes =Tubes} =St) ->
 	NockState = lc(NockDir, "/state"),
 	ok = xenstore:watch(NockState),
 	TipState = lc(TipDir, "/state"),
 	ok = xenstore:write(TipState, ?STATE_INITIALISING),
-	case wait_peer(NockState, ?STATE_INIT_WAIT) of
+	case xenstore:wait(NockState, ?STATE_INIT_WAIT) of
 		{error,_} ->
 			ok = xenstore:delete(TipDir),
 			ok = xenstore:unwatch(NockState),
@@ -164,7 +157,7 @@ knock_knock(Domid, NockDir, TipDir, #ts{tubes =Tubes} =St) ->
 			ok = xenstore:write(lc(TipDir, "/event-channel-rx"), ChanRx, Tid),
 			ok = xenstore:write(TipState, ?STATE_INITIALISED, Tid),
 			ok = xenstore:commit(Tid),
-			ok = wait_peer(NockState, ?STATE_CONNECTED),
+			ok = xenstore:wait(NockState, ?STATE_CONNECTED),
 
 			TI = {Tube,NockState,TipDir},
 			St1 = St#ts{tubes = [TI|Tubes]},

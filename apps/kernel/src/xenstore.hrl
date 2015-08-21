@@ -24,3 +24,10 @@
 -define(XS_RESTRICT, 20).
 -define(XS_RESET_WATCHES, 21).
 
+-define(STATE_INITIALISING, "1").
+-define(STATE_INIT_WAIT,	"2").
+-define(STATE_INITIALISED,	"3").
+-define(STATE_CONNECTED,	"4").
+-define(STATE_CLOSING,		"5").
+-define(STATE_CLOSED,		"6").
+

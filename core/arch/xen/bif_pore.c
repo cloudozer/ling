@@ -121,6 +121,178 @@ term_t cbif_pore_xs_avail1(proc_t *proc, term_t *regs)
 	return heap_tuple2(&proc->hp, tag_int(qa), tag_int(ra));
 }
 
+static void straw_destroy(pore_t *pore)
+{
+	assert(pore->tag == A_STRAW);
+	pore_straw_t *ps = (pore_straw_t *)pore;
+	if (ps->active)
+	{
+		for (int i = 0; i < NUM_STRAW_REFS; i++)
+			grants_end_access(ps->ring_refs[i]);
+	}
+	else
+	{
+		struct gnttab_unmap_grant_ref unmap[NUM_STRAW_REFS];
+		for (int i = 0; i < NUM_STRAW_REFS; i++)
+		{
+			unmap[i].host_addr = ps->page_map[i].host_addr;
+			unmap[i].handle = ps->page_map[i].handle;
+			unmap[i].dev_bus_addr = 0;
+		}
+
+		int rs = HYPERVISOR_grant_table_op(GNTTABOP_unmap_grant_ref, unmap, NUM_STRAW_REFS);
+		assert(rs == 0);
+	}
+}
+
+term_t cbif_pore_straw_open1(proc_t *proc, term_t *regs)
+{
+	term_t Domid = regs[0];
+	if (!is_int(Domid))
+		badarg(Domid);
+	int peer = int_value(Domid);
+
+	uint32_t evtchn = event_alloc_unbound(peer);
+	assert(sizeof(straw_ring_t) == NUM_STRAW_REFS*PAGE_SIZE);
+	int size = (NUM_STRAW_REFS+1)*PAGE_SIZE -sizeof(memnode_t);
+	pore_straw_t *ps = (pore_straw_t *)pore_make_N(A_STRAW, size, proc->pid, straw_destroy, evtchn);
+	if (ps == 0)
+		fail(A_NO_MEMORY);
+
+	straw_ring_t *ring = (straw_ring_t *)((uint8_t *)ps -sizeof(memnode_t) +PAGE_SIZE);
+	assert(((uintptr_t)ring & (PAGE_SIZE-1)) == 0); // page-aligned
+	ps->shared = ring;
+	ps->active = 1;
+	// all other fields are zero
+
+	for (int i = 0; i < NUM_STRAW_REFS; i++)
+	{
+		void *page = (void *)ps->shared + PAGE_SIZE*i;
+		grants_allow_access(&ps->ring_refs[i], peer, virt_to_mfn(page));
+	}
+
+	return ps->parent.eid;	
+}
+
+term_t cbif_pore_straw_open3(proc_t *proc, term_t *regs)
+{
+	term_t Domid = regs[0];
+	term_t Refs = regs[1];
+	term_t Channel = regs[2];
+	if (!is_int(Domid))
+		badarg(Domid);
+	int peer_domid = int_value(Domid);
+	if (!is_int(Channel))
+		badarg(Channel);
+	int peer_port = int_value(Channel);
+	uint32_t refs[NUM_STRAW_REFS];
+	term_t l = Refs;
+	for (int i = 0; i < NUM_STRAW_REFS; i++)
+	{
+		if (!is_cons(l))
+			badarg(Refs);
+		term_t *cons = peel_cons(l);
+		if (!is_int(cons[0]))
+			badarg(Refs);
+		refs[i] = int_value(cons[0]);
+		l = cons[1];
+	}
+	if (l != nil)
+		badarg(Refs);
+
+	uint32_t evtchn = event_bind_interdomain(peer_domid, peer_port);
+
+	assert(sizeof(straw_ring_t) == NUM_STRAW_REFS*PAGE_SIZE);
+	int size = (NUM_STRAW_REFS+1)*PAGE_SIZE -sizeof(memnode_t);
+	pore_straw_t *ps = (pore_straw_t *)pore_make_N(A_STRAW, size, proc->pid, straw_destroy, evtchn);
+	if (ps == 0)
+		fail(A_NO_MEMORY);
+
+	straw_ring_t *ring = (straw_ring_t *)((uint8_t *)ps -sizeof(memnode_t) +PAGE_SIZE);
+	assert(((uintptr_t)ring & (PAGE_SIZE-1)) == 0); // page-aligned
+	ps->shared = ring;
+	// all other fields are zero
+
+	for (int i = 0; i < NUM_STRAW_REFS; i++)
+	{
+		struct gnttab_map_grant_ref *m = &ps->page_map[i];
+		m->ref = refs[i];
+		m->dom = peer_domid;
+		m->flags = GNTMAP_host_map;
+		m->host_addr = (uintptr_t)ps->shared + PAGE_SIZE*i;
+	}
+
+	int rs = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, ps->page_map, NUM_STRAW_REFS);
+	assert(rs == 0);
+
+	for (int i = 0; i < NUM_STRAW_REFS; i++)
+	{
+		assert(ps->page_map[i].status == GNTST_okay);
+		rmb();
+	}
+
+	return ps->parent.eid;
+}
+
+term_t cbif_pore_straw_write2(proc_t *proc, term_t *regs)
+{
+	//TODO
+	bif_not_implemented();
+}
+
+term_t cbif_pore_straw_read1(proc_t *proc, term_t *regs)
+{
+	//TODO
+	bif_not_implemented();
+}
+
+term_t cbif_pore_straw_info1(proc_t *proc, term_t *regs)
+{
+	term_t Pore = regs[0];
+	if (!is_short_eid(Pore))
+		badarg(Pore);
+	pore_t *pr = pore_lookup(Pore);
+	if (pr == 0 || pr->tag != A_STRAW)
+		badarg(Pore);
+	pore_straw_t *ps = (pore_straw_t *)pr;
+	term_t refs = nil;
+	for (int i = NUM_STRAW_REFS-1; i >= 0; i--)
+	{
+		int ref = (ps->active) ?ps->ring_refs[i]
+							   :ps->page_map[i].ref;
+		assert(fits_int(ref));
+		refs = heap_cons(&proc->hp, tag_int(ref), refs);
+	}
+
+	assert(fits_int((int)pr->evtchn));
+	return heap_tuple2(&proc->hp, refs, tag_int(pr->evtchn));
+}
+
+term_t cbif_pore_straw_avail1(proc_t *proc, term_t *regs)
+{
+	term_t Pore = regs[0];
+	if (!is_short_eid(Pore))
+		badarg(Pore);
+	pore_t *pr = pore_lookup(Pore);
+	if (pr == 0 || pr->tag != A_STRAW)
+		badarg(Pore);
+
+	pore_straw_t *ps = (pore_straw_t *)pr;
+
+	// how much we can read
+	int avail1 = ps->shared->in_prod - ps->shared->in_cons;
+	while (avail1 < 0)
+		avail1 += STRAW_RING_SIZE;
+
+	// how much we can write
+	int avail2 = ps->shared->out_cons - ps->shared->out_prod;
+	while (avail2 <= 0)
+		avail2 += STRAW_RING_SIZE;
+	avail2--;	// unused byte
+
+	return heap_tuple2(&proc->hp, tag_int(avail1), tag_int(avail2));
+}
+
 term_t cbif_pore_poke1(proc_t *proc, term_t *regs)
 {
 	term_t Pore = regs[0];

@@ -38,6 +38,7 @@
 
 #if LING_XEN
 
+#include "grant.h"
 #include "xenstore.h"
 #include "xen/io/xs_wire.h"
 
@@ -59,6 +60,29 @@ typedef struct pore_xs_t pore_xs_t;
 struct pore_xs_t {
 	pore_t parent;
 	struct xenstore_domain_interface *intf;
+};
+
+#define NUM_STRAW_REFS 		8
+#define STRAW_RING_SIZE		(NUM_STRAW_REFS/2*PAGE_SIZE -8)
+
+//NB: straw_ring_t must fit NUM_STRAW_REFS pages - not checked
+typedef struct straw_ring_t straw_ring_t;
+struct straw_ring_t {
+	int32_t in_prod;
+	int32_t in_cons;
+	int32_t out_cons;
+	int32_t out_prod;
+	uint8_t input[STRAW_RING_SIZE];
+	uint8_t output[STRAW_RING_SIZE];
+};
+
+typedef struct pore_straw_t pore_straw_t;
+struct pore_straw_t {
+	pore_t parent;
+	int active;
+	struct gnttab_map_grant_ref page_map[NUM_STRAW_REFS];
+	uint32_t ring_refs[NUM_STRAW_REFS];
+	straw_ring_t *shared;
 };
 
 pore_t *pore_make_N(term_t tag,

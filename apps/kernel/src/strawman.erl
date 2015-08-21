@@ -1,8 +1,11 @@
 -module(strawman).
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
+-export([short_straw/2,short_straw/4]).
 
--define(NUM_STRAW_REFS, 4).
+-include("xenstore.hrl").
+
+-define(NUM_STRAW_REFS, 8).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -28,9 +31,9 @@ start_link() ->
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
--record(sm, {top}).
+-record(sm, {top,straws =[]}).
 
-init(Args) ->
+init(_Args) ->
 	process_flag(trap_exit, true),
 	Me = xenstore:domid(),
 	StrawTop = "data/straw",
@@ -44,8 +47,8 @@ init(Args) ->
 
 handle_call({open,Domid}, _From, St) ->
 	Me = xenstore:domid(),
-	WartsDir = lc(["/local/domain/",Me,"/data/warts",Domid]),
-	StrawDir = lc(["/local/domain/",Domid,"/data/straw",Me]),
+	WartsDir = lc(["/local/domain/",Me,"/data/warts/",Domid]),
+	StrawDir = lc(["/local/domain/",Domid,"/data/straw/",Me]),
 	case xenstore:read(WartsDir) of
 		{ok,_}	  -> {reply,{error,exists},St};
 		{error,_} ->
@@ -58,7 +61,7 @@ handle_cast(_Msg, State) ->
 
 handle_info({watch,WatchKey}, #sm{top =StrawTop} =St) ->
 	case lists:prefix(StrawTop, WatchKey) of
-		true  -> Suffux = lists:nthtail(length(StrawTop), WatchKey),
+		true  -> Suffix = lists:nthtail(length(StrawTop), WatchKey),
 				 case string:tokens(Suffix, "/") of
 					[X,"warts"] ->
 						%% peer wants to communicate
@@ -68,7 +71,7 @@ handle_info({watch,WatchKey}, #sm{top =StrawTop} =St) ->
 					_ -> {noreply,St} end;
 		false -> straw_state(WatchKey, St) end;
 
-handle_info(_Mgs, St) ->
+handle_info(_Msg, St) ->
 	io:format("strawman: msg ~p\n", [_Msg]),
 	{noreply,St}.
 
@@ -88,90 +91,138 @@ do_open(Domid, WartsDir, StrawDir, #sm{straws =Straws} =St) ->
 	ok = xenstore:mkdir(WartsDir, Tid),
 	ok = xenstore:write(lc(WartsDir, "/straw"), StrawDir, Tid),
 	ok = xenstore:write(lc(WartsDir, "/state"), ?STATE_INIT_WAIT, Tid),
-	ok = xenstore:write(lc(StrawDir, "/warts", WartsDir, Tid), %% wakes up peer
+	ok = xenstore:write(lc(StrawDir, "/warts"), WartsDir, Tid), %% wakes up peer
 	ok = xenstore:commit(Tid),
+	erlang:display({state,'INIT_WAIT'}),
 	StrawState = lc(StrawDir, "/state"),
 	ok = xenstore:watch(StrawState),
-	case wait_peer(StrawState, ?STATE_INITIALISED) of
+	erlang:display({wait,'INITIALISED'}),
+	case xenstore:wait(StrawState, ?STATE_INITIALISED) of
 		{error,_} =Error -> %% peer gone
 			ok = xenstore:delete(WartsDir),
 			ok = xenstore:unwatch(StrawState),
 			{reply,Error,St};
 		ok ->
-			InRefs =
-			lists:map(fun(N) -> {ok,Ref} = xenstore:read_integer(lc([StrawDir,"/in-ref-",N])),
-								Ref end, lists:seq(1, ?NUM_STRAW_REFS)),
-			OutRefs =
-			lists:map(fun(N) -> {ok,Ref} = xenstore:read_integer(lc([StrawDir,"/out-ref-",N])),
+			erlang:display(done_waiting),
+			Refs =
+			lists:map(fun(N) -> {ok,Ref} = xenstore:read_integer(lc([StrawDir,"/ring-ref-",N])),
 								Ref end, lists:seq(1, ?NUM_STRAW_REFS)),
 			{ok,Channel} = xenstore:read_integer(lc(StrawDir, "/event-channel")),
-			StrawPore = pore_straw:open(Domid, InRefs, OutRefs, Channel),
+			StrawProc = spawn_link(?MODULE, short_straw, [self(),Domid,Refs,Channel]),
+			receive {ready,StrawProc} -> ok end,
 			ok = xenstore:write(lc(WartsDir, "/state"), ?STATE_CONNECTED),
-			case wait_peer(StrawState, ?STATE_CONNECTED) of
+			erlang:display({wait,'CONNECTED'}),
+			case xenstore:wait(StrawState, ?STATE_CONNECTED) of
 				{error,_} =Error ->
-					true = pore:close(StrawPore),
+					exit(StrawProc),
 					ok = xenstore:delete(WartsDir),
 					ok = xenstore:unwatch(StrawState),
 					{reply,Error,St};
 				ok ->
+					erlang:display(done_waiting),
 					%% StrawState is being watched
-					SI = {StrawPore,StrawState,WartsDir},
-					{reply,{ok,StrawPore},St#sm{straws =[SI|Straws]}} end end.
+					SI = {Domid,StrawProc,StrawState,WartsDir},
+					{reply,ok,St#sm{straws =[SI|Straws]}} end end.
 
 knock_knock(Domid, WartsDir, StrawDir, #sm{straws =Straws} =St) ->
-	WartsState = lc(WartsDir, "/state"),
-	ok = xenstore:watch(WartsState),
 	StrawState = lc(StrawDir, "/state"),
 	ok = xenstore:write(StrawState, ?STATE_INITIALISING),
-	case wait_peer(WartsState, ?STATE_INIT_WAIT) of
+	erlang:display({state,'INITIALISING'}),
+	WartsState = lc(WartsDir, "/state"),
+	ok = xenstore:watch(WartsState),
+	erlang:display({wait,'INIT_WAIT'}),
+	case xenstore:wait(WartsState, ?STATE_INIT_WAIT) of
 		{error,_} ->
 			ok = xenstore:delete(StrawDir),
 			ok = xenstore:unwatch(WartsState),
 			{noreply,St};
 		ok ->
-			StrawPore = pore_straw:open(),
-			InRefs  = pore_straw:refs(0),
-			OutRefs = pore_straw:refs(1),
-			Channel = pore_straw:channel(),
-			
+			erlang:display(done_waiting),
+			StrawProc = spawn_link(?MODULE, short_straw, [self(),Domid]),
+			receive {ready,StrawProc,Refs,Channel} -> ok end,
+			erlang:display({ready,StrawProc,Refs,Channel}),
 			{ok,Tid} = xenstore:transaction(),
-			lists:foreach(fun({N,Ref}) -> ok = xenstore:write(lc([StrawDir,"/in-ref-",N]), Ref, Tid) end,
-							lists:zip(lists:seq(1, ?NUM_STRAW_REFS), InRefs)),
-			lists:foreach(fun({N,Ref}) -> ok = xenstore:write(lc([StrawDir,"/out-ref-",N]), Ref, Tid) end,
-							lists:zip(lists:seq(1, ?NUM_STRAW_REFS), OutRefs)),
+			lists:foreach(fun({N,Ref}) -> ok = xenstore:write(lc([StrawDir,"/ring-ref-",N]), Ref, Tid) end,
+							lists:zip(lists:seq(1, ?NUM_STRAW_REFS), Refs)),
 			ok = xenstore:write(lc(StrawDir, "/event-channel"), Channel, Tid),
 			ok = xenstore:write(StrawState, ?STATE_INITIALISED, Tid),
 			ok = xenstore:commit(Tid),
-			ok = wait_peer(WartsState, ?STATE_CONNECTED),
-
-			SI = {StrawPore,WartsState,StrawDir},
+			erlang:display({state,'INITIAIALISED'}),
+			erlang:display({wait,'CONNECTED'}),
+			ok = xenstore:wait(WartsState, ?STATE_CONNECTED),
+			erlang:display(done_waiting),
+			ok = xenstore:write(StrawState, ?STATE_CONNECTED),
+			erlang:display({state,'CONNECTED'}),
+			SI = {Domid,StrawProc,WartsState,StrawDir},
 			St1 = St#sm{straws = [SI|Straws]},
-
-			%%TODO
-
-			{noreply,St1} end end.
+			{noreply,St1} end.
 
 straw_state(WatchKey, #sm{straws =Straws} =St) ->
-	{StrawPort,StatePath,_} = lists:keyfind(WatchKey, 2, Straws),
+	{_,StrawProc,StatePath,_} = lists:keyfind(WatchKey, 3, Straws),
 	case xenstore:read(StatePath) of
 		{ok,?STATE_CONNECTED} -> {noreply,St};
-		_ -> St1 = close_straw(StraPore, St), {noreply,St1} end.
+		_ -> close_straw(StrawProc, St) end.
 
-close_straw(StrawPore, #sm{straws =Straws} =St) ->
-	{value,{_,StatePath,DataDir},Straws1} = lists:keytake(StrawPore, 1, Straws),
+close_straw(StrawProc, #sm{straws =Straws} =St) ->
+	{value,{_,_,StatePath,DataDir},Straws1} = lists:keytake(StrawProc, 2, Straws),
 	ok = xenstore:unwatch(StatePath),
-	true = pore:close(StrawPore),
+	exit(StrawProc),
 	ok = xenstore:delete(DataDir),
-	St#sm{straws =Straws1}.
+	{noreply,St#sm{straws =Straws1}}.
 
-%%TODO: the function is the same as in tube_server.erl
-wait_peer(Path, Target) ->
-	receive {watch,Path} ->
-		case xenstore:read(Path) of
-			{error,enoent} -> wait_peer(Path, Target);		%% ignore
-			{ok,Target}	   -> ok;
-			{ok,_}		   -> wait_peer(Path, Target);
-			{error,_} =Err -> Err end end.
+short_straw(ReplyTo, Domid, Refs, Channel) ->
+	Pore = pore_straw:open(Domid, Refs, Channel),
+	erlang:display({pore_open,Pore}),
+	ReplyTo ! {ready,self()},
+	looper(Pore).
+
+short_straw(ReplyTo, Domid) ->
+	Pore = pore_straw:open(Domid),
+	erlang:display({pore_open,Pore}),
+	{Refs,Channel} = pore_straw:info(Pore),
+	erlang:display({pore_info,Refs,Channel}),
+	ReplyTo ! {ready,self(),Refs,Channel},
+	looper(Pore).
+
+looper(Pore) ->
+	{IA,OA} = pore_straw:avail(Pore),
+	looper(Pore, IA, OA, undefined, [], 0, [], 0).
+
+looper(Pore, _IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when OutSz > 0, OA > 0 ->
+	{Chip,OutBuf1,OutSz1} = chip(OA, OutBuf, OutSz),
+	ok = pore_straw:write(Pore, Chip),
+	true = pore:poke(Pore),
+	{IA1,OA1} = pore_straw:avail(Pore),
+	looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf1, OutSz1);
+
+looper(Pore, IA, OA, undefined, InBuf, InSz, OutBuf, OutSz) when InSz >= 4 ->
+	{<<ExpSz:32>>,InBuf1,InSz1} = chip(4, InBuf, InSz),
+	looper(Pore, IA, OA, ExpSz, InBuf1, InSz1, OutBuf, OutSz);
+
+looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when ExpSz =/= undefined, InSz >= ExpSz ->
+	{Chip,InBuf1,InSz1} = chip(ExpSz, InBuf, InSz),
+	deliver(binary_to_term(Chip)),
+	looper(Pore, IA, OA, ExpSz, InBuf1, InSz1, OutBuf, OutSz);
+
+looper(Pore, IA, _OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when IA > 0 ->
+	Data = pore_straw:read(Pore),
+	true = pore:poke(Pore),
+	{IA1,OA1} = pore_straw:avail(Pore),
+	looper(Pore, IA1, OA1, ExpSz, [InBuf,Data], InSz+iolist_size(Data), OutBuf, OutSz);
+
+looper(Pore, _IA, _OA, ExpSz, InBuf, InSz, OutBuf, OutSz) ->
+	receive
+	{irq,Pore} ->
+		{IA1,OA1} = pore_straw:avail(Pore),
+		looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf, OutSz) end.
+
+deliver({envelop,Addressee,Message}) -> Addressee ! Message.
+
+chip(N, Buf, Sz) when Sz =< N -> {iolist_to_binary(Buf),[],0};
+chip(N, Buf, Sz) when is_binary(Buf) ->
+	<<Chip:(N)/binary,Buf1/binary>> =Buf,
+	{Chip,Buf1,Sz-N};
+chip(N, Buf, Sz) -> chip(N, iolist_to_binary(Buf), Sz).
 
 lc(X) -> lists:concat(X).
 lc(X, Y) -> lists:concat([X,Y]).

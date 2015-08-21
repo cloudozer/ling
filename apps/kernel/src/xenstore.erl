@@ -45,6 +45,7 @@
 -export([get_perms/1,set_perms/2,set_perms/3,watch/1,unwatch/1]).
 -export([transaction/0,commit/1,rollback/1]).
 -export([domid/0]).
+-export([wait/2]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -107,7 +108,6 @@ watch(_) -> {error,badarg}.
 
 unwatch(Path) when is_list(Path) ->
 	{ok,Tokens} = call({self(),unwatch,Path}),
-	io:format("Tokens = ~p\n", [Tokens]),
 	lists:foreach(fun(Token) -> call({self(),?XS_UNWATCH,[Path,Token],0}) end, Tokens);
 unwatch(_) -> {error,badarg}.
 
@@ -125,6 +125,15 @@ rollback(_) -> {error,badarg}.
 domid() ->
 	{ok,Value} = xenstore:read("domid"),
 	list_to_integer(Value).
+
+%% The caller must watch() the Path before calling wait().
+wait(Path, Target) ->
+	receive {watch,Path} ->
+		case xenstore:read(Path) of
+			{error,enoent} -> wait(Path, Target);		%% ignore
+			{ok,Target}	   -> ok;
+			{ok,_}		   -> wait(Path, Target);
+			{error,_} =Err -> Err end end.
 
 call(Msg) ->
 	case whereis(?SERVER) of
@@ -156,7 +165,8 @@ looper(XS, QA, RA, ExpSz, InBuf, InSz, OutBuf, OutSz, {Op,Rid,_} =HH, Calls, RR,
 										when ExpSz =/= undefined, InSz >= ExpSz ->
 	{Chip,InBuf1,InSz1} = chip(ExpSz, InBuf, InSz),
 	RR1 = rrid(Rid, RR),
-	Resp = unpack(op_tag(Op), binary_to_list(Chip)),
+	%% Chip always ends with zero
+	Resp = unpack(op_tag(Op), binary_to_list(chomp(Chip))),
 	looper1(Resp, XS, QA, RA, InBuf1, InSz1, OutBuf, OutSz, HH, Calls, RR1, Ws);
 
 looper(XS, _QA, RA, ExpSz, InBuf, InSz, OutBuf, OutSz, HH, Calls, RR, Ws) when RA > 0 ->
@@ -233,14 +243,12 @@ trailer(_, V) ->
 	list_to_binary([V,0]).
 
 unpack(error, What) ->
-	%% What ends with 0
-	What1 = string:substr(What, 1, length(What)-1),
-	{error,list_to_atom(string:to_lower(What1))};
+	{error,list_to_atom(string:to_lower(What))};
 unpack(transaction_start, What) ->
 	{ok,list_to_integer(What)};
 unpack(directory, What) ->
 	{ok,string:tokens(What, [0])};
-unpack(_Tag, "OK\0") -> ok;
+unpack(_Tag, "OK") -> ok;
 unpack(_Tag, What) ->
 	case lists:member(0, What) of
 		false -> {ok,What};
@@ -254,4 +262,9 @@ rrid(Rid, {Rids,NR}) -> {[Rid|Rids],NR}.
 token() ->
 	<<A,B,C,D,E,F,G,H>> = crypto:rand_bytes(8),
 	lists:flatten(io_lib:format("~.16b~.16b~.16b~.16b~.16b~.16b~.16b~.16b", [A,B,C,D,E,F,G,H])).
+
+chomp(Bin) ->
+	case binary:last(Bin) of
+		0 -> binary:part(Bin, 0, byte_size(Bin)-1);
+		_ -> Bin end.
 

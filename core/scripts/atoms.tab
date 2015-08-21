@@ -294,6 +294,7 @@ transaction_start
 transaction_end
 can_send
 xenstore
+straw
 irq
 
 #ETS tables

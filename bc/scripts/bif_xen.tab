@@ -8,6 +8,14 @@ pore_xs:open()					cbif_pore_xs_open0
 pore_xs:write(Pore,Data)		cbif_pore_xs_write2
 pore_xs:read(Pore)				cbif_pore_xs_read1
 pore_xs:avail(Pore)				cbif_pore_xs_avail1
+
+pore_straw:open(Domid)					cbif_pore_straw_open1
+pore_straw:open(Domid,Refs,Channel)		cbif_pore_straw_open3
+pore_straw:write(Pore,Data)		cbif_pore_straw_write2
+pore_straw:read(Pore)			cbif_pore_straw_read1
+pore_straw:info(Pore)			cbif_pore_straw_info1
+pore_straw:avail(Pore)			cbif_pore_straw_avail1
+
 pore:poke(Pore)					cbif_pore_poke1
 pore:close(Pore)				cbif_pore_close1
 
