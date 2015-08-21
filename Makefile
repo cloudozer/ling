@@ -87,6 +87,7 @@ BC_SAMPLE_BEAM := $(BC_SAMPLE_ERL:%.erl=%.beam)
 bc/%.beam: bc/%.erl
 	$(ERLC) -o bc $<
 
+## TODO: use erlc dependency generation instead
 bc/ling_code.beam: bc/ling_bifs.beam
 
 bc/sample/%.beam: bc/sample/%.erl
@@ -102,16 +103,10 @@ bc/scripts/iopvars.tab: bc/scripts/beam.src bc/scripts/bif.tab bc/gentab/iops_ta
 	$(ESCRIPT) bc/scripts/iopvars_gen bc/scripts/beam.src bc/scripts/bif.tab $@
 
 bc/ling_bifs.erl: bc/scripts/bif.tab
-	bc/scripts/bifs2_gen $< $@
-
-bc/ling_bifs.beam: bc/ling_bifs.erl
-	$(ERLC) -o bc $<
+	$(ESCRIPT) bc/scripts/bifs2_gen $< $@
 
 bc/ling_iopvars.erl: bc/scripts/iopvars.tab bc/scripts/iopvars_erl.et
 	$(ESCRIPT) bc/scripts/reorder_iopvars bc/scripts/iopvars.tab bc/scripts/hot_cold_iops bc/scripts/iopvars_erl.et $@
-
-bc/ling_iopvars.beam: bc/ling_iopvars.erl
-	$(ERLC) -o bc $<
 
 ## CORE
 ifdef LING_XEN
