@@ -236,14 +236,79 @@ term_t cbif_pore_straw_open3(proc_t *proc, term_t *regs)
 
 term_t cbif_pore_straw_write2(proc_t *proc, term_t *regs)
 {
-	//TODO
-	bif_not_implemented();
+	term_t Pore = regs[0];
+	term_t Data = regs[1];
+	if (!is_short_eid(Pore))
+		badarg(Pore);
+	if (!is_list(Data) && !is_boxed_binary(Data))
+		badarg(Data);
+	pore_t *pr = pore_lookup(Pore);
+	if (pr == 0 || pr->tag != A_STRAW)
+		badarg(Pore);
+
+	int64_t size = iolist_size(Data);
+	if (size < 0)
+		badarg(Data);
+	uint8_t buf[size];
+	iolist_flatten(Data, buf);
+
+	pore_straw_t *ps = (pore_straw_t *)pr;
+	straw_ring_t *ring = ps->shared;
+	int prod = (ps->active) ?ring->out_prod :ring->in_prod;
+	int cons = (ps->active) ?ring->out_cons :ring->in_cons;
+	mb();
+	uint8_t *ptr = buf;
+	uint8_t *buffer = (ps->active) ?ring->output :ring->input;
+	while (size-- > 0)
+	{
+		buffer[prod++] = *ptr++;
+		if (prod == STRAW_RING_SIZE)
+			prod = 0;
+		assert(prod != cons);	// too long - avoid crash?
+	}
+	wmb();
+	if (ps->active)
+		ring->out_prod = prod;
+	else
+		ring->in_prod = prod;
+
+	return A_OK;
 }
 
 term_t cbif_pore_straw_read1(proc_t *proc, term_t *regs)
 {
-	//TODO
-	bif_not_implemented();
+	term_t Pore = regs[0];
+	if (!is_short_eid(Pore))
+		badarg(Pore);
+	pore_t *pr = pore_lookup(Pore);
+	if (pr == 0 || pr->tag != A_STRAW)
+		badarg(Pore);
+
+	pore_straw_t *ps = (pore_straw_t *)pr;
+	straw_ring_t *ring = ps->shared;
+	int prod = (ps->active) ?ring->in_prod :ring->out_prod;
+	int cons = (ps->active) ?ring->in_cons :ring->out_cons;
+	int avail = prod - cons;
+	while (avail < 0)
+		avail += STRAW_RING_SIZE;
+	assert(avail > 0);
+	rmb();
+	uint8_t *ptr;
+	uint8_t *buffer = (ps->active) ?ring->input :ring->output;
+	term_t bin = heap_make_bin(&proc->hp, avail, &ptr);
+	while (avail-- > 0)
+	{
+		*ptr++ = buffer[cons++];
+		if (cons >= STRAW_RING_SIZE)
+			cons = 0;
+	}
+	mb();
+	if (ps->active)
+		ring->in_cons = cons;
+	else
+		ring->out_cons = cons;
+
+	return bin;
 }
 
 term_t cbif_pore_straw_info1(proc_t *proc, term_t *regs)
@@ -278,14 +343,17 @@ term_t cbif_pore_straw_avail1(proc_t *proc, term_t *regs)
 		badarg(Pore);
 
 	pore_straw_t *ps = (pore_straw_t *)pr;
+	straw_ring_t *ring = ps->shared;
 
 	// how much we can read
-	int avail1 = ps->shared->in_prod - ps->shared->in_cons;
+	int avail1 = (ps->active) ?ring->in_prod - ring->in_cons
+							  :ring->out_prod - ring->out_cons;
 	while (avail1 < 0)
 		avail1 += STRAW_RING_SIZE;
 
 	// how much we can write
-	int avail2 = ps->shared->out_cons - ps->shared->out_prod;
+	int avail2 = (ps->active) ?ring->out_cons - ring->out_prod
+							  :ring->in_cons - ring->in_prod;
 	while (avail2 <= 0)
 		avail2 += STRAW_RING_SIZE;
 	avail2--;	// unused byte

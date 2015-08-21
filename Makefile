@@ -193,7 +193,7 @@ CPPFLAGS += -DTRACE_HARNESS=1
 CPPFLAGS += -gdwarf-3
 LDFLAGS  += -g
 else
-CFLAGS += -O3
+CFLAGS += -O0
 ifdef LING_USE_LTO
 CFLAGS += -flto
 endif
@@ -259,8 +259,8 @@ core/ling_main.o: core/ling_main.c core/include/atom_defs.h core/include/bif.h c
 core/include/bif.h: bc/scripts/bif.tab
 	$(ESCRIPT) core/scripts/bifs_gen $< $@
 
-bc/scripts/bif.tab: bc/scripts/bif_common.tab bc/scripts/bif_$(ARCH).tab .config
-	cat bc/scripts/bif_common.tab bc/scripts/bif_$(ARCH).tab > $@
+#bc/scripts/bif.tab: bc/scripts/bif_common.tab bc/scripts/bif_$(ARCH).tab .config
+#	cat bc/scripts/bif_common.tab bc/scripts/bif_$(ARCH).tab > $@
 
 core/vmling.o: $(STARTUP_OBJ) $(ALL_OBJ)
 	$(CC) -o $@ $(STARTUP_OBJ) $(ALL_OBJ) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_FINAL)

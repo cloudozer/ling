@@ -12,6 +12,8 @@
 %% ------------------------------------------------------------------
 
 -export([start_link/0]).
+-export([open/1]).
+-export([split/1]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -26,6 +28,12 @@
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+open(Domid) ->
+	gen_server:call(?SERVER, {open,Domid}).
+
+split(Domid) ->
+	gen_server:call(?SERVER, {split,Domid}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -54,7 +62,12 @@ handle_call({open,Domid}, _From, St) ->
 		{error,_} ->
 			case xenstore:mkdir(StrawDir) of
 				ok -> do_open(Domid, WartsDir, StrawDir, St);
-				_  -> {reply,{error,not_found},St} end end.
+				_  -> {reply,{error,not_found},St} end end;
+
+handle_call({split,Domid}, _From, #sm{straws =Straws} =St) ->
+	case lists:keyfind(Domid, 1, Straws) of
+		{_,StrawProc,_,_} -> {reply,{ok,StrawProc},St};
+		false -> {reply,{error,not_found},St} end.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -190,9 +203,11 @@ looper(Pore) ->
 
 looper(Pore, _IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when OutSz > 0, OA > 0 ->
 	{Chip,OutBuf1,OutSz1} = chip(OA, OutBuf, OutSz),
+	erlang:display({straw_write,Chip}),
 	ok = pore_straw:write(Pore, Chip),
 	true = pore:poke(Pore),
 	{IA1,OA1} = pore_straw:avail(Pore),
+	erlang:display({avail,IA1,OA1}),
 	looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf1, OutSz1);
 
 looper(Pore, IA, OA, undefined, InBuf, InSz, OutBuf, OutSz) when InSz >= 4 ->
@@ -206,17 +221,27 @@ looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when ExpSz =/= undefined
 
 looper(Pore, IA, _OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when IA > 0 ->
 	Data = pore_straw:read(Pore),
+	erlang:display({straw_read,Data}),
 	true = pore:poke(Pore),
 	{IA1,OA1} = pore_straw:avail(Pore),
+	erlang:display({avail,IA1,OA1}),
 	looper(Pore, IA1, OA1, ExpSz, [InBuf,Data], InSz+iolist_size(Data), OutBuf, OutSz);
 
-looper(Pore, _IA, _OA, ExpSz, InBuf, InSz, OutBuf, OutSz) ->
+looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) ->
 	receive
+	{envelope,_,_} =Envelope ->
+		EnvBin = term_to_binary(Envelope),
+		Sz = byte_size(EnvBin),
+		OutBuf1 = [OutBuf,<<Sz:32>>,EnvBin],
+		OutSz1 = OutSz + 4 + Sz,
+		looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf1, OutSz1);
+		
 	{irq,Pore} ->
 		{IA1,OA1} = pore_straw:avail(Pore),
+		erlang:display({irq,IA1,OA1}),
 		looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf, OutSz) end.
 
-deliver({envelop,Addressee,Message}) -> Addressee ! Message.
+deliver({envelope,Addressee,Message}) -> Addressee ! Message.
 
 chip(N, Buf, Sz) when Sz =< N -> {iolist_to_binary(Buf),[],0};
 chip(N, Buf, Sz) when is_binary(Buf) ->
