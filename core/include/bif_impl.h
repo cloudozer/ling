@@ -75,7 +75,6 @@
 #include "cluster.h"
 #include "decode.h"
 
-#include "pore.h"
 #include "event.h"
 
 #include "monitors.h"
@@ -98,6 +97,7 @@
 #ifdef LING_XEN
 # include "xenstore.h"
 # include "xen/io/xs_wire.h"
+# include "pore.h"
 #endif
 
 #ifdef LING_WITH_LWIP

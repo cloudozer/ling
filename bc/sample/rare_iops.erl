@@ -28,20 +28,25 @@ e(X) when is_float(X) ->
 	-X.
 
 %%% update_map_assoc
-%%f1(Map) -> Map#{a => foo}.
+f1(Map) -> Map#{a => foo}.
 %%
 %%% update_map_exact
-%%f2(Map) -> Map#{a := foo}.
+f2(Map) -> Map#{a := foo}.
 %%
 %%% get_map_element
-%%f3(#{a := A}) -> A.
+f3(#{a := A}) -> A.
 %%
 %%% get_map_elements
-%%f4(#{a := A, b := B}) -> {A,B}.
+f4(#{a := A, b := B}) -> {A,B}.
 %%
 %%% has_map_field
-%%f5(#{a := _}) -> yes.
+f5(#{a := _}) -> yes.
 %%
 %%% has_map_fields
-%%f6(#{a := _, b := _}) -> two.
+f6(#{a := _, b := _}) -> two.
 
+%% l_bs_init_bits
+g(X) -> <<127:7, X:64>>.
+
+%% update_map_assoc
+h() -> #{a => b:c()}.

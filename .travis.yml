@@ -7,7 +7,4 @@ script:
   - make -j2 test ARCH=posix CONF=dbg
   - make -j2 test ARCH=posix CONF=opt
   - make -j2 play ARCH=posix CONF=lto
-branches:
-  only:
-    - master
 sudo: false

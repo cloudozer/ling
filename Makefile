@@ -11,8 +11,8 @@ ERLC := $(ERL_BIN)/erlc
 ESCRIPT := $(ERL_BIN)/escript
 endif
 
-ifneq (ok,$(shell $(ERL) -noshell -eval "Otp = erlang:system_info(otp_release), io:format(if Otp >= $(OTP_VER) -> ok; else -> old end),erlang:halt(0)."))
-$(error Erlang/OTP $(OTP_VER) or newer required)
+ifneq (true,$(shell $(ERL) -noshell -eval "io:format(list_to_integer(erlang:system_info(otp_release)) == $(OTP_VER)),halt(0)."))
+$(error Erlang/OTP $(OTP_VER) required)
 endif
 
 -include .config
@@ -87,6 +87,8 @@ BC_SAMPLE_BEAM := $(BC_SAMPLE_ERL:%.erl=%.beam)
 bc/%.beam: bc/%.erl
 	$(ERLC) -o bc $<
 
+bc/ling_code.beam: bc/ling_bifs.beam
+
 bc/sample/%.beam: bc/sample/%.erl
 	$(ERLC) -o bc/sample $<
 
@@ -98,6 +100,12 @@ bc/gentab/%.beam: bc/gentab/%.erl
 
 bc/scripts/iopvars.tab: bc/scripts/beam.src bc/scripts/bif.tab bc/gentab/iops_tab.beam $(BC_SAMPLE_BEAM) $(TEST_BEAM)
 	$(ESCRIPT) bc/scripts/iopvars_gen bc/scripts/beam.src bc/scripts/bif.tab $@
+
+bc/ling_bifs.erl: bc/scripts/bif.tab
+	bc/scripts/bifs2_gen $< $@
+
+bc/ling_bifs.beam: bc/ling_bifs.erl
+	$(ERLC) -o bc $<
 
 bc/ling_iopvars.erl: bc/scripts/iopvars.tab bc/scripts/iopvars_erl.et
 	$(ESCRIPT) bc/scripts/reorder_iopvars bc/scripts/iopvars.tab bc/scripts/hot_cold_iops bc/scripts/iopvars_erl.et $@
@@ -139,7 +147,9 @@ CFLAGS   := -Wall
 #CFLAGS   += -Werror
 CFLAGS   += -Wno-nonnull -std=gnu99
 CFLAGS   += -fno-omit-frame-pointer
+ifndef LING_DARWIN
 CFLAGS	 += -fno-stack-protector -U_FORTIFY_SOURCE -ffreestanding
+endif
 
 # relocatable (partial linking)
 LDFLAGS  += -Xlinker -r
@@ -236,7 +246,7 @@ $(CORE_PRELOAD_BEAM): %.beam: %.erl .config
 
 # use pattern rule (%) to avoid multiple premod_gen invocation in parralel builds
 CORE_INCLUDES = core/premod.%nc core/code_base.%nc core/include/mod_info.%nc core/preload/l%terals.c core/catch_tab.%nc
-$(CORE_INCLUDES): core/gentab/atoms.beam core/gentab/exp_tab.beam core/include/atom_defs.h $(CORE_PRELOAD_BEAM)
+$(CORE_INCLUDES): core/gentab/atoms.beam core/gentab/exp_tab.beam core/include/atom_defs.h $(CORE_PRELOAD_BEAM) bc/scripts/bif.tab
 	$(ESCRIPT) core/scripts/premod_gen core/preload core/premod.inc core/code_base.inc core/include/mod_info.inc core/preload/literals.c core/catch_tab.inc copy
 
 core/gentab/exp_tab.erl: $(CORE_PRELOAD_BEAM) bc/scripts/bif.tab bc/ling_iopvars.beam
@@ -254,37 +264,14 @@ core/ling_main.o: core/ling_main.c core/include/atom_defs.h core/include/bif.h c
 core/include/bif.h: bc/scripts/bif.tab
 	$(ESCRIPT) core/scripts/bifs_gen $< $@
 
+bc/scripts/bif.tab: bc/scripts/bif_common.tab bc/scripts/bif_$(ARCH).tab .config
+	cat bc/scripts/bif_common.tab bc/scripts/bif_$(ARCH).tab > $@
+
 core/vmling.o: $(STARTUP_OBJ) $(ALL_OBJ)
 	$(CC) -o $@ $(STARTUP_OBJ) $(ALL_OBJ) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_FINAL)
 
 ## APPS
-APPS_STDLIB := $(patsubst apps/stdlib/src/%.erl,apps/stdlib/ebin/%.beam,$(wildcard apps/stdlib/src/*.erl))
-APPS_KERNEL := $(patsubst apps/kernel/src/%.erl,apps/kernel/ebin/%.beam,$(wildcard apps/kernel/src/*.erl))
-APPS_CRYPTO := $(patsubst apps/crypto/src/%.erl,apps/crypto/ebin/%.beam,$(wildcard apps/crypto/src/*.erl))
-APPS_OS_MON := $(patsubst apps/os_mon/src/%.erl,apps/os_mon/ebin/%.beam,$(wildcard apps/os_mon/src/*.erl))
-APPS_ASN1 := $(patsubst apps/asn1/src/%.erl,apps/asn1/ebin/%.beam,$(wildcard apps/asn1/src/*.erl))
-
-APPS_ALL := $(APPS_STDLIB) $(APPS_KERNEL) $(APPS_CRYPTO) $(APPS_OS_MON) $(APPS_ASN1)
-
-$(APPS_STDLIB): apps/stdlib/ebin/%.beam: apps/stdlib/src/%.erl
-	$(ERLC) -o apps/stdlib/ebin $<
-
-apps/kernel/src/ling_%.erl: ../code/ling_%.erl
-	cp $< $@
-
-apps/kernel/src/ling_iopvars.erl: bc/ling_iopvars.erl
-
-$(APPS_KERNEL): apps/kernel/ebin/%.beam: apps/kernel/src/%.erl
-	$(ERLC) -o apps/kernel/ebin $<
-
-$(APPS_CRYPTO): apps/crypto/ebin/%.beam: apps/crypto/src/%.erl
-	$(ERLC) -o apps/crypto/ebin $<
-
-$(APPS_OS_MON): apps/os_mon/ebin/%.beam: apps/os_mon/src/%.erl
-	$(ERLC) -o apps/os_mon/ebin $<
-
-$(APPS_ASN1): apps/asn1/ebin/%.beam: apps/asn1/src/%.erl
-	$(ERLC) -o apps/asn1/ebin $<
+include apps/apps.mk
 
 ## RAILING
 railing/railing: $(patsubst %.erl,%.beam,$(wildcard railing/*.erl)) railing/escriptize $(APPS_ALL) core/vmling.o
@@ -300,9 +287,11 @@ clean:
 		$(TEST_BEAM) $(BC_BEAM) $(BC_SAMPLE_BEAM) \
 		bc/gentab/iops_tab.erl bc/scripts/iopvars.tab \
 		bc/ling_iopvars.erl bc/ling_iopvars.beam \
+		bc/ling_bifs.erl bc/ling_bifs.beam \
 		$(STARTUP_OBJ) $(ALL_OBJ) \
 		$(CORE_GENTAB_BEAM) $(CORE_PRELOAD_BEAM) \
-		core/premod.inc core/code_base.inc core/include/mod_info.inc core/preload/literals.c core/catch_tab.inc \
+		core/premod.inc core/code_base.inc core/include/mod_info.inc \
+		core/preload/literals.c core/catch_tab.inc \
 		core/gentab/exp_tab.erl \
 		core/include/atom_defs.h core/atoms.inc core/gentab/atoms.erl \
 		core/ling_main.c core/ling_main.o \
