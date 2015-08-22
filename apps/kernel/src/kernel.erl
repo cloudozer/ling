@@ -100,11 +100,10 @@ init([]) ->
 	    {code, start_link, get_code_args()},
 	    permanent, 2000, worker, [code]},
 
-	%%MK
 	Disk = {disk_server,{disk_server,start_link,[]},permanent,2000,worker,[]},
 	Xenstore = {xenstore,{xenstore, start_link, []},permanent,2000,worker,[]},
 	Tube = {tube_server,{tube_server, start_link, []},permanent,2000,worker,[]},
-	%%MK
+	Strawman = {strawman,{strawman, start_link, []},permanent,2000,worker,[]},
 
     File = {file_server_2,
 	    {file_server, start_link, []},
@@ -118,7 +117,7 @@ init([]) ->
 	    temporary, 2000, supervisor, [user_sup]},
     
 	MinimalServers = case os:type() of
-		{xen, ling} -> [Xenstore, Tube];
+		{xen, ling} -> [Xenstore, Tube, Strawman];
 		_ -> []
 	end ++ [File, Disk, Code, StdError, User, Config],
     case init:get_argument(mode) of
