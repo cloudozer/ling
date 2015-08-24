@@ -1322,7 +1322,7 @@ term_t cbif_ets_info2(proc_t *proc, term_t *regs)
 	else if (Item == A_SIZE)
 		return int_to_term(tab->count, &proc->hp);
 	else if (Item == A_NODE)
-		return cluster_node;
+		return A_UNDEFINED;
 	else if (Item == A_NAMED_TABLE)
 		return (tab->tid == tab->name) ?A_TRUE :A_FALSE;
 	else if (Item == A_TYPE)
@@ -1367,7 +1367,7 @@ term_t cbif_ets_info1(proc_t *proc, term_t *regs)
 	t = heap_tuple2(&proc->hp, A_SIZE,
 			int_to_term(tab->count, &proc->hp));
 	info = heap_cons(&proc->hp, t, info);
-	t = heap_tuple2(&proc->hp, A_NODE, cluster_node);
+	t = heap_tuple2(&proc->hp, A_NODE, A_UNDEFINED);
 	info = heap_cons(&proc->hp, t, info);
 	t = heap_tuple2(&proc->hp, A_NAMED_TABLE,
 			(tab->tid == tab->name) ?A_TRUE :A_FALSE);

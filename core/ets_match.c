@@ -695,11 +695,15 @@ static term_t eval_match_exp(match_exp_t *exp, eval_ctx_t *ctx, heap_t *hp)
 		if (val == noval || !is_cons(val))
 			return noval;
 		if (is_short_pid(val) || is_short_oid(val))
-			return cluster_node;
+			return A_UNDEFINED;
 		if (is_boxed_pid(val))
 		{
+#ifdef LING_XEN
+			return A_UNDEFINED;
+#else /* !LING_XEN */
 			t_long_pid_t *pid = (t_long_pid_t *)peel_boxed(val);
 			return pid->node;
+#endif
 		}
 		if (is_boxed_oid(val))
 		{

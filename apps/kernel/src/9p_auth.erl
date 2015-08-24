@@ -91,7 +91,7 @@ mumble(SessionKey, Extra, TTL)
 		when byte_size(SessionKey) =:= 8, is_binary(Extra), is_integer(TTL) ->
 
 	NodeB = to_bin(erlang:node()),
-	GroupB = to_bin(erlang:node_group()),
+	GroupB = undefined,
 
 	TS = '9p':timestamp(),
 	

@@ -40,9 +40,7 @@
 
 #include "cluster.h"
 
-term_t cluster_parent = ANONODE_NOHOST__;
-term_t cluster_node = ANONODE_NOHOST__;
-term_t cluster_group = A_NOGROUP;
+//OBSOLETE
 
 int cluster_secret1_size = 20;
 uint8_t cluster_secret1[CLUSTER_SECRET_MAX] =
@@ -54,4 +52,3 @@ uint8_t cluster_secret2[CLUSTER_SECRET_MAX] =
 	{  18, 149, 191, 252,  93, 234, 206, 231, 136,  19,
 	   34, 206,  10,   8, 193, 129, 113, 174,  83, 250, };
 
-//EOF

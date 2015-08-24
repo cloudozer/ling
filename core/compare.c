@@ -189,10 +189,16 @@ int are_terms_equal(term_t a, term_t b, int exact)
 		{
 			t_long_pid_t *pid1 = (t_long_pid_t *)term_data1;
 			t_long_pid_t *pid2 = (t_long_pid_t *)term_data2;
+#ifdef LING_XEN
+			return pid1->boxid == pid2->boxid &&
+				   pid1->domid == pid2->domid &&
+				   long_pid_id(pid1) == long_pid_id(pid2);
+#else /* !LING_XEN */
 			return pid1->node == pid2->node &&
 				   pid1->serial == pid2->serial &&
 				   opr_hdr_id(pid1) == opr_hdr_id(pid2) &&
 				   opr_hdr_creat(pid1) == opr_hdr_creat(pid2);
+#endif
 		}
 		case SUBTAG_OID:
 		{
@@ -583,6 +589,22 @@ static int export_compare(t_export_t *x1, t_export_t *x2)
 
 static int pid_compare(t_long_pid_t *p1, t_long_pid_t *p2)
 {
+#ifdef LING_XEN
+	if (p1->boxid < p2->boxid)
+		return -1;
+	if (p2->boxid < p1->boxid)
+		return 1;
+	if (p1->domid < p2->domid)
+		return -1;
+	if (p2->domid < p1->domid)
+		return 1;
+	uint32_t id1 = long_pid_id(p1);
+	uint32_t id2 = long_pid_id(p2);
+	if (id1 < id2)
+		return -1;
+	if (id2 < id1)
+		return 1;
+#else /* !LING_XEN */
 	if (is_term_smaller(p1->node, p2->node))
 		return -1;
 	if (is_term_smaller(p2->node, p1->node))
@@ -603,6 +625,7 @@ static int pid_compare(t_long_pid_t *p1, t_long_pid_t *p2)
 		return -1;
 	if (p2->serial < p1->serial)
 		return 1;
+#endif
 
 	return 0;
 }

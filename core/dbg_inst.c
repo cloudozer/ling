@@ -368,6 +368,19 @@ void __box_long_oid(uint32_t **p, term_t node, uint32_t id, int creat)
 	(*p) += WSIZE(t_long_oid_t);
 }
 
+#ifdef LING_XEN
+void __box_long_pid(uint32_t **p, uint64_t boxid, uint32_t domid, uint32_t id)
+{
+	assert(*p != 0);
+	ALIGNED_PTR(*p);
+	assert((id & ~0x0fffffff) == 0);	// 28-bit
+
+	((t_long_pid_t *)(*p))->hdr = (id << 4) | SUBTAG_PID;
+	((t_long_pid_t *)(*p))->domid = domid;
+	((t_long_pid_t *)(*p))->boxid = boxid;
+	(*p) += WSIZE(t_long_pid_t);
+}
+#else /* !LING_XEN */
 void __box_long_pid(uint32_t **p, term_t node,
 	   uint32_t id, uint32_t serial, int creat)
 {
@@ -383,6 +396,7 @@ void __box_long_pid(uint32_t **p, term_t node,
 	((t_long_pid_t *)(*p))->serial = serial;
 	(*p) += WSIZE(t_long_pid_t);
 }
+#endif
 
 void __box_long_ref(uint32_t **p, term_t node,
 	   int creat, uint32_t id0, uint32_t id1, uint32_t id2)

@@ -386,6 +386,34 @@ term_t cbif_process_display2(proc_t *proc, term_t *regs)
 	return A_OK;
 }
 
+// erlang:container()
+term_t cbif_container0(proc_t *proc, term_t *regs)
+{
+	assert(fits_int((int)my_domain_id));
+	return tag_int(my_domain_id);
+}
+
+// erlang:container(Thing)
+term_t cbif_container1(proc_t *proc, term_t *regs)
+{
+	//TODO
+	bif_not_implemented();
+}
+
+// erlang:machine()
+term_t cbif_machine0(proc_t *proc, term_t *regs)
+{
+	//TODO
+	return tag_int(0);
+}
+
+// erlang:machine(Thing)
+term_t cbif_machine1(proc_t *proc, term_t *regs)
+{
+	//TODO
+	bif_not_implemented();
+}
+
 // erlang:loaded()
 term_t cbif_loaded0(proc_t *proc, term_t *regs)
 {
@@ -887,16 +915,6 @@ term_t cbif_read_timer1(proc_t *proc, term_t *regs)
 		return int_to_term(left_ns / 1000000, &proc->hp);
 	else
 		return A_FALSE;
-}
-
-term_t cbif_parent_node0(proc_t *proc, term_t *regs)
-{
-	return cluster_parent;
-}
-
-term_t cbif_node_group0(proc_t *proc, term_t *regs)
-{
-	return cluster_group;
 }
 
 static int from_hex(int ch)

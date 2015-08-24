@@ -319,10 +319,16 @@ uint32_t portable_hash(term_t t, uint32_t h)
 			//XXX: improvisation
 			//
 			t_long_pid_t *p = (t_long_pid_t *)tdata;
+#ifdef LING_XEN
+			h = C1 * h + p->boxid;
+			h = C2 * h + p->domid;
+			return C6 *h + long_pid_id(p);
+#else /* !LING_XEN */
 			h = C1 * h + opr_hdr_id(tdata);
 			h = C2 * h + opr_hdr_creat(tdata);
 			h = portable_hash(p->node, h);
 			return C6 * h + p->serial;
+#endif
 		}
 		case SUBTAG_OID:
 		{

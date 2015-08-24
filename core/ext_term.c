@@ -74,6 +74,9 @@
 #define EXPORT_EXT			113
 #define BIT_BINARY_EXT		77
 #define NEW_FLOAT_EXT		70
+#ifdef LING_XEN
+#define NEW_PID_EXT			160
+#endif
 
 typedef struct ext_term_scan_t ext_term_scan_t;
 struct ext_term_scan_t {
@@ -92,6 +95,11 @@ struct ext_term_scan_t {
 #define GetUint32()		(es->enc_len -= 4, es->enc_data += 4, \
    							((es->enc_data[-4] << 24) | (es->enc_data[-3] << 16) | \
 						 	(es->enc_data[-2] << 8) | es->enc_data[-1]))
+#define GetUint64()		(es->enc_len -= 8, es->enc_data += 8, \
+   							(uint64_t)es->enc_data[-8] << 56 | (uint64_t)es->enc_data[-7] << 48 | \
+   							(uint64_t)es->enc_data[-6] << 40 | (uint64_t)es->enc_data[-5] << 32 | \
+   							(uint64_t)es->enc_data[-4] << 24 | (uint64_t)es->enc_data[-3] << 16 | \
+						 	(uint64_t)es->enc_data[-2] <<  8 | (uint64_t)es->enc_data[-1])
 
 #define More(n)			do { if (es->enc_len < (n)) return -1; } while (0)
 #define More2(n)		do { if (es->enc_len < (n)) return noval; } while (0)
@@ -278,10 +286,28 @@ static int ext_term_decode_size2(int depth, ext_term_scan_t *es)
 		if (node == noval)
 			return -BAD_ARG;
 		MoreSkip(4+4+1);
+#ifdef LING_XEN
+		if (node != A_LOCAL)
+			return -BAD_ARG;
+#else /* !LING_XEN */
 		if (node != A_LOCAL)
 			es->heap_size += sizeof(t_long_pid_t) / 4;
+#endif
 		break;
 	}
+#ifdef LING_XEN
+	case NEW_PID_EXT:
+	{
+		// boxid:64 domid:32 id:32
+		More(8+4);
+		uint64_t boxid = GetUint64();
+		uint32_t domid = GetUint32();
+		MoreSkip(4);
+		if (my_box_id != boxid || my_domain_id != domid)
+			es->heap_size += WSIZE(t_long_pid_t);
+		break;
+	}
+#endif
 	case SMALL_TUPLE_EXT:
 	{
 		More(1);
@@ -699,11 +725,33 @@ static term_t ext_term_decode2(ext_term_scan_t *es)
 			return tag_short_pid(rank);
 		else
 		{
+#ifdef LING_XEN
+			return noval;
+#else /* !LING_XEN */
 			term_t t = tag_boxed(es->htop);
 			box_long_pid(es->htop, node, id, serial, creat);
 			return t;
+#endif
 		}
 	}
+#ifdef LING_XEN
+	case NEW_PID_EXT:
+	{
+		// boxid:64 domid:32 id:32
+		More2(8+4+4);
+		uint64_t boxid = GetUint64();
+		uint32_t domid = GetUint32();
+		uint32_t id = GetUint32();
+		if (my_box_id == boxid && my_domain_id == domid)
+			return tag_short_pid(id);
+		else
+		{
+			term_t t = tag_boxed(es->htop);
+			box_long_pid(es->htop, boxid, domid, id);
+			return t;
+		}
+	}
+#endif
 	case SMALL_TUPLE_EXT:
 	{
 		More2(1);
@@ -1254,6 +1302,10 @@ static int encode_size2(int depth, term_t t, int minor_ver)
 		}
 		case SUBTAG_PID:
 		{
+#ifdef LING_XEN
+			// boxid:64 domid:32 id:32
+			return 8 +4 +4;
+#else /* !LING_XEN */
 			t_long_pid_t *pid = (t_long_pid_t *)tdata;
 			int size = 1;
 			int s = encode_size2(depth+1, pid->node, minor_ver);
@@ -1261,6 +1313,7 @@ static int encode_size2(int depth, term_t t, int minor_ver)
 				return s;
 			size += s +4 +4 +1;
 			return size;
+#endif
 		}
 		case SUBTAG_REF:
 		{
@@ -1340,12 +1393,17 @@ struct enc_ctx_t {
 	ec->enc_data += 2; \
 	ec->left -= 2; \
 } while (0)
-
 #define PutUint32(w) do { \
 	assert(ec->left >= 4); \
 	PUT_UINT_32(ec->enc_data, (w)); \
 	ec->enc_data += 4; \
 	ec->left -= 4; \
+} while (0)
+#define PutUint64(w) do { \
+	assert(ec->left >= 8); \
+	PUT_UINT_64(ec->enc_data, (w)); \
+	ec->enc_data += 8; \
+	ec->left -= 8; \
 } while (0)
 #define PutBytes(p, len) do { \
 	assert(ec->left >= (len)); \
@@ -1613,6 +1671,15 @@ static void encode2(term_t t, enc_ctx_t *ec)
 		case SUBTAG_PID:
 		{
 			t_long_pid_t *pid = (t_long_pid_t *)tdata;
+#ifdef LING_XEN
+			// boxid:64 domid:32 id:32
+			uint32_t id = long_pid_id(pid);
+			PutByte(NEW_PID_EXT);
+			PutUint64(pid->boxid);
+			PutUint32(pid->domid);
+			PutUint32(id);
+
+#else /* !LING_XEN */
 			uint32_t id = opr_hdr_id(pid);
 			uint8_t creat = opr_hdr_creat(pid);
 			PutByte(PID_EXT);
@@ -1620,6 +1687,7 @@ static void encode2(term_t t, enc_ctx_t *ec)
 			PutUint32(id);
 			PutUint32(pid->serial);
 			PutByte(creat);
+#endif
 			break;
 		}
 		case SUBTAG_REF:
@@ -1683,6 +1751,14 @@ static void encode2(term_t t, enc_ctx_t *ec)
 	}
 	else if (is_short_pid(t))
 	{
+#ifdef LING_XEN
+		// boxid:64 domid:32 id:32
+		PutByte(NEW_PID_EXT);
+		PutUint64(my_box_id);
+		PutUint32(my_domain_id);
+		PutUint32(short_pid_id(t));
+
+#else /* !LING_XEN */
 		PutByte(PID_EXT);
 		encode2(A_LOCAL, ec);
 
@@ -1696,6 +1772,7 @@ static void encode2(term_t t, enc_ctx_t *ec)
 		PutUint32(id);
 		PutUint32(serial);	// serial
 		PutByte(0);			// creation
+#endif
 	}
 	else
 	{

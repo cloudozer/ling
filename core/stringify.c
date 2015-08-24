@@ -352,9 +352,17 @@ static int term_to_str_1(int depth, term_t t, char *buf, int len)
 		case SUBTAG_PID:
 		{
 			t_long_pid_t *pid = term_data;
+#ifdef LING_XEN
+			uint32_t id = long_pid_id(pid);
+			if (pid->boxid == my_box_id)
+				RETPRINTF("<%d.%d>", pid->domid, id);
+			else
+				RETPRINTF("<%llu.%d.%d>", pid->boxid, pid->domid, id);
+#else /* !LING_XEN */
 			uint32_t id = opr_hdr_id(pid);
 			uint32_t creat = opr_hdr_creat(pid);
 			RETPRINTF("<%pt.%d.%d>", T(pid->node), (int)id, (int)creat);
+#endif
 		}
 		case SUBTAG_OID:
 		{

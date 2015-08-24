@@ -2199,7 +2199,7 @@ msg_queue_reset(&proc->mailbox);
 <% set_dst(Dst, <<"proc->pid">>) %>
 
 <%@ iop(node, [Dst]) %>
-<% set_dst(Dst, <<"cluster_node">>) %>
+<% set_dst(Dst, <<"A_UNDEFINED">>) %>
 
 <%@ iop(move, [Src,Dst]) %>
 <% set_dst(Dst, arg(Src)) %>

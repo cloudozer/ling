@@ -388,7 +388,7 @@ start_acceptor(LSock, TransMod, TransConf) ->
 								  is_local =true,
 								  basic_auth =true,
 								  peer_node =erlang:node(),
-							   	  peer_group =erlang:node_group()})
+							   	  peer_group =undefined})
 			end;
 		{error,closed} ->
 			erlang:error(no_respawn)
@@ -690,7 +690,7 @@ handle_msg({twrite,Tag,Fid,Offset,Data,_Flag}, #ac{fids =Fids} =St) ->
 		%%
 
 		MyParent = erlang:parent_node(),
-		MyGroup = erlang:node_group(),
+		MyGroup = undefined, 
 
 		case '9p_auth':unmumble(Data) of
 		#mumble{node =N,node_group =G,session_key =SK} ->
@@ -1069,7 +1069,7 @@ finfo_stat(#fid{type =root}, St) ->
 		  length =0,
 		  name = <<"/">>,
 		  uid =to_bin(erlang:node()),
-		  gid =to_bin(erlang:node_group()),
+		  gid =to_bin(undefined),
 		  muid =to_bin(erlang:node())};
 
 finfo_stat(#fid{type =dir,path =Path,exp_mod =ExpMod,mod_conf =ModConf}, St) ->

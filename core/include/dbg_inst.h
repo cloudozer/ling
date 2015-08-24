@@ -74,8 +74,12 @@ void __box_match_ctx(uint32_t **p, bits_t *bsp, term_t parent, int nslots);
 int __match_ctx_num_slots(uint32_t *p);
 
 void __box_long_oid(uint32_t **p, term_t node, uint32_t id, int creat);
+#ifdef LING_XEN
+void __box_long_pid(uint32_t **p, uint64_t boxid, uint32_t domid, uint32_t id);
+#else /* !LING_XEN */
 void __box_long_pid(uint32_t **p, term_t node,
 	   uint32_t id, uint32_t serial, int creat);
+#endif
 void __box_long_ref(uint32_t **p, term_t node,
 	   int creat, uint32_t id0, uint32_t id1, uint32_t id2);
 

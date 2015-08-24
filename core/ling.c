@@ -106,8 +106,12 @@ void counters_init(void);
 
 static void spawn_init_start(int argc, char **cmd_line);
 
+#ifdef LING_XEN
+uint64_t my_box_id;			// machine id
+uint32_t my_domain_id;		// container id
 // both domain and host name
 char my_domain_name[DOMAIN_NAME_MAX_SIZE];
+#endif
 
 #ifdef LING_XEN
 /* defined by startup.[sSc] calling conventions */
@@ -157,11 +161,14 @@ void start_ling(int argc, char **argv)
 	xenstore_init(mfn_to_virt(start_info.store_mfn),
 		start_info.store_evtchn);
 
+#ifdef LING_XEN
+	my_box_id = 0;	//TODO: use the first MAC address to derive this?
+	xenstore_read_int(&my_domain_id, "domid");
 	xenstore_read("name", my_domain_name, sizeof(my_domain_name));
-	//print_xenstore_values();
+#endif
 
 	if (start_info.nr_pages > 1024*1024)
-		fatal_error("LING does not support domains larger than 4Gb");
+		fatal_error("LING does not support domains larger than 4GB");
 
 	if (disk_vbd_is_present())
 		disk_init();
@@ -187,10 +194,7 @@ void start_ling(int argc, char **argv)
 	ets_init();
 	pcre_init();
 	counters_init();
-#if LING_XEN
-    //can it be used outside Xen?
 	gc_opt_init();
-#endif
 
 	//print_start_info();
 	//print_xenmem_info();

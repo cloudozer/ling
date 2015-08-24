@@ -522,11 +522,29 @@ struct t_long_oid_t {
 #endif
 
 struct t_long_pid_t {
+#ifdef LING_XEN
+	uint32_t hdr;		//id:28,subtag:4
+	uint32_t domid;
+	uint64_t boxid;
+#else
 	uint32_t hdr;		//0:7,creation:2,id:18,subtag:4
 	term_t node;
 	uint32_t serial;
+#endif
 };
 
+#ifdef LING_XEN
+#ifdef LING_DEBUG
+#define box_long_pid(p, __boxid, __domid, id) \
+	__box_long_pid(&(p), (__boxid), (__domid), (id))
+#else /* !LING_DEBUG */
+#define box_long_pid(p, __boxid, __domid, id) do { \
+	((t_long_pid_t *)(p))->hdr = ((id) << 4) | SUBTAG_PID; \
+	((t_long_pid_t *)(p))->domid = (__domid); \
+	((t_long_pid_t *)(p))->boxid = (__boxid); \
+} while (0)
+#endif
+#else /* !LING_XEN */
 #ifdef LING_DEBUG
 #define box_long_pid(p, node, id, serial, creat) \
 	__box_long_pid(&(p), (node), (id), (serial), (creat))
@@ -538,6 +556,9 @@ struct t_long_pid_t {
 	(p) += WSIZE(t_long_pid_t); \
 } while (0)
 #endif
+#endif
+
+#define long_pid_id(p)					(*(uint32_t *)(p) >> 4)
 
 struct t_long_ref_t {
 	uint32_t hdr;		//0:7,creation:2,id:18,subtag:4

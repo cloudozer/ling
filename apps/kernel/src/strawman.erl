@@ -214,7 +214,6 @@ looper(Pore, _IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when OutSz > 0, OA > 0 
 
 looper(Pore, IA, OA, undefined, InBuf, InSz, OutBuf, OutSz) when InSz >= 4 ->
 	{<<ExpSz:32>>,InBuf1,InSz1} = chip(4, InBuf, InSz),
-erlang:display({exp_size,ExpSz}),
 	looper(Pore, IA, OA, ExpSz, InBuf1, InSz1, OutBuf, OutSz);
 
 looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when ExpSz =/= undefined, InSz >= ExpSz ->
@@ -239,11 +238,9 @@ looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) ->
 		
 	{irq,Pore} ->
 		{IA1,OA1} = pore_straw:avail(Pore),
-erlang:display({irq,IA1,OA1}),
 		looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf, OutSz) end.
 
 deliver({envelope,Addressee,Message}) ->
-	io:format("straw: deliver ~p to ~p\n", [Message,Addressee]),
 	Addressee ! Message.
 
 chip(N, Buf, Sz) when Sz =< N -> {iolist_to_binary(Buf),[],0};

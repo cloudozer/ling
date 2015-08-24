@@ -641,12 +641,15 @@ while (ss->top < ss->end)
 				}
 				case SUBTAG_PID:
 				{
+					t_long_pid_t *pid = term_data;
+#ifdef LING_XEN
+					uint32_t id = long_pid_id(pid);
+					box_long_pid(htop, pid->boxid, pid->domid, id);
+#else /* !LING_XEN */
 					uint32_t id = opr_hdr_id(term_data);
 					uint32_t creat = opr_hdr_creat(term_data);
-
-					t_long_pid_t *pid = term_data;
 					box_long_pid(htop, pid->node, id, pid->serial, creat);
-
+#endif
 					break;
 				}
 				case SUBTAG_OID:
@@ -1081,11 +1084,15 @@ while (ss->top < ss->end)
 			}
 			case SUBTAG_PID:
 			{
+				t_long_pid_t *pid = term_data;
+#ifdef LING_XEN
+				uint32_t id = long_pid_id(pid);
+				box_long_pid(htop, pid->boxid, pid->domid, id);
+#else /* !LING_XEN */
 				uint32_t id = opr_hdr_id(term_data);
 				uint32_t creat = opr_hdr_creat(term_data);
-
-				t_long_pid_t *pid = term_data;
 				box_long_pid(htop, pid->node, id, pid->serial, creat);
+#endif
 
 				break;
 			}

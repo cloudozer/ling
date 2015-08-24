@@ -74,6 +74,10 @@ typedef uint8_t byte_t;
 
 extern uint64_t start_of_day_wall_clock;
 
+#ifdef LING_XEN
+extern uint64_t my_box_id;
+extern uint32_t my_domain_id;
+#endif
 #define DOMAIN_NAME_MAX_SIZE  256
 extern char my_domain_name[];
 
