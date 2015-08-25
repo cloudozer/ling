@@ -84,9 +84,11 @@ handle_info({watch,WatchKey}, #sm{top =StrawTop} =St) ->
 					_ -> {noreply,St} end;
 		false -> straw_state(WatchKey, St) end;
 
-handle_info({'EXIT',_,peer_closed}, St) -> {noreply,St}.
+handle_info({'EXIT',_,peer_closed}, St) -> {noreply,St};
+handle_info(_Msg, St) -> erlang:display({strawman,msg,_Msg}), {noreply,St}.
 
-terminate(_Reason, _St) -> ok.
+terminate(shutdown, #sm{straws =Straws}) ->
+	ok = close_straws(Straws).
 
 code_change(_OldVsn, St, _Extra) -> {ok,St}.
 
@@ -190,6 +192,16 @@ straw_state1(_, {_,Domid,StrawProc,StatePath,DataDir}, #sm{straws =Straws} =St) 
 	Straws1 = lists:keydelete(StrawProc, 3, Straws),
 	{noreply,St#sm{straws =Straws1}}.
 
+close_straws([]) -> ok;
+close_straws([{Mode,Domid,StrawProc,StatePath,DataDir}|Straws]) ->
+	if Mode =:= active ->
+		ok = xenstore:delete(DataDir),
+		xenstore:watch(StatePath, ?STATE_CLOSED);
+			true -> ok end,
+	exit(StrawProc, shutdown),
+	io:format("strawman: connection to domain ~w closed\n", [Domid]),
+	close_straws(Straws).
+
 short_straw(ReplyTo, Domid, Refs, Channel) ->
 	Pore = pore_straw:open(Domid, Refs, Channel),
 	ReplyTo ! {ready,self()},
@@ -234,6 +246,7 @@ looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) ->
 		Sz = byte_size(EnvBin),
 		OutBuf1 = [OutBuf,<<Sz:32>>,EnvBin],
 		OutSz1 = OutSz + 4 + Sz,
+		io:format("Stuffing an envelope (~w bytes) for delivery...\n", [Sz]),
 		looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf1, OutSz1);
 		
 	{irq,Pore} ->

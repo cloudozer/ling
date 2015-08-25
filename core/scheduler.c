@@ -583,6 +583,11 @@ void scheduler_exit_process(proc_t *proc, term_t reason)
 	//
 	inter_links_notify(&proc->links, proc->pid, reason);
 
+	//
+	// Close pores owned by the process
+	//
+	pore_destroy_owned_by(proc->pid);
+
 	if (proc->name != noval)
 		scheduler_unregister(proc);
 

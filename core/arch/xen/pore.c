@@ -126,3 +126,19 @@ void pore_destroy(pore_t *pore)
 	nfree(pore->home);
 }
 
+void pore_destroy_owned_by(term_t pid)
+{
+	pore_t *pr = active_pores;
+	while (pr != 0)
+	{
+		if (pr->owner == pid)
+		{
+			pore_t *doomed = pr;
+			pr = pr->next;
+			pore_destroy(doomed);
+		}
+		else
+			pr = pr->next;	
+	}
+}
+

@@ -143,9 +143,6 @@ erlang:send_after(Time,Dest,Msg)	cbif_send_after3
 erlang:cancel_timer(TRef)			cbif_cancel_timer1
 erlang:read_timer(TRef)				cbif_read_timer1
 
-erlang:parent_node()	cbif_parent_node0
-erlang:node_group()		cbif_node_group0
-
 auth:set_secrets(S1,S2)	cbif_set_secrets2
 auth:secret1()			cbif_secret1_0
 auth:secret2()			cbif_secret2_0

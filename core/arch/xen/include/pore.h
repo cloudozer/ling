@@ -89,5 +89,6 @@ pore_t *pore_make_N(term_t tag,
 	uint32_t size, term_t owner, void (*destroy_private)(pore_t *), uint32_t evtchn);
 pore_t *pore_lookup(term_t eid);
 void pore_destroy(pore_t *pore);
+void pore_destroy_owned_by(term_t pid);
 
 #endif

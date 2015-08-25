@@ -129,6 +129,8 @@ static void straw_destroy(pore_t *pore)
 	{
 		for (int i = 0; i < NUM_STRAW_REFS; i++)
 			grants_end_access(ps->ring_refs[i]);
+
+		printk("End access for %d refs\n", NUM_STRAW_REFS);
 	}
 	else
 	{
@@ -142,6 +144,14 @@ static void straw_destroy(pore_t *pore)
 
 		int rs = HYPERVISOR_grant_table_op(GNTTABOP_unmap_grant_ref, unmap, NUM_STRAW_REFS);
 		assert(rs == 0);
+
+		for (int i = 0; i < NUM_STRAW_REFS; i++)
+		{
+			assert(unmap[i].status == GNTST_okay);
+			rmb();
+		}
+
+		printk("%d refs unmapped\n", NUM_STRAW_REFS);
 	}
 }
 
