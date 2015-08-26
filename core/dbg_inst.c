@@ -373,9 +373,9 @@ void __box_long_pid(uint32_t **p, uint64_t boxid, uint32_t domid, uint32_t id)
 {
 	assert(*p != 0);
 	ALIGNED_PTR(*p);
-	assert((id & ~0x0fffffff) == 0);	// 28-bit
+	assert((id & ~0x07ffffff) == 0);	// 27-bit
 
-	((t_long_pid_t *)(*p))->hdr = (id << 4) | SUBTAG_PID;
+	((t_long_pid_t *)(*p))->hdr = HDR_IS_NOT_CP | (id << 4) | SUBTAG_PID;
 	((t_long_pid_t *)(*p))->domid = domid;
 	((t_long_pid_t *)(*p))->boxid = boxid;
 	(*p) += WSIZE(t_long_pid_t);

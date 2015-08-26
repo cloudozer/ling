@@ -85,7 +85,9 @@ handle_info({watch,WatchKey}, #sm{top =StrawTop} =St) ->
 		false -> straw_state(WatchKey, St) end;
 
 handle_info({'EXIT',_,peer_closed}, St) -> {noreply,St};
-handle_info(_Msg, St) -> erlang:display({strawman,msg,_Msg}), {noreply,St}.
+handle_info(Msg, St) ->
+	io:format("strawman: info ~p\n", [Msg]),
+	{noreply,St}.
 
 terminate(shutdown, #sm{straws =Straws}) ->
 	ok = close_straws(Straws).
@@ -246,7 +248,6 @@ looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) ->
 		Sz = byte_size(EnvBin),
 		OutBuf1 = [OutBuf,<<Sz:32>>,EnvBin],
 		OutSz1 = OutSz + 4 + Sz,
-		io:format("Stuffing an envelope (~w bytes) for delivery...\n", [Sz]),
 		looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf1, OutSz1);
 		
 	{irq,Pore} ->

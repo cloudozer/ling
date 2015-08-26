@@ -539,7 +539,7 @@ struct t_long_pid_t {
 	__box_long_pid(&(p), (__boxid), (__domid), (id))
 #else /* !LING_DEBUG */
 #define box_long_pid(p, __boxid, __domid, id) do { \
-	((t_long_pid_t *)(p))->hdr = ((id) << 4) | SUBTAG_PID; \
+	((t_long_pid_t *)(p))->hdr = HDR_IS_NOT_CP | ((id) << 4) | SUBTAG_PID; \
 	((t_long_pid_t *)(p))->domid = (__domid); \
 	((t_long_pid_t *)(p))->boxid = (__boxid); \
 } while (0)
@@ -558,7 +558,7 @@ struct t_long_pid_t {
 #endif
 #endif
 
-#define long_pid_id(p)					(*(uint32_t *)(p) >> 4)
+#define long_pid_id(p)					((*(uint32_t *)(p) >> 4) & 0x07ffffff)
 
 struct t_long_ref_t {
 	uint32_t hdr;		//0:7,creation:2,id:18,subtag:4
