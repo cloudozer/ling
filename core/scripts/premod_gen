@@ -251,7 +251,9 @@ main([PreloadDir,PremodIncFile,
 	io:format(BaseOut, "#define NUM_PRE_MODS ~w~n~n", [length(Lings)]),
 
 	{EhUndefExp,_,_} = lists:keyfind({error_handler,undefined_function,3}, 2, ExpTab),
-	io:format(ModOut, "#define EH_UNDEF_EXP	(preloaded_exports+~w)~n~n", [EhUndefExp]),
+	{EhRemoteSendExp,_,_} = lists:keyfind({erlang,remote_send,2}, 2, ExpTab),
+	io:format(ModOut, "#define EH_UNDEF_EXP	(preloaded_exports+~w)~n", [EhUndefExp]),
+	io:format(ModOut, "#define EH_REMOTE_SEND_EXP	(preloaded_exports+~w)~n~n", [EhRemoteSendExp]),
 
 	file:close(ModOut),
 	file:close(BaseOut),

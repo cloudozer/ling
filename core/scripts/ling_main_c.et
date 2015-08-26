@@ -1083,8 +1083,9 @@ term_t dst = r0;
 
 if (is_tuple(dst) || is_boxed_pid(dst))
 {
-	printk("SEND: dst %pt\n", T(dst));
-	//TODO
+	cp = ip;
+	ip = (EH_REMOTE_SEND_EXP)->entry;
+	next();
 }
 
 if (!is_atom(dst) && !is_short_pid(dst) && !is_short_oid(dst))
@@ -4336,13 +4337,13 @@ if (unlikely(exp == 0 || exp->entry == 0))
 }
 ip = exp->entry;
 
-reds_left--; \
+reds_left--; 
 if (unlikely(reds_left <= 0)) {
 	proc->cap.live = exp->arity;
 	light_swap_out();
 	goto yield;
 }
-next(); \
+next(); 
 
 <%@ set_dst({t,{word,W}}, Src) %>
 {
