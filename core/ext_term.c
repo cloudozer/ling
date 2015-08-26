@@ -1304,7 +1304,8 @@ static int encode_size2(int depth, term_t t, int minor_ver)
 		{
 #ifdef LING_XEN
 			// boxid:64 domid:32 id:32
-			return 8 +4 +4;
+			return 1 +8 +4 +4;
+
 #else /* !LING_XEN */
 			t_long_pid_t *pid = (t_long_pid_t *)tdata;
 			int size = 1;
@@ -1350,12 +1351,18 @@ static int encode_size2(int depth, term_t t, int minor_ver)
 	}
 	else if (is_short_pid(t))
 	{
+#ifdef LING_XEN
+		// boxid:64 domid:32 id:32
+		return 1 +8 +4 +4;
+
+#else /* !LING_XEN */
 		int size = 1;
 		int s = encode_size2(depth+1, A_LOCAL, minor_ver);
 	   	if (s < 0)
 			return s;
 		size += s +4 +4 +1;	//103
 		return size;
+#endif
 	}
 	else
 	{

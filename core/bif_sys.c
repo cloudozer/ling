@@ -396,8 +396,21 @@ term_t cbif_container0(proc_t *proc, term_t *regs)
 // erlang:container(Thing)
 term_t cbif_container1(proc_t *proc, term_t *regs)
 {
-	//TODO
-	bif_not_implemented();
+	term_t Pid = regs[0];
+
+	uint32_t domid;
+	if (is_short_pid(Pid))
+		domid = my_domain_id;
+	else if (is_boxed_pid(Pid))
+	{
+		t_long_pid_t *p = (t_long_pid_t *)peel_boxed(Pid);
+		domid = p->domid;
+	}
+	else
+		badarg(Pid);
+
+	assert(fits_int((int)domid));
+	return tag_int(domid);
 }
 
 // erlang:machine()
@@ -410,8 +423,21 @@ term_t cbif_machine0(proc_t *proc, term_t *regs)
 // erlang:machine(Thing)
 term_t cbif_machine1(proc_t *proc, term_t *regs)
 {
-	//TODO
-	bif_not_implemented();
+	term_t Pid = regs[0];
+
+	uint64_t boxid;
+	if (is_short_pid(Pid))
+		boxid = my_box_id;
+	else if (is_boxed_pid(Pid))
+	{
+		t_long_pid_t *p = (t_long_pid_t *)peel_boxed(Pid);
+		boxid = p->boxid;
+	}
+	else
+		badarg(Pid);
+
+	assert(fits_int((int)boxid));	//XXX
+	return tag_int(boxid);
 }
 
 // erlang:loaded()

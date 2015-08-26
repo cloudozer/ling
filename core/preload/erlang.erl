@@ -40,7 +40,7 @@
 -export(['band'/2,'bor'/2,'bxor'/2,'bnot'/1]).
 -export([apply/3,apply/2,make_fun/3]).
 -export([yield/0]).
--export(['!'/2,send_msg/2]).
+-export(['!'/2,remote_send/2,send_msg/2]).
 -export([send/2,send/3]).
 %-export([send_nosuspend/2,send_nosuspend/3]).
 -export([self/0,node/0]).
@@ -166,6 +166,29 @@ send_msg(Pid, Msg) ->
 
 '!'(Pid, Msg) ->
 	Pid ! Msg.
+
+%% '!' routes calls here for tuples and long Pids
+remote_send({_,_,_}, _Msg) -> erlang:error(not_implemented);
+remote_send({DomId,Name}, Msg) when is_integer(DomId), is_atom(Name) ->
+	case erlang:container() =:= DomId of
+		true  -> Name ! Msg;	%% local
+		false -> Straw = container_straw(DomId),
+				 Straw ! {envelope,Name,Msg} end;
+remote_send(Pid, Msg) when is_pid(Pid) ->
+	case erlang:machine() =:= erlang:machine(Pid) of
+		false -> erlang:error(not_implemented);
+		true  -> DomId = erlang:container(Pid),
+				 Straw = container_straw(DomId),
+				 Straw ! {envelope,Pid,Msg} end;
+remote_send(Dst, Msg) -> erlang:error(badarg, [Dst,Msg]).
+
+container_straw(DomId) ->
+	case strawman:split(DomId) of
+		{error,_} ->
+			case strawman:open(DomId) of
+				{error,_} -> erlang:error({bad_container,DomId});
+				ok -> {ok,Straw} = strawman:split(DomId), Straw end;
+		{ok,Straw} -> Straw end.
 
 send(Dst, Msg) ->
 	Dst ! Msg,

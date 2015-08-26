@@ -19,3 +19,10 @@ pore_straw:avail(Pore)			cbif_pore_straw_avail1
 pore:poke(Pore)					cbif_pore_poke1
 pore:close(Pore)				cbif_pore_close1
 
+#bif_sys.c
+erlang:container()			cbif_container0
+erlang:container(Thing)		cbif_container1
+erlang:machine()			cbif_machine0
+erlang:machine(Thing)		cbif_machine1
+
+

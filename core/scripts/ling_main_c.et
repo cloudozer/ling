@@ -1081,13 +1081,10 @@ void *next = (void *)expand_ptr(ip[<% i2l(Wsz+1) %>]);
 ip += <% i2l(Wsz+1) %>;
 term_t dst = r0;
 
-// {Dst,Node} fails except when Node is nonode@nohost
-if (is_tuple(r0))
+if (is_tuple(dst) || is_boxed_pid(dst))
 {
-	uint32_t *p = peel_tuple(r0);
-	if (p[0] != 2 || p[2] != ANONODE_NOHOST__)
-		badarg();	// TODO: distributed send
-	dst = p[1];
+	printk("SEND: dst %pt\n", T(dst));
+	//TODO
 }
 
 if (!is_atom(dst) && !is_short_pid(dst) && !is_short_oid(dst))
@@ -2199,7 +2196,7 @@ msg_queue_reset(&proc->mailbox);
 <% set_dst(Dst, <<"proc->pid">>) %>
 
 <%@ iop(node, [Dst]) %>
-<% set_dst(Dst, <<"A_UNDEFINED">>) %>
+<% set_dst(Dst, <<"ANONODE_NOHOST__">>) %>
 
 <%@ iop(move, [Src,Dst]) %>
 <% set_dst(Dst, arg(Src)) %>

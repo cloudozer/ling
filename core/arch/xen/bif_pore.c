@@ -126,18 +126,10 @@ static void straw_destroy(pore_t *pore)
 	assert(pore->tag == A_STRAW);
 	pore_straw_t *ps = (pore_straw_t *)pore;
 	if (ps->active)
-	{
 		for (int i = 0; i < NUM_STRAW_REFS; i++)
 			grants_end_access(ps->ring_refs[i]);
-
-		printk("End access for %d refs\n", NUM_STRAW_REFS);
-	}
 	else
-	{
 		ms_unmap_pages(ps->shared, NUM_STRAW_REFS, ps->map_handles);
-
-		printk("%d refs unmapped\n", NUM_STRAW_REFS);
-	}
 }
 
 term_t cbif_pore_straw_open1(proc_t *proc, term_t *regs)
