@@ -22,8 +22,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _ARCH_MM_H_
-#define _ARCH_MM_H_
+#pragma once
 
 #ifndef __ASSEMBLY__
 #include "xen/xen.h"
@@ -234,4 +233,3 @@ static __inline__ paddr_t machine_to_phys(maddr_t machine)
 pgentry_t *need_pgt(unsigned long addr);
 int mfn_is_ram(unsigned long mfn);
 
-#endif /* _ARCH_MM_H_ */

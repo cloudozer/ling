@@ -163,7 +163,9 @@ void start_ling(int argc, char **argv)
 
 #ifdef LING_XEN
 	my_box_id = 0;	//TODO: use the first MAC address to derive this?
-	xenstore_read_int(&my_domain_id, "domid");
+	int n;
+	xenstore_read_int(&n, "domid");
+	my_domain_id = n;
 	xenstore_read("name", my_domain_name, sizeof(my_domain_name));
 #endif
 

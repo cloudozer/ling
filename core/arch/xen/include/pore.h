@@ -80,8 +80,8 @@ typedef struct pore_straw_t pore_straw_t;
 struct pore_straw_t {
 	pore_t parent;
 	int active;
-	struct gnttab_map_grant_ref page_map[NUM_STRAW_REFS];
-	uint32_t ring_refs[NUM_STRAW_REFS];
+	grant_ref_t ring_refs[NUM_STRAW_REFS];
+	grant_handle_t map_handles[NUM_STRAW_REFS];
 	straw_ring_t *shared;
 };
 

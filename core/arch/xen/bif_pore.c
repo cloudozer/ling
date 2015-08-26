@@ -134,22 +134,7 @@ static void straw_destroy(pore_t *pore)
 	}
 	else
 	{
-		struct gnttab_unmap_grant_ref unmap[NUM_STRAW_REFS];
-		for (int i = 0; i < NUM_STRAW_REFS; i++)
-		{
-			unmap[i].host_addr = ps->page_map[i].host_addr;
-			unmap[i].handle = ps->page_map[i].handle;
-			unmap[i].dev_bus_addr = 0;
-		}
-
-		int rs = HYPERVISOR_grant_table_op(GNTTABOP_unmap_grant_ref, unmap, NUM_STRAW_REFS);
-		assert(rs == 0);
-
-		for (int i = 0; i < NUM_STRAW_REFS; i++)
-		{
-			assert(unmap[i].status == GNTST_okay);
-			rmb();
-		}
+		ms_unmap_pages(ps->shared, NUM_STRAW_REFS, ps->map_handles);
 
 		printk("%d refs unmapped\n", NUM_STRAW_REFS);
 	}
@@ -195,8 +180,8 @@ term_t cbif_pore_straw_open3(proc_t *proc, term_t *regs)
 	if (!is_int(Channel))
 		badarg(Channel);
 	int peer_port = int_value(Channel);
-	uint32_t refs[NUM_STRAW_REFS];
 	term_t l = Refs;
+	uint32_t refs[NUM_STRAW_REFS];
 	for (int i = 0; i < NUM_STRAW_REFS; i++)
 	{
 		if (!is_cons(l))
@@ -213,33 +198,17 @@ term_t cbif_pore_straw_open3(proc_t *proc, term_t *regs)
 	uint32_t evtchn = event_bind_interdomain(peer_domid, peer_port);
 
 	assert(sizeof(straw_ring_t) == NUM_STRAW_REFS*PAGE_SIZE);
-	int size = (NUM_STRAW_REFS+1)*PAGE_SIZE -sizeof(memnode_t);
-	pore_straw_t *ps = (pore_straw_t *)pore_make_N(A_STRAW, size, proc->pid, straw_destroy, evtchn);
+	pore_straw_t *ps = (pore_straw_t *)pore_make_N(A_STRAW,
+			sizeof(pore_straw_t), proc->pid, straw_destroy, evtchn);
 	if (ps == 0)
 		fail(A_NO_MEMORY);
 
-	straw_ring_t *ring = (straw_ring_t *)((uint8_t *)ps -sizeof(memnode_t) +PAGE_SIZE);
-	assert(((uintptr_t)ring & (PAGE_SIZE-1)) == 0); // page-aligned
-	ps->shared = ring;
+	for (int i = 0; i < NUM_STRAW_REFS; i++)
+		ps->ring_refs[i] = refs[i];
+
+	ps->shared = (straw_ring_t *)ms_map_pages(ps->ring_refs,
+					NUM_STRAW_REFS, peer_domid, ps->map_handles);
 	// all other fields are zero
-
-	for (int i = 0; i < NUM_STRAW_REFS; i++)
-	{
-		struct gnttab_map_grant_ref *m = &ps->page_map[i];
-		m->ref = refs[i];
-		m->dom = peer_domid;
-		m->flags = GNTMAP_host_map;
-		m->host_addr = (uintptr_t)ps->shared + PAGE_SIZE*i;
-	}
-
-	int rs = HYPERVISOR_grant_table_op(GNTTABOP_map_grant_ref, ps->page_map, NUM_STRAW_REFS);
-	assert(rs == 0);
-
-	for (int i = 0; i < NUM_STRAW_REFS; i++)
-	{
-		assert(ps->page_map[i].status == GNTST_okay);
-		rmb();
-	}
 
 	return ps->parent.eid;
 }
@@ -333,8 +302,7 @@ term_t cbif_pore_straw_info1(proc_t *proc, term_t *regs)
 	term_t refs = nil;
 	for (int i = NUM_STRAW_REFS-1; i >= 0; i--)
 	{
-		int ref = (ps->active) ?ps->ring_refs[i]
-							   :ps->page_map[i].ref;
+		int ref = ps->ring_refs[i];
 		assert(fits_int(ref));
 		refs = heap_cons(&proc->hp, tag_int(ref), refs);
 	}

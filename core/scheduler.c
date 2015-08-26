@@ -45,9 +45,12 @@
 #include "string.h"
 #include "monitors.h"
 #include "ets.h"
-#include "outlet.h"
 #include "timers.h"
 #include "prof.h"
+#include "outlet.h"
+#ifdef LING_XEN
+#include "pore.h"
+#endif
 
 #include "heap.h"
 

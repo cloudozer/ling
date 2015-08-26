@@ -36,6 +36,7 @@
 #include "arch_mm.h"
 
 #ifdef LING_XEN
+#include "grant.h"
 void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_frames);
 #else
 void mm_init(void);
@@ -50,4 +51,8 @@ static inline void *mm_alloc_page(void)
 	return mm_alloc_pages(1);
 }
 
-//EOF
+#ifdef LING_XEN
+void *ms_map_pages(grant_ref_t *refs, int nr_refs, domid_t domid, grant_handle_t *handles);
+void ms_unmap_pages(void *addr, int nr_pages, grant_handle_t *handles);
+#endif
+
