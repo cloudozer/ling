@@ -358,15 +358,15 @@ term_t cbif_ling_memory2(proc_t *proc, term_t *regs)
 	/* this initialization produces a warning, and rightly so */
 	uintptr_t from = int_value(From);
 	uintptr_t to = int_value(To);
-	printk("%s: from=%x, to=%x\n", __FUNCTION__, from, to);
+	//printk("%s: from=%x, to=%x\n", __FUNCTION__, from, to);
 	if (from > to)
 		return heap_tuple2(&proc->hp, A_ERROR, heap_strz(&proc->hp, "From after To"));
 	size_t len = to - from;
-	printk("%s: len=%d\n", __FUNCTION__, len);
+	//printk("%s: len=%d\n", __FUNCTION__, len);
 
 	uint8_t *data = NULL;
 	term_t bin = heap_make_bin(&proc->hp, len, &data);
-	printk("%s: bin=0x%x, data=*%x\n", __FUNCTION__, bin, (uintptr_t)data);
+	//printk("%s: bin=0x%x, data=*%x\n", __FUNCTION__, bin, (uintptr_t)data);
 
 	memcpy(data, (void *)from, len);
 
