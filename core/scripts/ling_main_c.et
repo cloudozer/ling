@@ -189,6 +189,8 @@ static int send_to_outlet(outlet_t *outlet, term_t what, proc_t *proc);
 
 void proc_main(proc_t *proc)
 {
+	max_backtrace_depth = 8;
+
 	// current instruction pointer
 	register uint32_t *ip = 0;
 

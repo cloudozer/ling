@@ -55,6 +55,7 @@ static grant_ref_t free_entry = NO_GRANT_ENTRY;
 void grants_init(void)
 {
 	unsigned long frames[NR_GRANT_PAGES];
+	free_entry = NO_GRANT_ENTRY;
 
 	gnttab_setup_table_t op;
 	op.dom = DOMID_SELF;

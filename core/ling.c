@@ -180,6 +180,7 @@ void start_ling(int argc, char **argv)
 
 	sys_stats_init();
 
+	catches_init();
 	atoms_init();
 	embed_init();
 	code_base_init();

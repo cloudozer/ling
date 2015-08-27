@@ -51,6 +51,8 @@ static int xenstore_error(const char *str, int len);
 
 void xenstore_init(struct xenstore_domain_interface *intf, uint32_t port)
 {
+	store_port = 0;
+	req_id = 1;
 	store_intf = intf;
 	store_port = port;
 }

@@ -64,6 +64,7 @@ static int decode_literals(module_info_t *mi,
 
 void code_base_init(void)
 {
+	exports_nodes = 0;
 	exports_map = hash_make();
 
 	// TODO: add custom hash functions and devise a better function for exports
@@ -84,7 +85,6 @@ void code_base_init(void)
 			preloaded_modules+i);
 	}
 
-	//exports_nodes = 0;
 }
 
 export_t *code_base_lookup(term_t m, term_t f, int arity)
