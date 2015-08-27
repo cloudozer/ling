@@ -261,6 +261,7 @@ enum elfmach {
 	EM_NONE = 0,
 	EM_386 = 3,
 	EM_MIPS = 8,
+	EM_AMD = 0x3e,
 };
 
 typedef struct {
@@ -306,7 +307,7 @@ term_t cbif_ling_execinfo0(proc_t *proc, term_t *regs)
 {
 #if __x86_64__
 	const int elfclass = 64;
-	const int elfmach = EM_386;
+	const int elfmach = EM_AMD;
 #elif __i386
 	const int elfclass = 32;
 	const int elfmach = EM_386;

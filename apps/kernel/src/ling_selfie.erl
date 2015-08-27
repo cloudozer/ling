@@ -446,4 +446,16 @@ make() ->
 	Other -> Other
 	end.
 
-share(_Addr) -> todo.
+share(Image, Addr, Port) ->
+	{ok, S} = gen_tcp:connect(Addr, Port, []),
+	ChunkSize = 4096,
+	Chew = fun
+		(_Self, Chunk) when size(Chunk) < ChunkSize ->
+			ok = gen_tcp:send(S, Chunk);
+		(Self, <<Chunk:ChunkSize/binary, Rest/binary>>) ->
+			ok = gen_tcp:send(S, Chunk),
+			Self(Self, Rest)
+		end,
+	Chew(Chew, Image),
+	ok = gen_tcp:close(S),
+	ok.
