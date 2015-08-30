@@ -21,6 +21,7 @@ apps/kernel/src/ling_%.erl: ../code/ling_%.erl
 	cp $< $@
 
 apps/kernel/src/ling_iopvars.erl: bc/ling_iopvars.erl
+apps/kernel/src/ling_bifs.erl: bc/ling_bifs.erl
 
 $(APPS_KERNEL): apps/kernel/ebin/%.beam: apps/kernel/src/%.erl
 	$(ERLC) $(APPS_EPPFLAGS) -o apps/kernel/ebin $<
