@@ -120,6 +120,7 @@ void start_ling(int argc, char **argv)
 	//
 #ifdef LING_XEN
 	memcpy(&start_info, si, sizeof(*si));
+	memset(&grant_table, 0, PAGE_SIZE);
 
 	phys_to_machine_mapping = (unsigned long *)start_info.mfn_list;
 

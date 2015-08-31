@@ -103,7 +103,6 @@ bc/scripts/iopvars.tab: bc/scripts/beam.src bc/scripts/bif.tab bc/gentab/iops_ta
 	$(ESCRIPT) bc/scripts/iopvars_gen bc/scripts/beam.src bc/scripts/bif.tab $@
 
 bc/ling_bifs.beam: bc/ling_bifs.erl
-	$(ERLC) -o bc $<
 
 bc/ling_bifs.erl: bc/scripts/bif.tab
 	$(ESCRIPT) bc/scripts/bifs2_gen $< $@

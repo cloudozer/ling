@@ -99,16 +99,16 @@ elf_shentsize(?ELFCLASS64) -> 64.
 
 elf_comment() ->
 	Signiture = erlang:system_info(system_version),
-	list_to_binary(io_lib:format("Made by ~s, (c) Cloudozer\n", [Signiture])).
+	list_to_binary(io_lib:format("Made by ~s, (c) Cloudozer\n\0", [Signiture])).
 
 elf_xenguest_contents() ->
-	<<"GUEST_OS=Ling,XEN_VER=xen-3.0,VIRT_BASE=0x0,ELF_PADDR_OFFSET=0x0,HYPERCALL_PAGE=0x1,LOADER=generic">>.
+	<<"GUEST_OS=Ling,XEN_VER=xen-3.0,VIRT_BASE=0x0,ELF_PADDR_OFFSET=0x0,HYPERCALL_PAGE=0x1,LOADER=generic", 0>>.
 
 
 make_elf_ident(Meta) when is_record(Meta, elfmeta) ->
 	EIclass = elf_class(Meta),
 	EIdata = case Meta#elfmeta.data of lsb2compl -> ?ELFDATA2LSB; msb2compl -> ?ELFDATA2MSB end,
-	pad_to(<<16#7f, $E, $L, $F, EIclass, EIdata, ?EV_CURRENT, ?ELFOSABI_STANDALONE, 0>>, 16).
+	pad_to(<<16#7f, $E, $L, $F, EIclass, EIdata, ?EV_CURRENT, ?ELFOSABI_SYSV, 0>>, 16).
 
 section_index_by_name(_Name, [], _) ->
 	{error, not_found};
