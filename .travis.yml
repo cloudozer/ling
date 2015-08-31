@@ -8,6 +8,11 @@ env:
   - ARCH=posix CONF=dbg
   - ARCH=posix CONF=opt
   - ARCH=posix CONF=lto
+before_install:
+  - [ X"$TRAVIS_OS_NAME" = X"osx" ] && brew install erlang
 script:
   - make -j2 test ARCH=$ARCH CONF=$CONF
+os:
+  - linux
+  - osx
 sudo: false
