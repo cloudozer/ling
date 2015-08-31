@@ -50,3 +50,6 @@ g(X) -> <<127:7, X:64>>.
 
 %% update_map_assoc
 h() -> #{a => b:c()}.
+
+%% l_m_div
+i(A) -> C = A/A,{A,(-A)/C}.

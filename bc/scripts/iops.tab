@@ -132,7 +132,7 @@ l_move_call_ext_only e s
 l_call_fun u8
 l_call_fun_last u8 u
 
-case_end d
+case_end s
 l_catch y ca
 catch_end y
 deallocate u

@@ -84,12 +84,13 @@ BC_BEAM := $(BC_ERL:%.erl=%.beam)
 BC_SAMPLE_ERL := $(wildcard bc/sample/*.erl)
 BC_SAMPLE_BEAM := $(BC_SAMPLE_ERL:%.erl=%.beam)
 
-bc/%.beam: bc/%.erl
+$(BC_BEAM): %.beam: %.erl
 	$(ERLC) -o bc $<
 
+## TODO: use erlc dependency generation instead
 bc/ling_code.beam: bc/ling_bifs.beam
 
-bc/sample/%.beam: bc/sample/%.erl
+$(BC_SAMPLE_BEAM): %.beam: %.erl
 	$(ERLC) -o bc/sample $<
 
 bc/gentab/iops_tab.erl: bc/scripts/iops.tab bc/scripts/iops_tab_erl.et $(BC_BEAM) 
@@ -101,11 +102,11 @@ bc/gentab/%.beam: bc/gentab/%.erl
 bc/scripts/iopvars.tab: bc/scripts/beam.src bc/scripts/bif.tab bc/gentab/iops_tab.beam $(BC_SAMPLE_BEAM) $(TEST_BEAM)
 	$(ESCRIPT) bc/scripts/iopvars_gen bc/scripts/beam.src bc/scripts/bif.tab $@
 
-bc/ling_bifs.erl: bc/scripts/bif.tab
-	bc/scripts/bifs2_gen $< $@
-
 bc/ling_bifs.beam: bc/ling_bifs.erl
 	$(ERLC) -o bc $<
+
+bc/ling_bifs.erl: bc/scripts/bif.tab
+	$(ESCRIPT) bc/scripts/bifs2_gen $< $@
 
 bc/ling_iopvars.erl: bc/scripts/iopvars.tab bc/scripts/iopvars_erl.et
 	$(ESCRIPT) bc/scripts/reorder_iopvars bc/scripts/iopvars.tab bc/scripts/hot_cold_iops bc/scripts/iopvars_erl.et $@

@@ -387,7 +387,7 @@ validate({call_ext_only,[{a,_},{a,_},U]}) when ?U(U) -> ok;
 validate({call_fun,[U]}) when ?U(U) -> ok;
 validate({call_last,[U1,{f,_},U2]}) when ?U(U1), ?U(U2) -> ok;
 validate({call_only,[U,{f,_}]}) when ?U(U) -> ok;
-validate({case_end,[D]}) -> dst(D);
+validate({case_end,[D]}) -> src(D);
 validate({'catch',[{y,_},{f,_}]}) -> ok;
 validate({catch_end,[{y,_}]}) -> ok;
 validate({deallocate,[U]}) when ?U(U) -> ok;
