@@ -242,8 +242,7 @@ term_t cbif_stats0(proc_t *proc, term_t *regs)
 #endif
 }
 
-#if (1)
-//LING_XEN
+#if LING_XEN
 enum elfnames {
 	ElfElf,
 	ElfClass,
