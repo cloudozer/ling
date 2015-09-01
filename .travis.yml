@@ -1,10 +1,18 @@
 language: erlang
-otp_release: 17.5
+otp_release:
+  - 17.5
+env:
+  - ARCH=xen CONF=dbg
+  - ARCH=xen CONF=opt
+  - ARCH=xen CONF=lto
+  - ARCH=posix CONF=dbg
+  - ARCH=posix CONF=opt
+  - ARCH=posix CONF=lto
+before_install:
+  - [ X"$TRAVIS_OS_NAME" = X"osx" ] && brew install erlang
 script:
-  - make -j2 test ARCH=xen CONF=dbg
-  - make -j2 test ARCH=xen CONF=opt
-  - make -j2 test ARCH=xen CONF=lto
-  - make -j2 test ARCH=posix CONF=dbg
-  - make -j2 test ARCH=posix CONF=opt
-  - make -j2 play ARCH=posix CONF=lto
+  - make -j2 test ARCH=$ARCH CONF=$CONF
+os:
+  - linux
+  - osx
 sudo: false

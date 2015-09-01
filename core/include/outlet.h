@@ -40,6 +40,7 @@
 
 #if LING_WITH_LIBUV
 # include <uv.h>
+# include "sockaddr.h"
 #endif
 
 #define PB_DEFAULT		3
@@ -148,6 +149,7 @@ struct outlet_t {
 		uv_udp_t *udp;
 		uv_tcp_t *tcp;
 	};
+	saddr_t raw_addr;       // for INET_AF_PACKET to save device name
 	uv_timer_t conn_timer;  // udp|tcp (may be used as recv_timer
 	uv_timer_t send_timer;  // tcp
 	int family;             // INET_AF_INET | INET_AF_INET6

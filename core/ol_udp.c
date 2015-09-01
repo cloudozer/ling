@@ -83,7 +83,9 @@ uv_on_recv_timeout(uv_timer_t *timeout);
 static void
 uv_on_send(uv_udp_send_t *udp, int status)
 {
-	debug("%s(status=%d)\n", __FUNCTION__, status);
+	if (status)
+		printk("%s(status: %s)\n", __FUNCTION__, uv_strerror(status));
+		//debug("%s(status=%d)\n", __FUNCTION__, status);
 	free(udp);
 }
 
@@ -93,17 +95,30 @@ send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint
 	int ret;
 	uv_buf_t buf = { .base = data, .len = (size_t)len };
 
+	struct sockaddr *addr = 0;
+#if PACKET_CAPTURE_ENABLED
+	if (ol->family == INET_AF_PACKET)
+	{
+		assert(ol->raw_addr.saddr.sa_family == AF_INET);
+		debug("%s(iface=%s)\n", __FUNCTION__, ol->raw_addr.saddr.sa_data);
+		addr = &ol->raw_addr.saddr;
+	}
+#endif
 	struct sockaddr_in saddr;
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(port);
 	saddr.sin_addr.s_addr = ipaddr->addr;
-
-	debug("%s(addr=0x%x, port=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, port);
+	if (!addr)
+	{
+		addr = (struct sockaddr *)&saddr;
+		debug("%s(addr=0x%x, port=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, port);
+	}
 
 	uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
-	ret = uv_udp_send(req, ol->udp, &buf, 1, (struct sockaddr *)&saddr, uv_on_send);
+	ret = uv_udp_send(req, ol->udp, &buf, 1, addr, uv_on_send);
 	if (ret < 0) {
-		debug("%s: uv_udp_send failed(%d)\n", __FUNCTION__, ret);
+		printk("%s: uv_udp_send failed(%d)\n", __FUNCTION__, ret);
+		//debug("%s: uv_udp_send failed(%d)\n", __FUNCTION__, ret);
 		return A_ERROR; /* TODO: better description */
 	}
 	return A_OK;
@@ -292,6 +307,17 @@ static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
 		goto exit;
 	}
 
+	/* save `ifname` into ol->raw_addr */
+	if (iflen + 1 >= (sizeof(saddr_t) - offsetof(struct sockaddr, sa_data)))
+	{
+		printk("%s: could not save interface name '%s', it is too long\n", __FUNCTION__, ifname);
+		ret = ENOSPC;
+		goto exit;
+	}
+	memset(&ol->raw_addr, 0, sizeof(ol->raw_addr));
+	strcpy(ol->raw_addr.saddr.sa_data, ifname);
+	ol->raw_addr.saddr.sa_family = AF_INET;
+
 	if (ol->active)
 		udp_recv_start(ol);
 
@@ -462,7 +488,7 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 		data += 16;
 		len -= 16;
 #else
-	inet_reply_error(ol->oid, reply_to, A_NOT_SUPPORTED);
+		inet_reply_error(ol->oid, reply_to, A_NOT_SUPPORTED);
 		return 0;
 #endif
 	}
