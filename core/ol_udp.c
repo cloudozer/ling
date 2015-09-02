@@ -192,6 +192,24 @@ static void udp_destroy_private(outlet_t *ol)
 	debug("%s: uv_is_active=%d, uv_is_closing=%d\n", __FUNCTION__,
 		  uv_is_active(udp), uv_is_closing(udp));
 
+#if PACKET_CAPTURE_ENABLED
+	if (ol->family == INET_AF_PACKET)
+	{
+		int fd;
+		int ret;
+
+		/* unset promisc mode */
+		ret = uv_fileno((uv_handle_t *)udp, &fd);
+		if (ret) goto cont;
+		struct ifreq ifr;
+		ret = ioctl(fd, SIOCGIFFLAGS, (void *)&ifr);
+		if (ret) goto cont;
+		ifr.ifr_flags &= ~IFF_PROMISC;
+		ret = ioctl(fd, SIOCSIFFLAGS, (void *)&ifr);
+		if (ret) goto cont;
+	}
+cont:
+#endif
 	uv_close(udp, uv_on_close);
 	debug("%s: uv_close()\n", __FUNCTION__);
 }
@@ -305,6 +323,7 @@ static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
 	ret = uv_fileno((uv_handle_t *)ol->udp, &fd);
 	if (ret) goto exit;
 
+	/* get interface index */
 	memset(&iface, 0, sizeof(struct ifreq));
 	strcpy(iface.ifr_name, ifname);
 	ret = ioctl(fd, SIOCGIFINDEX, (void *)&iface);
@@ -318,6 +337,13 @@ static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
 	ret = bind(fd, (struct sockaddr *)&sll, (socklen_t)sizeof(sll));
 	if (ret)
 		goto exit;
+
+	/* set interface promiscuous */
+	ret = ioctl(fd, SIOCGIFFLAGS, (void *)&iface);
+	if (ret) goto exit;
+	iface.ifr_flags |= IFF_PROMISC;
+	ret = ioctl(fd, SIOCSIFFLAGS, (void *)&iface);
+	if (ret) goto exit;
 
 	ol->raw_ifindex = iface.ifr_ifindex;
 
