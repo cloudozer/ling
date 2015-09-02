@@ -149,7 +149,7 @@ struct outlet_t {
 		uv_udp_t *udp;
 		uv_tcp_t *tcp;
 	};
-	saddr_t raw_addr;       // for INET_AF_PACKET to save device name
+	int raw_ifindex;        // for INET_AF_PACKET to save interface index
 	uv_timer_t conn_timer;  // udp|tcp (may be used as recv_timer
 	uv_timer_t send_timer;  // tcp
 	int family;             // INET_AF_INET | INET_AF_INET6
