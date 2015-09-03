@@ -66,10 +66,12 @@ static int ol_udp_get_opts(outlet_t *ol,
 
 #ifdef LING_WITH_LIBUV
 
-#ifdef SOCK_PACKET
+#ifdef AF_PACKET
 # define PACKET_CAPTURE_ENABLED 1
 
+# include <sys/ioctl.h>
 # include <linux/if.h>
+# include <linux/if_packet.h>
 # include <linux/if_ether.h>
 #endif
 
@@ -93,32 +95,53 @@ static term_t
 send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint16_t len)
 {
 	int ret;
+	union {
+		struct sockaddr     sa;
+		struct sockaddr_in  ipv4;	/* AF_INET */
+		struct sockaddr_in6 ipv6; /* AF_INET6 */
+#if PACKET_CAPTURE_ENABLED
+		struct sockaddr_ll  eth;	/* AF_PACKET */
+#endif
+	} saddr;
 	uv_buf_t buf = { .base = data, .len = (size_t)len };
 
-	struct sockaddr *addr = 0;
+	switch (ol->family)
+	{
+	case INET_AF_INET:
+		saddr.sa.sa_family = AF_INET;
+		saddr.ipv4.sin_port = htons(port);
+		saddr.ipv4.sin_addr.s_addr = ipaddr->addr;
+		debug("%s(ipv4=0x%x, ipport=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, port);
+		break;
+
 #if PACKET_CAPTURE_ENABLED
-	if (ol->family == INET_AF_PACKET)
+	case INET_AF_PACKET:
 	{
-		assert(ol->raw_addr.saddr.sa_family == AF_INET);
-		debug("%s(iface=%s)\n", __FUNCTION__, ol->raw_addr.saddr.sa_data);
-		addr = &ol->raw_addr.saddr;
-	}
+		assert(ol->raw_ifindex != 0);
+
+		struct ethhdr *hdr = (struct ethhdr *)data;
+
+		memset(&saddr, 0, sizeof(saddr));
+		saddr.sa.sa_family = AF_PACKET;
+		saddr.eth.sll_ifindex = ol->raw_ifindex;
+		saddr.eth.sll_halen = ETH_ALEN;
+		memcpy(saddr.eth.sll_addr, hdr->h_dest, ETH_ALEN);
+
+		debug("%s(iface=%d, addr=%02x:%02x:%02x:%02x:%02x:%02x)\n", __FUNCTION__, ol->raw_ifindex,
+		       saddr.eth.sll_addr[0], saddr.eth.sll_addr[1], saddr.eth.sll_addr[2],
+		       saddr.eth.sll_addr[3], saddr.eth.sll_addr[4], saddr.eth.sll_addr[5]);
+	} break;
 #endif
-	struct sockaddr_in saddr;
-	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(port);
-	saddr.sin_addr.s_addr = ipaddr->addr;
-	if (!addr)
-	{
-		addr = (struct sockaddr *)&saddr;
-		debug("%s(addr=0x%x, port=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, port);
+
+	case INET_AF_INET6: /* TODO */
+	default:
+		return A_ENOTSUP;
 	}
 
 	uv_udp_send_t *req = malloc(sizeof(uv_udp_send_t));
-	ret = uv_udp_send(req, ol->udp, &buf, 1, addr, uv_on_send);
+	ret = uv_udp_send(req, ol->udp, &buf, 1, &saddr.sa, uv_on_send);
 	if (ret < 0) {
-		printk("%s: uv_udp_send failed(%d)\n", __FUNCTION__, ret);
-		//debug("%s: uv_udp_send failed(%d)\n", __FUNCTION__, ret);
+		printk("%s: uv_udp_send failed(%s)\n", __FUNCTION__, uv_strerror(ret));
 		return A_ERROR; /* TODO: better description */
 	}
 	return A_OK;
@@ -186,6 +209,24 @@ static void udp_destroy_private(outlet_t *ol)
 	debug("%s: uv_is_active=%d, uv_is_closing=%d\n", __FUNCTION__,
 		  uv_is_active(udp), uv_is_closing(udp));
 
+#if PACKET_CAPTURE_ENABLED
+	if (ol->family == INET_AF_PACKET)
+	{
+		int fd;
+		int ret;
+
+		/* unset promisc mode */
+		ret = uv_fileno((uv_handle_t *)udp, &fd);
+		if (ret) goto cont;
+		struct ifreq ifr;
+		ret = ioctl(fd, SIOCGIFFLAGS, (void *)&ifr);
+		if (ret) goto cont;
+		ifr.ifr_flags &= ~IFF_PROMISC;
+		ret = ioctl(fd, SIOCSIFFLAGS, (void *)&ifr);
+		if (ret) goto cont;
+	}
+cont:
+#endif
 	uv_close(udp, uv_on_close);
 	debug("%s: uv_close()\n", __FUNCTION__);
 }
@@ -208,12 +249,7 @@ static int udp_control_open(outlet_t *ol, int family)
 #if PACKET_CAPTURE_ENABLED
 	if (family == INET_AF_PACKET)
 	{
-		int sock;
-		/*
-		 * NB: AF_INET/SOCK_PACKET combo is obsolete
-		 * but we use it to coexist with libuv
-		 */
-		sock = socket(AF_INET, SOCK_PACKET, htons(ETH_P_ALL));
+		int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 		if (sock < 0) {
 			ret = errno;
 			debug("%s: socket() error: %s\n", __FUNCTION__, strerror(errno));
@@ -299,24 +335,30 @@ static int raw_udp_bind_iface(outlet_t *ol, char *ifname)
 	ret = uv_fileno((uv_handle_t *)ol->udp, &fd);
 	if (ret) goto exit;
 
+	/* get interface index */
 	memset(&iface, 0, sizeof(struct ifreq));
-	strcpy(iface.ifr_name, ifname);
-	ret = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void*)&iface, sizeof(iface));
-	if (ret) {
-		debug("%s: setsockopt('%s') -> %s\n", __FUNCTION__, ifname, strerror(errno));
-		goto exit;
-	}
+	strncpy(iface.ifr_name, ifname, IFNAMSIZ);
+	ret = ioctl(fd, SIOCGIFINDEX, (void *)&iface);
+	if (ret) goto exit;
 
-	/* save `ifname` into ol->raw_addr */
-	if (iflen + 1 >= (sizeof(saddr_t) - offsetof(struct sockaddr, sa_data)))
-	{
-		printk("%s: could not save interface name '%s', it is too long\n", __FUNCTION__, ifname);
-		ret = ENOSPC;
+	ol->raw_ifindex = iface.ifr_ifindex;
+	debug("%s: bound to if#%d\n", __FUNCTION__, ol->raw_ifindex);
+
+	struct sockaddr_ll sll;
+	sll.sll_family = AF_PACKET;
+	sll.sll_protocol = htons(ETH_P_ALL);
+	sll.sll_ifindex = iface.ifr_ifindex;
+
+	ret = bind(fd, (struct sockaddr *)&sll, (socklen_t)sizeof(sll));
+	if (ret)
 		goto exit;
-	}
-	memset(&ol->raw_addr, 0, sizeof(ol->raw_addr));
-	strcpy(ol->raw_addr.saddr.sa_data, ifname);
-	ol->raw_addr.saddr.sa_family = AF_INET;
+
+	/* set interface promiscuous */
+	ret = ioctl(fd, SIOCGIFFLAGS, (void *)&iface);
+	if (ret) goto exit;
+	iface.ifr_flags |= IFF_PROMISC;
+	ret = ioctl(fd, SIOCSIFFLAGS, (void *)&iface);
+	if (ret) goto exit;
 
 	if (ol->active)
 		udp_recv_start(ol);
@@ -441,6 +483,10 @@ outlet_t *ol_udp_factory(proc_t *cont_proc, uint32_t bit_opts)
 
 	inet_set_default_opts(new_ol);
 
+#if PACKET_CAPTURE_ENABLED
+	new_ol->raw_ifindex = 0;
+#endif
+
 	return new_ol;
 }
 
@@ -467,45 +513,42 @@ static int ol_udp_send(outlet_t *ol, int len, term_t reply_to)
 	// port[2] addr[4] data[n]
 	// port[2] addr[16] data[n]
 	debug("%s\n", __FUNCTION__);
-
 	assert(ol->udp != 0);
+
 	uint8_t *data = ol->send_buffer;
-	assert(len >= 2);
-	uint16_t port = GET_UINT_16(data);
-	data += 2;
-	len -= 2;
 
-	ip_addr_t addr;
+	ip_addr_t addr = { .addr = 0 };
+	uint16_t port = 0;
 
+#if PACKET_CAPTURE_ENABLED
+	if (ol->family == INET_AF_PACKET)
+	{
+		debug("%s(ETH)\n", __FUNCTION__);
+	}
+	else
+#endif
 	if (is_ipv6_outlet(ol))
 	{
-#if 0
-		assert(len >= 16);
-		((ip6_addr_t *)&addr)->addr[0] = GET_UINT_32(data);
-		((ip6_addr_t *)&addr)->addr[1] = GET_UINT_32(data +4);
-		((ip6_addr_t *)&addr)->addr[2] = GET_UINT_32(data +8);
-		((ip6_addr_t *)&addr)->addr[3] = GET_UINT_32(data +12);
-		data += 16;
-		len -= 16;
-#else
 		inet_reply_error(ol->oid, reply_to, A_NOT_SUPPORTED);
 		return 0;
-#endif
 	}
 	else
 	{
+		assert(len >= 2);
+		port = GET_UINT_16(data);
+		data += 2;
+		len -= 2;
+
 		assert(len >= 4);
 		ip_addr_set((ip_addr_t *)&addr, (ip_addr_t *)data);
 		data += 4;
 		len -= 4;
+		debug("%s(port=0x%04x, addr=0x%x\n", __FUNCTION__, port, addr.addr);
 	}
 
 	term_t ret = send_udp_packet(ol, &addr, port, data, len);
-	if (ret == A_OK)
-		inet_reply(ol->oid, reply_to, A_OK);
-	else
-		inet_reply_error(ol->oid, reply_to, ret);
 
+	(ret == A_OK ? inet_reply : inet_reply_error)(ol->oid, reply_to, ret);
 	return 0;
 }
 
@@ -879,8 +922,12 @@ static void uv_on_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 	if (flags & UV_UDP_PARTIAL) {
 		debug("%s: buffer trunkated\n");
 	}
-	debug("%s(nread=%d, addr=0x%x\n", __FUNCTION__,
-	      nread, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
+
+	if (addr->sa_family == AF_INET)
+	{
+		debug("%s(nread=%d, addr=0x%x\n", __FUNCTION__,
+		  nread, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
+	}
 
 	uv_buf_t data = { .base = buf->base, .len = nread };
 
