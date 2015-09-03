@@ -36,6 +36,9 @@
 # define IPV6_DROP_MEMBERSHIP IPV6_LEAVE_GROUP
 #endif
 
+#if __linux__
+# include <linux/if_packet.h>
+#endif
 
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
@@ -224,10 +227,15 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
 
     memset(&h, 0, sizeof h);
     h.msg_name = &req->addr;
-    h.msg_namelen = (req->addr.ss_family == AF_INET6 ?
-      sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
     h.msg_iov = (struct iovec*) req->bufs;
     h.msg_iovlen = req->nbufs;
+    switch (req->addr.ss_family) {
+      case AF_INET:   h.msg_namelen = sizeof(struct sockaddr_in); break;
+      case AF_INET6:  h.msg_namelen = sizeof(struct sockaddr_in6); break;
+#if __linux__
+      case AF_PACKET: h.msg_namelen = sizeof(struct sockaddr_ll); break;
+#endif
+    }
 
     do {
       size = sendmsg(handle->io_watcher.fd, &h, 0);

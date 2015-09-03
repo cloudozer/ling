@@ -291,6 +291,10 @@ int uv_udp_send(uv_udp_send_t* req,
     addrlen = sizeof(struct sockaddr_in);
   else if (addr->sa_family == AF_INET6)
     addrlen = sizeof(struct sockaddr_in6);
+#if __linux__
+  else if (addr->sa_family == AF_PACKET)
+    addrlen = sizeof(struct sockaddr_ll);
+#endif
   else
     return UV_EINVAL;
 
@@ -311,6 +315,10 @@ int uv_udp_try_send(uv_udp_t* handle,
     addrlen = sizeof(struct sockaddr_in);
   else if (addr->sa_family == AF_INET6)
     addrlen = sizeof(struct sockaddr_in6);
+#if __linux__
+  else if (addr->sa_family == AF_PACKET)
+    addrlen = sizeof(struct sockaddr_ll);
+#endif
   else
     return UV_EINVAL;
 
