@@ -1,7 +1,40 @@
+%% Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
+%% 
+%% Redistribution and use in source and binary forms, with or without
+%% modification, are permitted provided that the following conditions are met:
+%% 
+%% * Redistributions of source code must retain the above copyright notice, this
+%% list of conditions and the following disclaimer.
+%% 
+%% * Redistributions in binary form must reproduce the above copyright notice,
+%% this list of conditions and the following disclaimer in the documentation
+%% and/or other materials provided with the distribution.
+%% 
+%% * Redistributions in any form must be accompanied by information on how to
+%% obtain complete source code for the LING software and any accompanying
+%% software that uses the LING software. The source code must either be included
+%% in the distribution or be available for no more than the cost of distribution
+%% plus a nominal fee, and must be freely redistributable under reasonable
+%% conditions.  For an executable file, complete source code means the source
+%% code for all modules it contains. It does not include source code for modules
+%% or files that typically accompany the major components of the operating
+%% system on which the executable file runs.
+%% 
+%% THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
+%% IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
+%% DISCLAIMED. IN NO EVENT SHALL CLOUDOZER LLP BE LIABLE FOR ANY DIRECT,
+%% INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%% (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%% LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%% ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%% (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 -module(strawman).
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
--export([short_straw/2,short_straw/4]).
+-export([short_straw/3,short_straw/5]).
 
 -include("xenstore.hrl").
 
@@ -118,7 +151,8 @@ do_open(Domid, WartsDir, StrawDir, #sm{straws =Straws} =St) ->
 			lists:map(fun(N) -> {ok,Ref} = xenstore:read_integer(lc([StrawDir,"/ring-ref-",N])),
 								Ref end, lists:seq(1, ?NUM_STRAW_REFS)),
 			{ok,Channel} = xenstore:read_integer(lc(StrawDir, "/event-channel")),
-			StrawProc = spawn_link(?MODULE, short_straw, [self(),Domid,Refs,Channel]),
+      Format = select_format(StrawDir, WartsDir),
+			StrawProc = spawn_link(?MODULE, short_straw, [self(),Domid,Refs,Channel,Format]),
 			receive {ready,StrawProc} -> ok end,
 			ok = xenstore:write(lc(WartsDir, "/state"), ?STATE_CONNECTED),
 			case xenstore:wait(StrawState, ?STATE_CONNECTED) of
@@ -143,7 +177,8 @@ knock_knock(Domid, WartsDir, StrawDir, #sm{straws =Straws} =St) ->
 			ok = xenstore:unwatch(WartsState),
 			{noreply,St};
 		ok ->
-			StrawProc = spawn_link(?MODULE, short_straw, [self(),Domid]),
+      Format = select_format(StrawDir, WartsDir),
+			StrawProc = spawn_link(?MODULE, short_straw, [self(),Domid,Format]),
 			receive {ready,StrawProc,Refs,Channel} -> ok end,
 			{ok,Tid} = xenstore:transaction(),
 			lists:foreach(fun({N,Ref}) -> ok = xenstore:write(lc([StrawDir,"/ring-ref-",N]), Ref, Tid) end,
@@ -204,64 +239,104 @@ close_straws([{Mode,Domid,StrawProc,StatePath,DataDir}|Straws]) ->
 	io:format("strawman: connection to domain ~w closed\n", [Domid]),
 	close_straws(Straws).
 
-short_straw(ReplyTo, Domid, Refs, Channel) ->
+short_straw(ReplyTo, Domid, Refs, Channel, Format) ->
 	Pore = pore_straw:open(Domid, Refs, Channel),
 	ReplyTo ! {ready,self()},
-	looper(Pore).
+	looper(Pore, Format).
 
-short_straw(ReplyTo, Domid) ->
+short_straw(ReplyTo, Domid, Format) ->
 	Pore = pore_straw:open(Domid),
 	{Refs,Channel} = pore_straw:info(Pore),
 	ReplyTo ! {ready,self(),Refs,Channel},
-	looper(Pore).
+	looper(Pore, Format).
 
-looper(Pore) ->
+looper(Pore, Format) ->
 	{IA,OA} = pore_straw:avail(Pore),
-	looper(Pore, IA, OA, undefined, [], 0, [], 0).
+	looper(Pore, IA, OA, undefined, [], 0, [], 0, Format).
 
-looper(Pore, _IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when OutSz > 0, OA > 0 ->
+looper(Pore, _IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt) when OutSz > 0, OA > 0 ->
 	{Chip,OutBuf1,OutSz1} = chip(OA, OutBuf, OutSz),
 	ok = pore_straw:write(Pore, Chip),
 	true = pore:poke(Pore),
 	{IA1,OA1} = pore_straw:avail(Pore),
-	looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf1, OutSz1);
+	looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf1, OutSz1, Fmt);
 
-looper(Pore, IA, OA, undefined, InBuf, InSz, OutBuf, OutSz) when InSz >= 4 ->
+looper(Pore, IA, OA, undefined, InBuf, InSz, OutBuf, OutSz, Fmt) when InSz >= 4 ->
 	{<<ExpSz:32>>,InBuf1,InSz1} = chip(4, InBuf, InSz),
-	looper(Pore, IA, OA, ExpSz, InBuf1, InSz1, OutBuf, OutSz);
+	looper(Pore, IA, OA, ExpSz, InBuf1, InSz1, OutBuf, OutSz, Fmt);
 
-looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when ExpSz =/= undefined, InSz >= ExpSz ->
+looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt) when ExpSz =/= undefined, InSz >= ExpSz ->
 	{Chip,InBuf1,InSz1} = chip(ExpSz, InBuf, InSz),
-	deliver(binary_to_term(Chip)),
-	looper(Pore, IA, OA, undefined, InBuf1, InSz1, OutBuf, OutSz);
+	deliver(Chip, Fmt),
+	looper(Pore, IA, OA, undefined, InBuf1, InSz1, OutBuf, OutSz, Fmt);
 
-looper(Pore, IA, _OA, ExpSz, InBuf, InSz, OutBuf, OutSz) when IA > 0 ->
+looper(Pore, IA, _OA, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt) when IA > 0 ->
 	Data = pore_straw:read(Pore),
 	true = pore:poke(Pore),
 	{IA1,OA1} = pore_straw:avail(Pore),
-	looper(Pore, IA1, OA1, ExpSz, [InBuf,Data], InSz+iolist_size(Data), OutBuf, OutSz);
+	looper(Pore, IA1, OA1, ExpSz, [InBuf,Data], InSz+iolist_size(Data), OutBuf, OutSz, Fmt);
 
-looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz) ->
+looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt) ->
 	receive
-	{envelope,_,_} =Envelope ->
-		EnvBin = term_to_binary(Envelope),
+    {envelope,_,_} =Envelope when Fmt =:= erlang ->
+      EnvBin = term_to_binary(Envelope),
+      looper_s(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt, EnvBin);
+
+    {envelope,Addressee,Message} when Fmt =:= json, is_atom(Addressee) ->
+      try
+        Json = [{<<"addr">>,to_bin(Addressee)},
+                {<<"msg">>,Message}],
+        EnvBin = jsx:encode(Json),
+        looper_s(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt, EnvBin)
+      catch _:_ ->
+        io:format("strawman: malformed JSON: ~s\n", [Message]),
+        looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt) end;
+      
+    {irq,Pore} ->
+      {IA1,OA1} = pore_straw:avail(Pore),
+      looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt) end.
+
+looper_s(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf, OutSz, Fmt, EnvBin) ->
 		Sz = byte_size(EnvBin),
 		OutBuf1 = [OutBuf,<<Sz:32>>,EnvBin],
 		OutSz1 = OutSz + 4 + Sz,
-		looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf1, OutSz1);
-		
-	{irq,Pore} ->
-		{IA1,OA1} = pore_straw:avail(Pore),
-		looper(Pore, IA1, OA1, ExpSz, InBuf, InSz, OutBuf, OutSz) end.
+		looper(Pore, IA, OA, ExpSz, InBuf, InSz, OutBuf1, OutSz1, Fmt).
 
-deliver({envelope,Addressee,Message}) ->
-	Addressee ! Message.
+select_format(Dir1, Dir2) ->
+  select_format1(fmt(Dir1), fmt(Dir2)).
+
+select_format1(erlang, erlang) -> erlang;
+select_format1(_, _) -> json.
+
+fmt(Dir) ->
+  case xenstore:read(lc(Dir, "/format")) of
+    {ok,Fmt}  -> list_to_atom(Fmt);
+    {error,_} -> erlang end.
+
+deliver(Bin, erlang) ->
+    try
+      {envelope,Addressee,Message} = binary_to_term(Bin),
+      Addressee ! Message
+    catch _:_ ->
+      io:format("strawman: bad message: ~p\n", [Bin]) end;
+
+deliver(Bin, json) ->
+    try
+        Json = jsx:decode(Bin),
+        {_,AddrBin} = lists:keyfind(<<"addr">>, 1, Json),
+        {_,Message} = lists:keyfind(<<"msg">>, 1, Json),
+        Addressee = list_to_atom(binary_to_list(AddrBin)),
+        Addressee ! {json,Message}
+    catch _:_ ->
+        io:format("strawman: malformed JSON message: ~s\n", [Bin]) end.
 
 chip(N, Buf, Sz) when Sz =< N -> {iolist_to_binary(Buf),[],0};
 chip(N, Buf, Sz) when is_binary(Buf) ->
 	<<Chip:(N)/binary,Buf1/binary>> =Buf,
 	{Chip,Buf1,Sz-N};
 chip(N, Buf, Sz) -> chip(N, iolist_to_binary(Buf), Sz).
+
+to_bin(Atom) -> list_to_binary(atom_to_list(Atom)).
 
 lc(X) -> lists:concat(X).
 lc(X, Y) -> lists:concat([X,Y]).
