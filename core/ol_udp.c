@@ -111,7 +111,7 @@ send_udp_packet(outlet_t *ol, ip_addr_t *ipaddr, uint16_t port, void *data, uint
 		saddr.sa.sa_family = AF_INET;
 		saddr.ipv4.sin_port = htons(port);
 		saddr.ipv4.sin_addr.s_addr = ipaddr->addr;
-		debug("%s(ipv4=0x%x, ipport=0x%x)\n", __FUNCTION__, saddr.sin_addr.s_addr, port);
+		debug("%s(ipv4=0x%x, ipport=0x%x)\n", __FUNCTION__, ipaddr->addr, port);
 		break;
 
 #if PACKET_CAPTURE_ENABLED
