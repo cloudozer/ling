@@ -233,7 +233,7 @@ close_straws([]) -> ok;
 close_straws([{Mode,Domid,StrawProc,StatePath,DataDir}|Straws]) ->
 	if Mode =:= active ->
 		ok = xenstore:delete(DataDir),
-		xenstore:watch(StatePath, ?STATE_CLOSED);
+		xenstore:wait(StatePath, ?STATE_CLOSED);
 			true -> ok end,
 	exit(StrawProc, shutdown),
 	io:format("strawman: connection to domain ~w closed\n", [Domid]),

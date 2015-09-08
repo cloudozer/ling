@@ -9,6 +9,44 @@ latex input:            mmd-article-begin-doc
 
 # Overview
 
+Two drivers strawman and xenstore. Strawman uses xenstore.
+
+Both drivers use shared pages and an event channel.
+
+The combination of a set of shared pages and an event channel abstracted out as a 'pore'.
+
+An event channel is a Xen primitive.
+
+There is a hypercall to 'bind' an event channel. The event is signalled as a bit in the shared info
+page.
+
+It is possible to sleep until an event channel is signalled.
+
+Xenstore driver have its shared page and event channel appear magically. Strawman uses xenstore
+driver to communicate the shared pages and event channel between backend and frontends.
+
+The xenstore driver has only the frontend. Its backend leaves in Dom0.
+
+[Consider strawman only and treat xenstore as a Xen primitive?]
+
+# Event channel
+
+The event is only a bit flip. The event deliver requires either an interrrupt or an ability to wait
+for an event.
+
+Interrupts are bad because everything is in unknown state during interrupt. The interrupt handler
+cannot do much. The ability to wait for event means that we may have suspended execution contexts
+(green threads). In addition we need a uniform way to wait for all events and react to events
+selectively. Do we want to react to a conjunction of events?
+
+# Strawman architecture
+
+A process that listens on xenstore and maintains a list of straws.
+
+TODO
+
+# Appendix
+
 ```
      1	-module(strawman).
      2	-behaviour(gen_server).
@@ -212,7 +250,7 @@ latex input:            mmd-article-begin-doc
    200	close_straws([{Mode,Domid,StrawProc,StatePath,DataDir}|Straws]) ->
    201		if Mode =:= active ->
    202			ok = xenstore:delete(DataDir),
-   203			xenstore:watch(StatePath, ?STATE_CLOSED);
+   203			xenstore:wait(StatePath, ?STATE_CLOSED);
    204				true -> ok end,
    205		exit(StrawProc, shutdown),
    206		io:format("strawman: connection to domain ~w closed\n", [Domid]),
@@ -322,241 +360,443 @@ latex input:            mmd-article-begin-doc
 ```
 
 ```
-     1	-module(xenstore).
-     2	-define(SERVER, ?MODULE).
-     3	
-     4	-include("xenstore.hrl").
-     5	
-     6	%% ------------------------------------------------------------------
-     7	%% API Function Exports
-     8	%% ------------------------------------------------------------------
-     9	
-    10	-export([start_link/0]).
-    11	-export([read/1,read_integer/1,write/2,write/3,mkdir/1,mkdir/2,delete/1,delete/2,list/1]).
-    12	-export([get_perms/1,set_perms/2,set_perms/3,watch/1,unwatch/1]).
-    13	-export([transaction/0,commit/1,rollback/1]).
-    14	-export([domid/0]).
-    15	-export([wait/2]).
-    16	
-    17	%% ------------------------------------------------------------------
-    18	%% API Function Definitions
-    19	%% ------------------------------------------------------------------
-    20	
-    21	start_link() ->
-    22		Pid = spawn_link(fun() -> XS = pore_xs:open(),
-    23								  looper(XS) end),
-    24		
-    25		spawn(fun() -> link(Pid),
-    26					   process_flag(trap_exit, true),
-    27					   receive X -> io:format("MONITOR: ~p\n", [X]) end end),
-    28	
-    29		register(?SERVER, Pid),
-    30		{ok,Pid}.
-    31	
-    32	read(Key) when is_list(Key) ->
-    33		call({self(),?XS_READ,Key,0});
-    34	read(_) -> {error,badarg}.
-    35	
-    36	read_integer(Key) ->
-    37		case read(Key) of {ok,S} -> try {ok,list_to_integer(S)}
-    38								    catch _:_ -> {error,not_integer} end;
-    39						  Error  -> Error end.
-    40	
-    41	write(Key, Value) -> write(Key, Value, 0).
-    42	write(Key, Value, Tid) when is_integer(Value) ->
-    43		write(Key, integer_to_list(Value), Tid);
-    44	write(Key, Value, Tid) when is_list(Key), is_list(Value), is_integer(Tid) ->
-    45		call({self(),?XS_WRITE,[Key,Value],Tid});
-    46	write(_, _, _) -> {error,badarg}.
+     1	#include "bif_impl.h"
+     2	
+     3	#define MAX_PORE_DATA	2048
+     4	
+     5	term_t cbif_pore_xs_open0(proc_t *proc, term_t *regs)
+     6	{
+     7		pore_xs_t *xp = (pore_xs_t *)pore_make_N(A_XENSTORE,
+     8				sizeof(pore_xs_t), proc->pid, 0, start_info.store_evtchn);
+     9		if (xp == 0)
+    10			fail(A_NO_MEMORY);
+    11		xp->intf = mfn_to_virt(start_info.store_mfn);
+    12		return xp->parent.eid;
+    13	}
+    14	
+    15	term_t cbif_pore_xs_write2(proc_t *proc, term_t *regs)
+    16	{
+    17		term_t Pore = regs[0];
+    18		term_t Data = regs[1];
+    19		if (!is_short_eid(Pore))
+    20			badarg(Pore);
+    21		if (!is_list(Data) && !is_boxed_binary(Data))
+    22			badarg(Data);
+    23		pore_t *pr = pore_lookup(Pore);
+    24		if (pr == 0 || pr->tag != A_XENSTORE)
+    25			badarg(Pore);
+    26	
+    27		int64_t size = iolist_size(Data);
+    28		if (size < 0)
+    29			badarg(Data);
+    30		uint8_t buf[size];
+    31		iolist_flatten(Data, buf);
+    32	
+    33		pore_xs_t *xp = (pore_xs_t *)pr;
+    34		struct xenstore_domain_interface *intf = xp->intf;
+    35		uint32_t cons = intf->req_cons;
+    36		uint32_t prod = intf->req_prod;
+    37		assert(prod +size -cons <= XENSTORE_RING_SIZE); 
+    38		mb();
+    39		uint8_t *pd = buf;
+    40		for (uint32_t i = prod; i < prod +size; i++)
+    41			intf->req[MASK_XENSTORE_IDX(i)] = *pd++;
+    42		wmb();
+    43		intf->req_prod += size;
+    44	
+    45		return A_OK;
+    46	}
     47	
-    48	mkdir(Path) -> mkdir(Path, 0).
-    49	mkdir(Path, Tid) when is_list(Path), is_integer(Tid) ->
-    50		call({self(),?XS_MKDIR,Path,Tid});
-    51	mkdir(_, _) -> {error,badarg}.
-    52	
-    53	delete(Path) -> delete(Path, 0).
-    54	delete(Path, Tid) when is_list(Path), is_integer(Tid) ->
-    55		call({self(),?XS_RM,Path,Tid});
-    56	delete(_, _) -> {error,badarg}.
-    57	
-    58	list(Path) when is_list(Path) ->
-    59		call({self(),?XS_DIRECTORY,Path,0});
-    60	list(_) -> {error,badarg}.
-    61	
-    62	get_perms(Path) when is_list(Path) ->
-    63		call({self(),?XS_GET_PERMS,Path,0});
-    64	get_perms(_) -> {error,badarg}.
-    65	
-    66	set_perms(Path, Perms) -> set_perms(Path, Perms, 0).
-    67	set_perms(Path, [X|_] =Perms, Tid) when is_list(Path), is_list(Perms),
-    68											is_list(X), is_integer(Tid) ->
-    69		call({self(),?XS_SET_PERMS,[Path|Perms],Tid});
-    70	set_perms(_, _, _) -> {error,badarg}.
-    71	
-    72	watch(Path) when is_list(Path) ->
-    73		call({self(),?XS_WATCH,[Path,token()],0});
-    74	watch(_) -> {error,badarg}.
-    75	
-    76	unwatch(Path) when is_list(Path) ->
-    77		{ok,Tokens} = call({self(),unwatch,Path}),
-    78		lists:foreach(fun(Token) -> call({self(),?XS_UNWATCH,[Path,Token],0}) end, Tokens);
-    79	unwatch(_) -> {error,badarg}.
-    80	
-    81	transaction() ->
-    82		call({self(),?XS_TRANSACTION_START,[],0}).
-    83	
-    84	commit(Tid) when is_integer(Tid) ->
-    85		call({self(),?XS_TRANSACTION_END,"T",Tid});
-    86	commit(_) -> {error,badarg}.
-    87	
-    88	rollback(Tid) when is_integer(Tid) ->
-    89		call({self(),?XS_TRANSACTION_END,"F",Tid});
-    90	rollback(_) -> {error,badarg}.
-    91	
-    92	domid() ->
-    93		{ok,Value} = xenstore:read("domid"),
-    94		list_to_integer(Value).
-    95	
-    96	%% The caller must watch() the Path before calling wait().
-    97	wait(Path, Target) ->
-    98		receive {watch,Path} ->
-    99			case xenstore:read(Path) of
-   100				{error,enoent} -> wait(Path, Target);		%% ignore
-   101				{ok,Target}	   -> ok;
-   102				{ok,_}		   -> wait(Path, Target);
-   103				{error,_} =Err -> Err end end.
-   104	
-   105	call(Msg) ->
-   106		case whereis(?SERVER) of
-   107			undefined -> {error,not_started};
-   108			Pid -> Pid ! Msg,
-   109				   receive ok =X		-> X;
-   110						   {ok,_} =X	-> X;
-   111						   {error,_} =X -> X end end.
-   112	
-   113	%% ------------------------------------------------------------------
-   114	
-   115	looper(XS) -> looper(XS, ?XS_RING_SIZE, 0, undefined, [], 0, [], 0, undefined, [], {[],1}, []).
-   116	
-   117	looper(XS, QA, _RA, ExpSz, InBuf, InSz, OutBuf, OutSz, HH, Calls, RR, Ws) when OutSz > 0, QA > 0 ->
-   118		{Chip,OutBuf1,OutSz1} = chip(QA, OutBuf, OutSz),
-   119		ok = pore_xs:write(XS, Chip),
-   120		true = pore:poke(XS),
-   121		{QA1,RA1} = pore_xs:avail(XS),
-   122		looper(XS, QA1, RA1, ExpSz, InBuf, InSz, OutBuf1, OutSz1, HH, Calls, RR, Ws);
-   123	
-   124	looper(XS, QA, RA, undefined, InBuf, InSz, OutBuf, OutSz, undefined, Calls, RR, Ws) when InSz >= 16 ->
-   125		{<<Op:32/little,
-   126		   Rid:32/little,
-   127		   Tid:32/little,
-   128		   ExpSz:32/little>>,InBuf1,InSz1} = chip(16, InBuf, InSz),
-   129		looper(XS, QA, RA, ExpSz, InBuf1, InSz1, OutBuf, OutSz, {Op,Rid,Tid}, Calls, RR, Ws);
+    48	term_t cbif_pore_xs_read1(proc_t *proc, term_t *regs)
+    49	{
+    50		term_t Pore = regs[0];
+    51		if (!is_short_eid(Pore))
+    52			badarg(Pore);
+    53		pore_t *pr = pore_lookup(Pore);
+    54		if (pr == 0 || pr->tag != A_XENSTORE)
+    55			badarg(Pore);
+    56	
+    57		pore_xs_t *xp = (pore_xs_t *)pr;
+    58		struct xenstore_domain_interface *intf = xp->intf;
+    59		uint32_t cons = intf->rsp_cons;
+    60		uint32_t prod = intf->rsp_prod;
+    61		uint32_t avail = prod - cons;
+    62		assert(avail > 0);
+    63		rmb();
+    64		uint8_t *ptr;
+    65		term_t bin = heap_make_bin(&proc->hp, avail, &ptr);
+    66		for (uint32_t i = cons; i < prod; i++)
+    67			*ptr++ = intf->rsp[MASK_XENSTORE_IDX(i)];
+    68		mb();
+    69		intf->rsp_cons += avail;
+    70	
+    71		return bin;
+    72	}
+    73	
+    74	term_t cbif_pore_xs_avail1(proc_t *proc, term_t *regs)
+    75	{
+    76		term_t Pore = regs[0];
+    77		if (!is_short_eid(Pore))
+    78			badarg(Pore);
+    79		pore_t *pr = pore_lookup(Pore);
+    80		if (pr == 0 || pr->tag != A_XENSTORE)
+    81			badarg(Pore);
+    82	
+    83		pore_xs_t *xp = (pore_xs_t *)pr;
+    84		struct xenstore_domain_interface *intf = xp->intf;
+    85		int qa = XENSTORE_RING_SIZE -intf->req_prod +intf->req_cons;
+    86		int ra = intf->rsp_prod -intf->rsp_cons;
+    87		
+    88		return heap_tuple2(&proc->hp, tag_int(qa), tag_int(ra));
+    89	}
+    90	
+    91	static void straw_destroy(pore_t *pore)
+    92	{
+    93		assert(pore->tag == A_STRAW);
+    94		pore_straw_t *ps = (pore_straw_t *)pore;
+    95		if (ps->active)
+    96			for (int i = 0; i < NUM_STRAW_REFS; i++)
+    97				grants_end_access(ps->ring_refs[i]);
+    98		else
+    99			ms_unmap_pages(ps->shared, NUM_STRAW_REFS, ps->map_handles);
+   100	}
+   101	
+   102	term_t cbif_pore_straw_open1(proc_t *proc, term_t *regs)
+   103	{
+   104		term_t Domid = regs[0];
+   105		if (!is_int(Domid))
+   106			badarg(Domid);
+   107		int peer = int_value(Domid);
+   108	
+   109		uint32_t evtchn = event_alloc_unbound(peer);
+   110		assert(sizeof(straw_ring_t) == NUM_STRAW_REFS*PAGE_SIZE);
+   111		int size = (NUM_STRAW_REFS+1)*PAGE_SIZE -sizeof(memnode_t);
+   112		pore_straw_t *ps = (pore_straw_t *)pore_make_N(A_STRAW, size, proc->pid, straw_destroy, evtchn);
+   113		if (ps == 0)
+   114			fail(A_NO_MEMORY);
+   115	
+   116		straw_ring_t *ring = (straw_ring_t *)((uint8_t *)ps -sizeof(memnode_t) +PAGE_SIZE);
+   117		assert(((uintptr_t)ring & (PAGE_SIZE-1)) == 0); // page-aligned
+   118		ps->shared = ring;
+   119		ps->active = 1;
+   120		// all other fields are zero
+   121	
+   122		for (int i = 0; i < NUM_STRAW_REFS; i++)
+   123		{
+   124			void *page = (void *)ps->shared + PAGE_SIZE*i;
+   125			grants_allow_access(&ps->ring_refs[i], peer, virt_to_mfn(page));
+   126		}
+   127	
+   128		return ps->parent.eid;	
+   129	}
    130	
-   131	looper(XS, QA, RA, ExpSz, InBuf, InSz, OutBuf, OutSz, {Op,Rid,_} =HH, Calls, RR, Ws)
-   132											when ExpSz =/= undefined, InSz >= ExpSz ->
-   133		{Chip,InBuf1,InSz1} = chip(ExpSz, InBuf, InSz),
-   134		RR1 = rrid(Rid, RR),
-   135		%% Chip always ends with zero
-   136		Resp = unpack(op_tag(Op), binary_to_list(chomp(Chip))),
-   137		looper1(Resp, XS, QA, RA, InBuf1, InSz1, OutBuf, OutSz, HH, Calls, RR1, Ws);
-   138	
-   139	looper(XS, _QA, RA, ExpSz, InBuf, InSz, OutBuf, OutSz, HH, Calls, RR, Ws) when RA > 0 ->
-   140		Data = pore_xs:read(XS),
-   141		true = pore:poke(XS),
-   142		{QA1,RA1} = pore_xs:avail(XS),
-   143		looper(XS, QA1, RA1, ExpSz, [InBuf,Data], InSz + iolist_size(Data), OutBuf, OutSz, HH, Calls, RR, Ws);
-   144	
-   145	looper(XS, QA, RA, ExpSz, InBuf, InSz, OutBuf, OutSz, HH, Calls, RR, Ws) ->
-   146		receive
-   147		{From,Op,PL,Tid} ->
-   148			{Rid,RR1} = rid(RR),
-   149			Trailer = trailer(Op, PL),
-   150			TSz = iolist_size(Trailer),
-   151			SockMsg = <<Op:32/little,Rid:32/little,Tid:32/little,TSz:32/little>>,
-   152			OutBuf1 = [OutBuf,SockMsg,Trailer],
-   153			OutSz1 = OutSz + 16 + TSz,
-   154			Calls1 = [{From,Rid,PL}|Calls],
-   155			looper(XS, QA, RA, ExpSz, InBuf, InSz, OutBuf1, OutSz1, HH, Calls1, RR1, Ws);
+   131	term_t cbif_pore_straw_open3(proc_t *proc, term_t *regs)
+   132	{
+   133		term_t Domid = regs[0];
+   134		term_t Refs = regs[1];
+   135		term_t Channel = regs[2];
+   136		if (!is_int(Domid))
+   137			badarg(Domid);
+   138		int peer_domid = int_value(Domid);
+   139		if (!is_int(Channel))
+   140			badarg(Channel);
+   141		int peer_port = int_value(Channel);
+   142		term_t l = Refs;
+   143		uint32_t refs[NUM_STRAW_REFS];
+   144		for (int i = 0; i < NUM_STRAW_REFS; i++)
+   145		{
+   146			if (!is_cons(l))
+   147				badarg(Refs);
+   148			term_t *cons = peel_cons(l);
+   149			if (!is_int(cons[0]))
+   150				badarg(Refs);
+   151			refs[i] = int_value(cons[0]);
+   152			l = cons[1];
+   153		}
+   154		if (l != nil)
+   155			badarg(Refs);
    156	
-   157		{From,unwatch,Path} ->
-   158			{Ws1,Ws2} =
-   159			lists:partition(fun({_,Path1,From1}) -> From1 =:= From andalso
-   160													Path1 =:= Path end, Ws),
-   161			Tokens = [ Token || {Token,_,_} <- Ws1 ],
-   162			From ! {ok,Tokens},
-   163			looper(XS, QA, RA, ExpSz, InBuf, InSz, OutBuf, OutSz, HH, Calls, RR, Ws2);
+   157		uint32_t evtchn = event_bind_interdomain(peer_domid, peer_port);
+   158	
+   159		assert(sizeof(straw_ring_t) == NUM_STRAW_REFS*PAGE_SIZE);
+   160		pore_straw_t *ps = (pore_straw_t *)pore_make_N(A_STRAW,
+   161				sizeof(pore_straw_t), proc->pid, straw_destroy, evtchn);
+   162		if (ps == 0)
+   163			fail(A_NO_MEMORY);
    164	
-   165		{irq,XS} ->
-   166			{QA1,RA1} = pore_xs:avail(XS),
-   167			looper(XS, QA1, RA1, ExpSz, InBuf, InSz, OutBuf, OutSz, HH, Calls, RR, Ws) end.
-   168	
-   169	looper1({ok,[Path,Token]}, XS, QA, RA, InBuf, InSz, OutBuf, OutSz, {?XS_WATCH_EVENT,_,_}, Calls, RR, Ws) ->
-   170		case lists:keyfind(Token, 1, Ws) of
-   171			{_,_,From} -> From ! {watch,Path}; _ -> ok end,
-   172		looper(XS, QA, RA, undefined, InBuf, InSz, OutBuf, OutSz, undefined, Calls, RR, Ws);
-   173	
-   174	looper1(ok, XS, QA, RA, InBuf, InSz, OutBuf, OutSz, {?XS_WATCH,Rid,_}, Calls, RR, Ws) ->
-   175		{value,{From,_,[Path,Token]},Calls1} = lists:keytake(Rid, 2, Calls),
-   176		From ! ok,
-   177		Ws1 = [{Token,Path,From}|Ws],
-   178		looper(XS, QA, RA, undefined, InBuf, InSz, OutBuf, OutSz, undefined, Calls1, RR, Ws1);
-   179	
-   180	looper1(Resp, XS, QA, RA, InBuf, InSz, OutBuf, OutSz, {_,Rid,_}, Calls, RR, Ws) ->
-   181		{value,{From,_,_},Calls1} = lists:keytake(Rid, 2, Calls),
-   182		From ! Resp,
-   183		looper(XS, QA, RA, undefined, InBuf, InSz, OutBuf, OutSz, undefined, Calls1, RR, Ws).
-   184	
-   185	chip(N, Buf, Sz) when Sz =< N -> {iolist_to_binary(Buf),[],0};
-   186	chip(N, Buf, Sz) when is_binary(Buf) ->
-   187		<<Chip:(N)/binary,Buf1/binary>> =Buf,
-   188		{Chip,Buf1,Sz-N};
-   189	chip(N, Buf, Sz) -> chip(N, iolist_to_binary(Buf), Sz).
-   190	
-   191	op_tag(?XS_ERROR)	  -> error;
-   192	op_tag(?XS_READ)	  -> read;
-   193	op_tag(?XS_WRITE)	  -> write;
-   194	op_tag(?XS_MKDIR)	  -> mkdir;
-   195	op_tag(?XS_RM)		  -> rm;
-   196	op_tag(?XS_DIRECTORY) -> directory;
-   197	op_tag(?XS_GET_PERMS) -> get_perms;
-   198	op_tag(?XS_SET_PERMS) -> set_perms;
-   199	op_tag(?XS_WATCH)	  -> watch;
-   200	op_tag(?XS_UNWATCH)	  -> unwatch;
-   201	op_tag(?XS_WATCH_EVENT) 	  -> watch_event;
-   202	op_tag(?XS_TRANSACTION_START) -> transaction_start;
-   203	op_tag(?XS_TRANSACTION_END)   -> transaction_end.
-   204	
-   205	trailer(?XS_WRITE, [P,V]) ->
-   206		list_to_binary([P,0,V]);	 %% XS_WRITE is special
-   207	trailer(_, [V|_] = PL) when is_list(V) ->
-   208		list_to_binary([ [X,0] || X <- PL ]);
-   209	trailer(_, V) ->
-   210		list_to_binary([V,0]).
-   211	
-   212	unpack(error, What) ->
-   213		{error,list_to_atom(string:to_lower(What))};
-   214	unpack(transaction_start, What) ->
-   215		{ok,list_to_integer(What)};
-   216	unpack(directory, What) ->
-   217		{ok,string:tokens(What, [0])};
-   218	unpack(_Tag, "OK") -> ok;
-   219	unpack(_Tag, What) ->
-   220		case lists:member(0, What) of
-   221			false -> {ok,What};
-   222			true  -> {ok,string:tokens(What, [0])} end.
-   223	
-   224	rid({[],NR}) -> {NR,{[],NR+1}};
-   225	rid({[Rid|Rids],NR}) -> {Rid,{Rids,NR}}.
-   226	
-   227	rrid(Rid, {Rids,NR}) -> {[Rid|Rids],NR}.
-   228	
-   229	token() ->
-   230		<<A,B,C,D,E,F,G,H>> = crypto:rand_bytes(8),
-   231		lists:flatten(io_lib:format("~.16b~.16b~.16b~.16b~.16b~.16b~.16b~.16b", [A,B,C,D,E,F,G,H])).
-   232	
-   233	chomp(Bin) ->
-   234		case binary:last(Bin) of
-   235			0 -> binary:part(Bin, 0, byte_size(Bin)-1);
-   236			_ -> Bin end.
-   237	
+   165		for (int i = 0; i < NUM_STRAW_REFS; i++)
+   166			ps->ring_refs[i] = refs[i];
+   167	
+   168		ps->shared = (straw_ring_t *)ms_map_pages(ps->ring_refs,
+   169						NUM_STRAW_REFS, peer_domid, ps->map_handles);
+   170		// all other fields are zero
+   171	
+   172		return ps->parent.eid;
+   173	}
+   174	
+   175	term_t cbif_pore_straw_write2(proc_t *proc, term_t *regs)
+   176	{
+   177		term_t Pore = regs[0];
+   178		term_t Data = regs[1];
+   179		if (!is_short_eid(Pore))
+   180			badarg(Pore);
+   181		if (!is_list(Data) && !is_boxed_binary(Data))
+   182			badarg(Data);
+   183		pore_t *pr = pore_lookup(Pore);
+   184		if (pr == 0 || pr->tag != A_STRAW)
+   185			badarg(Pore);
+   186	
+   187		int64_t size = iolist_size(Data);
+   188		if (size < 0)
+   189			badarg(Data);
+   190		uint8_t buf[size];
+   191		iolist_flatten(Data, buf);
+   192	
+   193		pore_straw_t *ps = (pore_straw_t *)pr;
+   194		straw_ring_t *ring = ps->shared;
+   195		int prod = (ps->active) ?ring->out_prod :ring->in_prod;
+   196		int cons = (ps->active) ?ring->out_cons :ring->in_cons;
+   197		mb();
+   198		uint8_t *ptr = buf;
+   199		uint8_t *buffer = (ps->active) ?ring->output :ring->input;
+   200		while (size-- > 0)
+   201		{
+   202			buffer[prod++] = *ptr++;
+   203			if (prod == STRAW_RING_SIZE)
+   204				prod = 0;
+   205			assert(prod != cons);	// too long - avoid crash?
+   206		}
+   207		wmb();
+   208		if (ps->active)
+   209			ring->out_prod = prod;
+   210		else
+   211			ring->in_prod = prod;
+   212	
+   213		return A_OK;
+   214	}
+   215	
+   216	term_t cbif_pore_straw_read1(proc_t *proc, term_t *regs)
+   217	{
+   218		term_t Pore = regs[0];
+   219		if (!is_short_eid(Pore))
+   220			badarg(Pore);
+   221		pore_t *pr = pore_lookup(Pore);
+   222		if (pr == 0 || pr->tag != A_STRAW)
+   223			badarg(Pore);
+   224	
+   225		pore_straw_t *ps = (pore_straw_t *)pr;
+   226		straw_ring_t *ring = ps->shared;
+   227		int prod = (ps->active) ?ring->in_prod :ring->out_prod;
+   228		int cons = (ps->active) ?ring->in_cons :ring->out_cons;
+   229		int avail = prod - cons;
+   230		while (avail < 0)
+   231			avail += STRAW_RING_SIZE;
+   232		assert(avail > 0);
+   233		rmb();
+   234		uint8_t *ptr;
+   235		uint8_t *buffer = (ps->active) ?ring->input :ring->output;
+   236		term_t bin = heap_make_bin(&proc->hp, avail, &ptr);
+   237		while (avail-- > 0)
+   238		{
+   239			*ptr++ = buffer[cons++];
+   240			if (cons >= STRAW_RING_SIZE)
+   241				cons = 0;
+   242		}
+   243		mb();
+   244		if (ps->active)
+   245			ring->in_cons = cons;
+   246		else
+   247			ring->out_cons = cons;
+   248	
+   249		return bin;
+   250	}
+   251	
+   252	term_t cbif_pore_straw_info1(proc_t *proc, term_t *regs)
+   253	{
+   254		term_t Pore = regs[0];
+   255		if (!is_short_eid(Pore))
+   256			badarg(Pore);
+   257		pore_t *pr = pore_lookup(Pore);
+   258		if (pr == 0 || pr->tag != A_STRAW)
+   259			badarg(Pore);
+   260		pore_straw_t *ps = (pore_straw_t *)pr;
+   261		term_t refs = nil;
+   262		for (int i = NUM_STRAW_REFS-1; i >= 0; i--)
+   263		{
+   264			int ref = ps->ring_refs[i];
+   265			assert(fits_int(ref));
+   266			refs = heap_cons(&proc->hp, tag_int(ref), refs);
+   267		}
+   268	
+   269		assert(fits_int((int)pr->evtchn));
+   270		return heap_tuple2(&proc->hp, refs, tag_int(pr->evtchn));
+   271	}
+   272	
+   273	term_t cbif_pore_straw_avail1(proc_t *proc, term_t *regs)
+   274	{
+   275		term_t Pore = regs[0];
+   276		if (!is_short_eid(Pore))
+   277			badarg(Pore);
+   278		pore_t *pr = pore_lookup(Pore);
+   279		if (pr == 0 || pr->tag != A_STRAW)
+   280			badarg(Pore);
+   281	
+   282		pore_straw_t *ps = (pore_straw_t *)pr;
+   283		straw_ring_t *ring = ps->shared;
+   284	
+   285		// how much we can read
+   286		int avail1 = (ps->active) ?ring->in_prod - ring->in_cons
+   287								  :ring->out_prod - ring->out_cons;
+   288		while (avail1 < 0)
+   289			avail1 += STRAW_RING_SIZE;
+   290	
+   291		// how much we can write
+   292		int avail2 = (ps->active) ?ring->out_cons - ring->out_prod
+   293								  :ring->in_cons - ring->in_prod;
+   294		while (avail2 <= 0)
+   295			avail2 += STRAW_RING_SIZE;
+   296		avail2--;	// unused byte
+   297	
+   298		return heap_tuple2(&proc->hp, tag_int(avail1), tag_int(avail2));
+   299	}
+   300	
+   301	term_t cbif_pore_poke1(proc_t *proc, term_t *regs)
+   302	{
+   303		term_t Pore = regs[0];
+   304		if (!is_short_eid(Pore))
+   305			badarg(Pore);
+   306		pore_t *pr = pore_lookup(Pore);
+   307		if (pr == 0)
+   308			badarg(Pore);
+   309	
+   310		event_kick(pr->evtchn);
+   311		return A_TRUE;
+   312	}
+   313	
+   314	term_t cbif_pore_close1(proc_t *proc, term_t *regs)
+   315	{
+   316		term_t Pore = regs[0];
+   317		if (!is_short_eid(Pore))
+   318			badarg(Pore);
+   319	
+   320		pore_t *pr = pore_lookup(Pore);
+   321		if (pr == 0)
+   322			return A_FALSE;
+   323	
+   324		pore_destroy(pr);
+   325		return A_TRUE;
+   326	}
+```
+
+```
+     1	#include "pore.h"
+     2	
+     3	#include "ling_common.h"
+     4	#include <string.h>
+     5	#include "event.h"
+     6	#include "scheduler.h"
+     7	#include "atom_defs.h"
+     8	
+     9	static uint32_t next_pore_id = 0;
+    10	static pore_t *active_pores = 0;
+    11	
+    12	static void pore_universal_handler(uint32_t evtchn, void *data);
+    13	
+    14	pore_t *pore_make_N(term_t tag,
+    15			uint32_t size, term_t owner, void (*destroy_private)(pore_t *), uint32_t evtchn)
+    16	{
+    17		memnode_t *home = nalloc_N(size);
+    18		if (home == 0)
+    19			return 0;
+    20		pore_t *np = (pore_t *)home->starts;
+    21		memset(np, 0, size);
+    22	
+    23		np->eid = tag_short_eid(next_pore_id++);
+    24		np->tag = tag;
+    25		np->owner = owner;
+    26		np->destroy_private = destroy_private;
+    27		np->home = home;
+    28		np->evtchn = evtchn;
+    29	
+    30		if (evtchn != NO_EVENT)
+    31			event_bind(evtchn, pore_universal_handler, np);
+    32	
+    33		if (active_pores != 0)
+    34			active_pores->ref = &np->next;
+    35		np->ref = &active_pores;
+    36		np->next = active_pores;
+    37		active_pores = np;
+    38	
+    39		return np;
+    40	}
+    41	
+    42	static void pore_universal_handler(uint32_t evtchn, void *data)
+    43	{
+    44		assert(data != 0);
+    45		pore_t *pore = (pore_t *)data;
+    46		proc_t *proc = scheduler_lookup(pore->owner);
+    47		if (proc == 0)
+    48			return;	// drop
+    49	
+    50		// {irq,Pore}
+    51		uint32_t *p = heap_alloc_N(&proc->hp, 3);
+    52		if (p == 0)
+    53			goto no_memory;
+    54		term_t irq = tag_tuple(p);
+    55		*p++ = 2;
+    56		*p++ = A_IRQ;
+    57		*p++ = pore->eid;
+    58		heap_set_top(&proc->hp, p);
+    59	
+    60		if (scheduler_new_local_mail_N(proc, irq) < 0)
+    61			goto no_memory;
+    62		return;
+    63	
+    64	no_memory:
+    65		scheduler_signal_exit_N(proc, pore->eid, A_NO_MEMORY);
+    66	}
+    67	
+    68	pore_t *pore_lookup(term_t eid)
+    69	{
+    70		assert(is_short_eid(eid));
+    71		pore_t *pr = active_pores;
+    72		while (pr != 0)
+    73		{
+    74			if (pr->eid == eid)
+    75				return pr;
+    76			pr = pr->next;
+    77		}
+    78		return 0;
+    79	}
+    80	
+    81	void pore_destroy(pore_t *pore)
+    82	{
+    83		if (pore->evtchn != NO_EVENT)
+    84			event_unbind(pore->evtchn);
+    85	
+    86		*pore->ref = pore->next;
+    87		if (pore->next != 0)
+    88			pore->next->ref = pore->ref;
+    89	
+    90		if (pore->destroy_private != 0)
+    91			pore->destroy_private(pore);
+    92	
+    93		nfree(pore->home);
+    94	}
+    95	
+    96	void pore_destroy_owned_by(term_t pid)
+    97	{
+    98		pore_t *pr = active_pores;
+    99		while (pr != 0)
+   100		{
+   101			if (pr->owner == pid)
+   102			{
+   103				pore_t *doomed = pr;
+   104				pr = pr->next;
+   105				pore_destroy(doomed);
+   106			}
+   107			else
+   108				pr = pr->next;	
+   109		}
+   110	}
 ```
