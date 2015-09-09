@@ -1,6 +1,7 @@
-language: erlang
-otp_release:
-  - 17.5
+language: c
+os:
+  - linux
+  - osx
 env:
   - ARCH=xen CONF=dbg
   - ARCH=xen CONF=opt
@@ -9,10 +10,11 @@ env:
   - ARCH=posix CONF=opt
   - ARCH=posix CONF=lto
 before_install:
-  - [ X"$TRAVIS_OS_NAME" = X"osx" ] && brew install erlang
+  - echo $TRAVIS_OS_NAME
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; wget https://s3.amazonaws.com/travis-otp-releases/ubuntu/$(lsb_release -rs)/erlang-17.5-x86_64.tar.bz2; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; tar xf erlang-17.5-x86_64.tar.bz2 -C ~/otp/; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; source $HOME/otp/17.5/activate; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; brew install erlang; fi
 script:
   - make -j2 test ARCH=$ARCH CONF=$CONF
-os:
-  - linux
-  - osx
 sudo: false
