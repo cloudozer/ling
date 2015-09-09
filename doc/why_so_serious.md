@@ -34,16 +34,50 @@ The xenstore driver has only the frontend. Its backend leaves in Dom0.
 The event is only a bit flip. The event deliver requires either an interrrupt or an ability to wait
 for an event.
 
-Interrupts are bad because everything is in unknown state during interrupt. The interrupt handler
+Interrupts are bad because everything is in unknown state during an interrupt. The interrupt handler
 cannot do much. The ability to wait for event means that we may have suspended execution contexts
 (green threads). In addition we need a uniform way to wait for all events and react to events
 selectively. Do we want to react to a conjunction of events?
+
+# Xenstore
+
+Xenstore is thought as a part of Xen, the lowest level infrastructure.
+
+Xenstore uses strings as representation of keys and values. The language must be able to create a
+concatenation of strings. Some of the strings may represent integer variables.
+
+Xenstore has a scarce resource -- watches. We need to keep track of watches we open and `unwatch`
+them when they are not needed.
+
+Traditionally, Xenstore is human-readable.
+
+The standard approach to negotiation between front- and backend of a driver is to go through a fixed
+series of steps: INITIALISING, INIT\_WAIT, INITIALISED, CONNECTED, CLOSING, CLOSED.
+
 
 # Strawman architecture
 
 A process that listens on xenstore and maintains a list of straws.
 
 TODO
+
+# Driver scaffolding
+
+We may represent a lot of setup/teardown functionality of a driver using a library (a behaviour?).
+
+# What is bad about the code?
+
+1. Too much boilerplate, related an general driver not this particular one.
+1. Only one event channel per driver (netmap uses two).
+1. Shared page is not a builtin data type (pore).
+1. Each driver uses a new set of BIFs to talk to its particular type of pore.
+1. Input and output buffers are lists or binaries. We have to keep the data size separately. There
+is no way to cleanly chip from the beginning of the buffer.
+
+# Solution
+
+1. Virtual methods for pores, better API for pores.
+1. A library for drivers, a common server that manages all drivers (tube\_server + strawman + ...).
 
 # Appendix
 
