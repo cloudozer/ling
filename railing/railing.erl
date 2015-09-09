@@ -31,7 +31,7 @@ ld() -> ld(?ARCH).
 ld(arm) -> gold("arm-none-eabi-ld");
 ld(xen) ->
 	case os:type() of
-		{unix, darwin} -> ["x86_64-pc-linux-ld"];
+		{unix, darwin} -> ["x86_64-pc-linux-ld", "-T", "ling.lds"];
 		_ -> gold()
 	end;
 ld(posix) ->
