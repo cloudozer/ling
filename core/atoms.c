@@ -67,6 +67,7 @@ static hash_t *name_to_info;
 
 int atoms_init(void)
 {
+	standard_atoms.next = 0;
 	last_chunk = &standard_atoms;
 	name_node = 0;
 	

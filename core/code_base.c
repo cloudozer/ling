@@ -64,6 +64,7 @@ static int decode_literals(module_info_t *mi,
 
 void code_base_init(void)
 {
+	orphaned_literals = 0;
 	exports_nodes = 0;
 	exports_map = hash_make();
 

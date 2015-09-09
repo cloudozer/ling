@@ -388,9 +388,14 @@ make_elf_sht(Eclass, AllSections, ShstrtabOffs) ->
 		<<>>, [Zero | AllSections]).
 
 initial_pht() -> [
-	#elfproghdr{ type=?PT_LOAD,
-	             sections=[<<".text">>,<<".rodata">>,<<".data">>,<<".bss">>],
-	             align=?PAGE_SIZE },
+	#elfproghdr{ type=?PT_LOAD, flags = ?PF_X bor ?PF_R,
+	             sections=[<<".text">>], align=?PAGE_SIZE },
+	#elfproghdr{ type=?PT_LOAD, flags = ?PF_R,
+	             sections=[<<".rodata">>], align=4 },
+	#elfproghdr{ type=?PT_LOAD, flags = ?PF_R bor ?PF_W,
+	             sections=[<<".data">>], align=4 },
+	#elfproghdr{ type=?PT_LOAD, flags = ?PF_R bor ?PF_W,
+	             sections=[<<".bss">>], align=4 },
 	#elfproghdr{ type=?PT_GNU_STACK } ].
 
 make_elf(Meta, Sections) ->
