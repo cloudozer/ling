@@ -18,7 +18,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then mkdir ~/otp; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then tar xf erlang-17.5-x86_64.tar.bz2 -C ~/otp/; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then source $HOME/otp/17.5/activate; fi
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install erlang; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install erlang; wget http://dmytrish.net/d/gcc.dmg.gz && tar xf gcc.dmg.gz && hdiutil mount gcc.dmg ; fi
 script:
-  - make -j2 play ARCH=$ARCH CONF=$CONF
+  - PATH=/Volumes/TmpGCC/usr/local/gcc-4.8.1-for-linux64/bin:$PATH make -j2 play ARCH=$ARCH CONF=$CONF
 sudo: false
