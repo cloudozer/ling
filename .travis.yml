@@ -20,5 +20,5 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then source $HOME/otp/17.5/activate; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install erlang; fi
 script:
-  - make -j2 test ARCH=$ARCH CONF=$CONF
+  - make -j2 play ARCH=$ARCH CONF=$CONF
 sudo: false

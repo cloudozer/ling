@@ -65,8 +65,13 @@ default: railing/railing
 test: default
 	cd test && ../railing/railing image -ipriv
 
+ifdef LING_POSIX
 play: test
 	./test/test.img -home /test -s test play
+else
+play: test
+	@echo Tests available on POSIX builds only
+endif
 
 install: railing/railing
 	install railing/railing /usr/bin
