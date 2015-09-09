@@ -9,6 +9,25 @@ latex input:            mmd-article-begin-doc
 
 # Overview
 
+Here is the plan.
+
+* Add a module named `membrane` which manages all `pores`.
+
+* The membrane should handle all negotiations about the pores.
+
+* Make pore polymorphic and active, similar to outlets.
+
+* A pore sends a message to its controller process a soon as it has data available
+
+* Add a BIF to query a pore for the number of slots available for the output. The same of abother
+BIF may receive a request when certain number of output slots are there. The notification about
+slots delivered as a message.
+
+* An event channels are not exposed by pores. It is possible for a pore to use two (or more) event
+channels (netmap).
+
+# Notes 
+
 Two drivers strawman and xenstore. Strawman uses xenstore.
 
 Both drivers use shared pages and an event channel.
@@ -54,7 +73,6 @@ Traditionally, Xenstore is human-readable.
 The standard approach to negotiation between front- and backend of a driver is to go through a fixed
 series of steps: INITIALISING, INIT\_WAIT, INITIALISED, CONNECTED, CLOSING, CLOSED.
 
-
 # Strawman architecture
 
 A process that listens on xenstore and maintains a list of straws.
@@ -73,11 +91,6 @@ We may represent a lot of setup/teardown functionality of a driver using a libra
 1. Each driver uses a new set of BIFs to talk to its particular type of pore.
 1. Input and output buffers are lists or binaries. We have to keep the data size separately. There
 is no way to cleanly chip from the beginning of the buffer.
-
-# Solution
-
-1. Virtual methods for pores, better API for pores.
-1. A library for drivers, a common server that manages all drivers (tube\_server + strawman + ...).
 
 # Appendix
 
