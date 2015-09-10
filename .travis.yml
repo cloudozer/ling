@@ -2,7 +2,6 @@ language: c
 os:
   - linux
   - osx
-osx_image: xcode7
 env:
   - ARCH=xen CONF=dbg
   - ARCH=xen CONF=opt
@@ -10,6 +9,12 @@ env:
   - ARCH=posix CONF=dbg
   - ARCH=posix CONF=opt
   - ARCH=posix CONF=lto
+matrix:
+  exclude:
+    - os: osx
+      env: ARCH=posix CONF=opt
+    - os: osx
+      env: ARCH=posix CONF=dbg
 before_install:
   - echo $TRAVIS_OS_NAME
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://s3.amazonaws.com/travis-otp-releases/ubuntu/$(lsb_release -rs)/erlang-17.5-x86_64.tar.bz2; fi
