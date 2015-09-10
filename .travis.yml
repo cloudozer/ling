@@ -20,5 +20,5 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then tar xf ElfGCC.dmg.gz; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then hdiutil mount ElfGCC.dmg; fi
 script:
-  - PATH=/Volumes/ElfGCC/usr/local/gcc-4.8.1-for-linux64/bin:$PATH travis_wait make -j2 play ARCH=$ARCH CONF=$CONF
+  - PATH=/Volumes/ElfGCC/usr/local/gcc-4.8.1-for-linux64/bin:$PATH travis_wait 40 make -j2 play ARCH=$ARCH CONF=$CONF
 sudo: false
