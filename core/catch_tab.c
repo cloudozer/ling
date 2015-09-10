@@ -143,6 +143,9 @@ uint32_t *catch_jump_to(int ord)
 void catches_attach_preloaded_code(int start_index,
 						int end_index, uint32_t *code)
 {
+	if (code_base_fixed_already())
+		return;
+
 	for (int i = start_index; i < end_index; i++)
 	{
 		uint32_t offset = shrink_ptr(catch_refs[i].code);

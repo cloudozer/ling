@@ -552,6 +552,7 @@ initialize:
 	// defines the code of preloaded modules
 	#include "premod.inc"
 
+	code_base_dont_fix_anymore();
 	assert(proc == 0); // completing initialization run
 }
 }
