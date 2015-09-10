@@ -14,7 +14,7 @@ matrix:
     - os: osx
       env: ARCH=posix CONF=opt
     - os: osx
-      env: ARCH=posix CONF=dbg
+      env: ARCH=posix CONF=lto
 before_install:
   - echo $TRAVIS_OS_NAME
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://s3.amazonaws.com/travis-otp-releases/ubuntu/$(lsb_release -rs)/erlang-17.5-x86_64.tar.bz2; fi
