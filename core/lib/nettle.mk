@@ -100,46 +100,31 @@ NETTLE_SRC := \
 	$(NETTLE_DIR)/write-le32.o \
 	$(NETTLE_DIR)/write-le64.o
 
-ifdef LING_LINUX
-NETTLE_ASM := \
-	$(NETTLE_DIR)/linux/aes-decrypt-internal.o \
-	$(NETTLE_DIR)/linux/aes-encrypt-internal.o \
-	$(NETTLE_DIR)/linux/camellia-crypt-internal.o \
-	$(NETTLE_DIR)/linux/salsa20-core-internal.o \
-	$(NETTLE_DIR)/linux/salsa20-crypt.o \
-	$(NETTLE_DIR)/linux/sha1-compress.o \
-	$(NETTLE_DIR)/linux/sha256-compress.o \
-	$(NETTLE_DIR)/linux/sha512-compress.o \
-	$(NETTLE_DIR)/linux/sha3-permute.o \
-	$(NETTLE_DIR)/linux/serpent-encrypt.o \
-	$(NETTLE_DIR)/linux/serpent-decrypt.o \
-	$(NETTLE_DIR)/linux/umac-nh.o \
-	$(NETTLE_DIR)/linux/umac-nh-n.o \
-	$(NETTLE_DIR)/linux/memxor.o
-endif
-
-ifdef LING_DARWIN
-NETTLE_ASM := \
-	$(NETTLE_DIR)/darwin/aes-decrypt-internal.o \
-	$(NETTLE_DIR)/darwin/aes-encrypt-internal.o \
-	$(NETTLE_DIR)/darwin/camellia-crypt-internal.o \
-	$(NETTLE_DIR)/darwin/salsa20-core-internal.o \
-	$(NETTLE_DIR)/darwin/salsa20-crypt.o \
-	$(NETTLE_DIR)/darwin/sha1-compress.o \
-	$(NETTLE_DIR)/darwin/sha256-compress.o \
-	$(NETTLE_DIR)/darwin/sha512-compress.o \
-	$(NETTLE_DIR)/darwin/sha3-permute.o \
-	$(NETTLE_DIR)/darwin/serpent-encrypt.o \
-	$(NETTLE_DIR)/darwin/serpent-decrypt.o \
-	$(NETTLE_DIR)/darwin/umac-nh.o \
-	$(NETTLE_DIR)/darwin/umac-nh-n.o \
-	$(NETTLE_DIR)/darwin/memxor.o
-endif
 
 NETTLE_CFLAGS = $(CFLAGS) $(CPPFLAGS) -Wno-uninitialized -Wno-unused-value -Wno-implicit-function-declaration -DHAVE_CONFIG_H -Wno-return-type -Wno-int-conversion
+
 ifneq ($(CC),clang)
 NETTLE_CFLAGS += -Wno-maybe-uninitialized
+NETTLE_ASM_DIR := $(NETTLE_DIR)/gcc
+else
+NETTLE_ASM_DIR := $(NETTLE_DIR)/clang
 endif
+
+NETTLE_ASM := \
+	$(NETTLE_ASM_DIR)/aes-decrypt-internal.o \
+	$(NETTLE_ASM_DIR)/aes-encrypt-internal.o \
+	$(NETTLE_ASM_DIR)/camellia-crypt-internal.o \
+	$(NETTLE_ASM_DIR)/salsa20-core-internal.o \
+	$(NETTLE_ASM_DIR)/salsa20-crypt.o \
+	$(NETTLE_ASM_DIR)/sha1-compress.o \
+	$(NETTLE_ASM_DIR)/sha256-compress.o \
+	$(NETTLE_ASM_DIR)/sha512-compress.o \
+	$(NETTLE_ASM_DIR)/sha3-permute.o \
+	$(NETTLE_ASM_DIR)/serpent-encrypt.o \
+	$(NETTLE_ASM_DIR)/serpent-decrypt.o \
+	$(NETTLE_ASM_DIR)/umac-nh.o \
+	$(NETTLE_ASM_DIR)/umac-nh-n.o \
+	$(NETTLE_ASM_DIR)/memxor.o
 
 NETTLE_DEP := $(patsubst %.o,%.d,$(NETTLE_SRC))
 -include $(NETTLE_DEP)

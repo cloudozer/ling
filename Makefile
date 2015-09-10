@@ -65,8 +65,13 @@ default: railing/railing
 test: default
 	cd test && ../railing/railing image -ipriv
 
+ifdef LING_POSIX
 play: test
 	./test/test.img -home /test -s test play
+else
+play: test
+	@echo Tests available on POSIX builds only
+endif
 
 install: railing/railing
 	install railing/railing /usr/bin
@@ -79,10 +84,19 @@ test/ebin/%.beam: test/src/%.erl
 	$(ERLC) -o test/ebin $<
 
 ## BC
-BC_ERL := $(filter-out bc/ling_iopvars.erl,$(wildcard bc/*.erl))
-BC_BEAM := $(BC_ERL:%.erl=%.beam)
 BC_SAMPLE_ERL := $(wildcard bc/sample/*.erl)
 BC_SAMPLE_BEAM := $(BC_SAMPLE_ERL:%.erl=%.beam)
+
+$(BC_SAMPLE_BEAM): %.beam: %.erl
+	$(ERLC) -o bc/sample $<
+
+BC_BEAM := \
+	bc/bfd_objcopy.beam \
+	bc/ling_disasm.beam \
+	bc/erltl.beam \
+	bc/ling_code.beam \
+	bc/ling_iops.beam \
+	bc/ling_lib.beam
 
 $(BC_BEAM): %.beam: %.erl
 	$(ERLC) -o bc $<
@@ -91,9 +105,6 @@ $(BC_BEAM): %.beam: %.erl
 bc/ling_code.beam: bc/ling_bifs.beam
 bc/ling_bifs.beam: bc/ling_bifs.erl
 	$(ERLC) -o $(shell dirname $@) $<
-
-$(BC_SAMPLE_BEAM): %.beam: %.erl
-	$(ERLC) -o bc/sample $<
 
 bc/gentab/iops_tab.erl: bc/scripts/iops.tab bc/scripts/iops_tab_erl.et $(BC_BEAM) 
 	$(ESCRIPT) bc/scripts/iops_gen bc/scripts/iops.tab bc/scripts/iops_tab_erl.et $@

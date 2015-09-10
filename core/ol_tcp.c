@@ -1654,7 +1654,7 @@ static int ol_tcp_set_opts(outlet_t *ol, uint8_t *data, int dlen)
 		uint32_t val = GET_UINT_32(p);
 		p += 4;
 		left -= 4;
-		debug("%s(ol=*%p, opt=%d, val=%d)\n", __FUNCTION__, ol, opt, val);
+		debug("%s(ol=*%s, opt=%d, val=%d)\n", __FUNCTION__, ol, opt, val);
 
 		switch (opt)
 		{

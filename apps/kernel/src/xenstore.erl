@@ -107,7 +107,6 @@ watch(_) -> {error,badarg}.
 
 unwatch(Path) when is_list(Path) ->
 	{ok,Tokens} = call({self(),unwatch,Path}),
-	io:format("Tokens = ~p\n", [Tokens]),
 	lists:foreach(fun(Token) -> call({self(),?XS_UNWATCH,[Path,Token],0}) end, Tokens);
 unwatch(_) -> {error,badarg}.
 
