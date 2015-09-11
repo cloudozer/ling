@@ -173,7 +173,7 @@ make_symbols(Sections) ->
 	                   sectndx=?SHN_UNDEF, value=0, size=0},
 
 	{SectEntries, _} = lists:foldl(
-		fun({_SectName, {Start, _End}}, {Syms, Num}) ->
+		fun({_SectName, {Start, _End, _Src}}, {Syms, Num}) ->
 			Sym = #elfsym {name=(<<"">>), bindntype=(?STT_SECTION bor ?STB_LOCAL),
 			               sectndx=Num, value=Start, size=0},
 			{[Sym | Syms], Num + 1}
@@ -182,7 +182,7 @@ make_symbols(Sections) ->
 		Sections),
 
 	SectSyms = lists:foldl(
-		fun({SectName, {Start, End}}, Syms) ->
+		fun({SectName, {Start, End, _Src}}, Syms) ->
 			SymInf = fun(Sym, Ndx, Off) ->
 					#elfsym {name=Sym, bindntype=(?STT_NOTYPE bor ?STB_GLOBAL),
 					         sectndx=Ndx, value=Off, size=0}
@@ -278,15 +278,21 @@ make_elf_segments(ElfSegs) ->
 		<<>>,
 		ElfSegs).
 
+section_layout(SectName, Sections) ->
+	case proplists:lookup(SectName, Sections) of
+		{SectName, Layout} -> Layout;
+		_ -> {error, {nosect, SectName}}
+	end.
+
 materialize_sections(Sections) ->
-	{<<".text">>, {TextStart, TextEnd}} = proplists:lookup(<<".text">>, Sections),
-	{<<".rodata">>, {RodataStart, RodataEnd}} = proplists:lookup(<<".rodata">>, Sections),
-	{<<".data">>, {DataStart, DataEnd}} = proplists:lookup(<<".data">>, Sections),
-	{<<".bss">>, {BssStart, BssEnd}} = proplists:lookup(<<".bss">>, Sections),
-	TextRet = ling:memory(TextStart, TextEnd),
-	{ok, TextBin} = TextRet,
-	{ok, RodataBin} = ling:memory(RodataStart, RodataEnd),
-	{ok, DataBin} = ling:memory(DataStart, DataEnd),
+	{TextStart, TextEnd, TextSrc} = section_layout(<<".text">>, Sections),
+	{RdatStart, RdatEnd, RdatSrc} = section_layout(<<".rodata">>, Sections),
+	{DataStart, DataEnd, DataSrc} = section_layout(<<".data">>, Sections),
+	{BssStart,  BssEnd,  _ }      = section_layout(<<".bss">>, Sections),
+
+	{ok, TextBin} = ling:memory(TextSrc, TextEnd - TextStart),
+	{ok, RodataBin} = ling:memory(RdatSrc, RdatEnd - RdatStart),
+	{ok, DataBin} = ling:memory(DataSrc, DataEnd - DataStart),
 
 	Text = #elfsecthdr { name = <<".text">>,
 		type = ?SHT_PROGBITS, flags = ?SHF_ALLOC bor ?SHF_EXEC,
@@ -295,7 +301,7 @@ materialize_sections(Sections) ->
 	},
 	Rodata = #elfsecthdr { name = <<".rodata">>,
 		type = ?SHT_PROGBITS, flags = ?SHF_ALLOC,
-		addr = RodataStart, size = RodataEnd - RodataStart, addralign = 32,
+		addr = RdatStart, size = RdatEnd - RdatStart, addralign = 32,
 		contents = RodataBin
 	},
 	Data = #elfsecthdr { name = <<".data">>,
@@ -408,7 +414,7 @@ make_elf(Meta, Sections) ->
 
 	PHT = pht_with_offsets(PHT0, AllSections),
 
-	{<<".text">>, {EntryAddr, _}} = proplists:lookup(<<".text">>, Sections),
+	{EntryAddr, _, _} = section_layout(<<".text">>, Sections),
 	ElfHdr = make_elf_header(Meta, EntryAddr, PHT, AllSections, SHTOff),
 
 	ElfPHT = make_elf_pht(Eclass, PHT),
@@ -433,7 +439,10 @@ info() ->
 		{data,  MData} = proplists:lookup(data, LMeta),
 		{machine, MMach} = proplists:lookup(machine, LMeta),
 		Meta = #elfmeta{ class=MClass, data=MData, machine=MMach },
-		Sections = lists:map(fun({N, S, E}) -> {erlang:list_to_binary(N), {S, E}} end, LSections),
+		Sections = lists:map(
+			fun ({Name, Start, End}) -> {erlang:list_to_binary(Name), {Start, End, Start}};
+			    ({Name, Start, End, Backup}) -> {erlang:list_to_binary(Name), {Start, End, Backup}}
+			end, LSections),
 		{elf, Meta, Sections};
 	{Fmt, _,    _} ->
 		{error, {unknown_format, Fmt}};
