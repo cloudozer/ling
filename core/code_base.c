@@ -48,10 +48,6 @@
 
 #include "code_base.inc"
 
-// both must not be 0 :
-#define NEED_FIX	0x4445454e  /* 'NEED' */
-#define DONT_FIX	0x544e4f44  /* 'DONT' */
-
 static hash_t *exports_map;
 static hash_t *modules_map;
 
@@ -60,10 +56,6 @@ static memnode_t *exports_nodes = 0;
 
 // Literal nodes of purged modules
 static memnode_t *orphaned_literals = 0;
-
-// Do not fix if the running ELF is a copy of another fixed image
-// This variables must go to the .data section
-static uint32_t code_base_fixed = NEED_FIX;
 
 #define EXP_NODE_SIZE	4096
 
@@ -260,14 +252,6 @@ void module_fix_preloaded_code(module_info_t *mi,
 		*lit_fixups[i] = (uint32_t) literals[index];
 	}
 
-	/*
-	 * lit_fixups must always be done, because preloaded code resides in .bss;
-	 * funs tables and preloaded_exports go to .data, don't fix if already fixed
-	 */
-	if (code_base_fixed == DONT_FIX)
-		return;
-	assert(code_base_fixed == NEED_FIX);
-
 	for (int i = 0; i < mi->num_funs; i++)
 	{
 		unsigned long offset = (unsigned long)mi->funs_table[i].entry;
@@ -279,16 +263,6 @@ void module_fix_preloaded_code(module_info_t *mi,
 		unsigned long offset = (unsigned long)preloaded_exports[i].entry;
 		preloaded_exports[i].entry = code_starts + offset;
 	}
-}
-
-void code_base_dont_fix_anymore(void)
-{
-	code_base_fixed = DONT_FIX;
-}
-
-int code_base_fixed_already(void)
-{
-	return code_base_fixed == DONT_FIX;
 }
 
 //void set_entry_range(int start, int end, uint32_t *entry)
