@@ -174,8 +174,6 @@ uint32_t code_base_source_line(uint32_t *ip, char *fname, int size);
 void module_fix_preloaded_code(module_info_t *mi,
 						uint32_t *code_starts, uint32_t code_size,
 						uint32_t *lit_fixups[], int num_fixups);
-void code_base_dont_fix_anymore(void);
-int code_base_fixed_already(void);
 
 void code_base_retire(term_t mod_name);
 void code_base_purge(module_info_t *module);
