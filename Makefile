@@ -103,6 +103,8 @@ $(BC_BEAM): %.beam: %.erl
 
 ## TODO: use erlc dependency generation instead
 bc/ling_code.beam: bc/ling_bifs.beam
+bc/ling_bifs.beam: bc/ling_bifs.erl
+	$(ERLC) -o $(shell dirname $@) $<
 
 bc/gentab/iops_tab.erl: bc/scripts/iops.tab bc/scripts/iops_tab_erl.et $(BC_BEAM) 
 	$(ESCRIPT) bc/scripts/iops_gen bc/scripts/iops.tab bc/scripts/iops_tab_erl.et $@
@@ -110,11 +112,8 @@ bc/gentab/iops_tab.erl: bc/scripts/iops.tab bc/scripts/iops_tab_erl.et $(BC_BEAM
 bc/gentab/%.beam: bc/gentab/%.erl
 	$(ERLC) -o bc/gentab $<
 
-bc/scripts/iopvars.tab: bc/scripts/beam.src bc/scripts/bif.tab bc/gentab/iops_tab.beam $(BC_SAMPLE_BEAM) $(TEST_BEAM)
+bc/scripts/iopvars.tab: bc/scripts/beam.src bc/scripts/bif.tab bc/ling_bifs.beam bc/gentab/iops_tab.beam $(BC_SAMPLE_BEAM) $(TEST_BEAM)
 	$(ESCRIPT) bc/scripts/iopvars_gen bc/scripts/beam.src bc/scripts/bif.tab $@
-
-bc/ling_bifs.beam: bc/ling_bifs.erl
-	$(ERLC) -o bc $<
 
 bc/ling_bifs.erl: bc/scripts/bif.tab
 	$(ESCRIPT) bc/scripts/bifs2_gen $< $@

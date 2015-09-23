@@ -1,15 +1,15 @@
 // Copyright (c) 2013-2014 Cloudozer LLP. All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // * Redistributions of source code must retain the above copyright notice, this
 // list of conditions and the following disclaimer.
-// 
+//
 // * Redistributions in binary form must reproduce the above copyright notice,
 // this list of conditions and the following disclaimer in the documentation
 // and/or other materials provided with the distribution.
-// 
+//
 // * Redistributions in any form must be accompanied by information on how to
 // obtain complete source code for the LING software and any accompanying
 // software that uses the LING software. The source code must either be included
@@ -19,7 +19,7 @@
 // code for all modules it contains. It does not include source code for modules
 // or files that typically accompany the major components of the operating
 // system on which the executable file runs.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY CLOUDOZER LLP ``AS IS'' AND ANY EXPRESS OR
 // IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT, ARE
@@ -64,6 +64,8 @@ static int decode_literals(module_info_t *mi,
 
 void code_base_init(void)
 {
+	orphaned_literals = 0;
+	exports_nodes = 0;
 	exports_map = hash_make();
 
 	// TODO: add custom hash functions and devise a better function for exports
@@ -84,7 +86,6 @@ void code_base_init(void)
 			preloaded_modules+i);
 	}
 
-	//exports_nodes = 0;
 }
 
 export_t *code_base_lookup(term_t m, term_t f, int arity)
@@ -449,7 +450,7 @@ void code_base_purge(module_info_t *module)
 //
 // Loads a module from a binary
 //
- 
+
 int code_base_load_N(term_t mod_name, uint8_t *ling_data, int data_size)
 {
 #ifdef LING_DEBUG
@@ -1028,7 +1029,7 @@ int code_base_load_N(term_t mod_name, uint8_t *ling_data, int data_size)
 		fe->old_index = index;
 		fe->old_uniq = ouniq;
 		fe->num_free = nfree;
-		fe->name = atoms[a_fun];	// compiler-generated name 
+		fe->name = atoms[a_fun];	// compiler-generated name
 		fe->entry = code_starts + offset;
 		fe++;
 	}

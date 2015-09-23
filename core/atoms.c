@@ -61,13 +61,15 @@ struct atom_chunk_t {
 // defines atom_chunk_t standard_atoms;
 #include "atoms.inc"
 
-static atom_chunk_t *last_chunk = &standard_atoms;
+static atom_chunk_t *last_chunk;
 static memnode_t *name_node = 0;
 static hash_t *name_to_info;
 
 int atoms_init(void)
 {
-	//name_node = 0;
+	standard_atoms.next = 0;
+	last_chunk = &standard_atoms;
+	name_node = 0;
 	
 	name_to_info = hash_make();
 	if (name_to_info < 0)

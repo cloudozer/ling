@@ -56,6 +56,8 @@ static uint32_t next_ord_base = INIT_NR_CATCH_REFS;
 
 void catches_init(void)
 {
+	nr_catch_refs = INIT_NR_CATCH_REFS;
+	next_ord_base = INIT_NR_CATCH_REFS;
 }
 
 uint32_t catches_next_base(void)

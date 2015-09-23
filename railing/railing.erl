@@ -49,6 +49,13 @@ ld(posix) ->
 	end;
 ld(_) -> gold().
 
+objcopy() -> objcopy(?ARCH).
+objcopy(xen) ->
+	case os:type() of
+		{unix,darwin} -> "x86_64-pc-linux-objcopy";
+		_ -> "objcopy"
+	end.
+
 cache_dir() -> ".railing".
 
 project_name(Config) ->
@@ -260,8 +267,12 @@ embedfs_object(EmbedFsPath, ImgName) ->
 	OutPath = filename:join(filename:absname(cache_dir()), "embedfs.o"),
 	case ?ARCH of
 		xen ->
-			[Ld | _] = ld(),
-			ok = sh(Ld ++ " -r -b binary -o " ++ OutPath ++ " embed.fs", CC);
+			EMachAmd64 = 16#3e,
+			ok = sh(objcopy()
+			     ++ " -I binary -O elf64-little"
+			     ++ " --alt-machine-code " ++ erlang:integer_to_list(EMachAmd64)
+			     ++ " --rename-section .data=.rodata,alloc,load,readonly,data,contents"
+			     ++ " embed.fs " ++ OutPath, CC);
 		_ ->
 			EmbedCPath = filename:join(filename:absname(cache_dir()), "embedfs.c"),
 			{ok, Embed} = file:read_file(EmbedFsPath),

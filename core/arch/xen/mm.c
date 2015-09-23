@@ -33,6 +33,7 @@
 
 #include "ling_common.h"
 #include "ling_xen.h"
+#include "string.h"
 
 #define GC_RESERVE_RATIO	64
 #define GC_MAX_RESERVED		4096
@@ -41,6 +42,11 @@
 static void *free_pages_start = 0;
 static void *free_pages_end = 0;
 static int nr_reserved_pages = 0;
+
+void *data_section_backup = 0;
+extern char _data, _edata;
+
+void *mm_alloc_pages(int nr_pages);
 
 void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_frames)
 {
@@ -56,6 +62,12 @@ void mm_init(unsigned long nr_pages, unsigned long pt_base, unsigned long nr_pt_
 	nr_reserved_pages = (free_pages_end - free_pages_start) /PAGE_SIZE /GC_RESERVE_RATIO;
 	if (nr_reserved_pages > GC_MAX_RESERVED)
 		nr_reserved_pages = GC_MAX_RESERVED;
+
+	/* make a backup of .data section */
+	size_t datalen = &_edata - &_data;
+	void *backup = mm_alloc_pages(1 + datalen / PAGE_SIZE);
+	memcpy(backup, &_data, datalen);
+	data_section_backup = backup;
 }
 
 /**

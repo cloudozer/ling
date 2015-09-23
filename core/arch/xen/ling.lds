@@ -2,18 +2,32 @@
 ENTRY(_start)
 
 SECTIONS {
+	. = 0;
+	.text : {
+		_text = . ;
+		*(.text*)
+		_etext = . ;
+	} = 0x9090
 
-	_text = 0;
-	.text : { *(.text) } = 0x9090
-	_etext = .;
+	.rodata : {
+		_rodata = . ;
+		*(.rodata*)
+		_erodata = . ;
+	}
 
-	.rodata : { *(.rodata) }
-	.data : { *(.data) }
+	.data : {
+		_data = . ;
+		*(.data*)
+		_edata = . ;
+	}
 	
-	.bss : { *(.bss) }
+	.bss : {
+		_bss = . ;
+		*(.bss*) *(COMMON)
+		_ebss = . ;
+	}
 	
 	_membrk = ALIGN(4096);
-
 }
 
 /*EOF*/

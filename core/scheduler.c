@@ -141,6 +141,9 @@ void scheduler_init(void)
 	last_event_fired_ns = monotonic_clock();
 	avg_event_gap_ns = MANUAL_POLLING_THRESHOLD;
 	expect_event_in_ns = MANUAL_POLLING_THRESHOLD;
+
+	memset(purgatory, 0, sizeof(purgatory));
+	num_purged = 0;
 }
 
 static void update_event_times(int nr_fired, uint64_t ticks)

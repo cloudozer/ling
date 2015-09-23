@@ -152,7 +152,7 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 	UNUSED term_t Arg = regs[1];
 	if (!is_atom(What))
 		badarg(What);
-	
+
 	switch (What)
 	{
 	case A_MODULE_SIZE:
@@ -202,8 +202,8 @@ term_t cbif_experimental2(proc_t *proc, term_t *regs)
 		else if (is_short_pid(Arg))
 		{
 			proc_t *target = scheduler_lookup(Arg);
-			assert(target != 0);	
-		
+			assert(target != 0);
+
 			heap_t *hp = &target->hp;
 			memnode_t *node = hp->nodes;
 			int ch = 0;
@@ -241,4 +241,179 @@ term_t cbif_stats0(proc_t *proc, term_t *regs)
 	return A_FALSE;
 #endif
 }
+
+#if LING_XEN
+enum elfnames {
+	ElfElf,
+	ElfClass,
+	ElfData,
+	ElfOSABI,
+	ElfABIVer,
+	ElfType,
+	ElfMach,
+	ElfEntry,
+
+	Elf2lsb, Elf2msb,
+};
+
+enum elfmach {
+	EM_NONE = 0,
+	EM_386 = 3,
+	EM_MIPS = 8,
+	EM_AMD = 0x3e,
+};
+
+typedef struct {
+	term_t term;
+	char *lname;
+} atom_t;
+
+typedef struct {
+	const char *name;
+	uintptr_t start;
+	uintptr_t end;
+	char **backup;
+} section_t;
+
+/* keep synchrohized with ling.lds */
+extern char _text, _etext;
+extern char _data, _edata;
+extern char _rodata, _erodata;
+extern char _bss, _ebss;
+extern char * data_section_backup;
+
+const section_t sections[] = {
+	{ ".text",   (uintptr_t)&_text,    (uintptr_t)&_etext,   0 },
+	{ ".data",   (uintptr_t)&_data,    (uintptr_t)&_edata,   &data_section_backup },
+	{ ".rodata", (uintptr_t)&_rodata,  (uintptr_t)&_erodata, 0 },
+	{ ".bss",    (uintptr_t)&_bss,     (uintptr_t)&_ebss,    0 },
+};
+
+atom_t elfatoms[] = {
+	[ElfElf]   = { noval, "_elf" },
+	[ElfClass] = { noval, "_class" },
+	[ElfData]  = { noval, "_data" },
+	[ElfOSABI] = { noval, "_osabi" },
+	[ElfABIVer]= { noval, "_abiver" },
+	[ElfType]  = { noval, "_type" },
+	[ElfMach]  = { noval, "_machine" },
+	[ElfEntry] = { noval, "_entryaddr" },
+
+	[Elf2lsb]  = { noval, "_lsb2compl" },
+	[Elf2msb]  = { noval, "_msb2compl" },
+};
+
+
+term_t cbif_ling_execinfo0(proc_t *proc, term_t *regs)
+{
+#if __x86_64__
+	const int elfclass = 64;
+	const int elfmach = EM_AMD;
+#elif __i386
+	const int elfclass = 32;
+	const int elfmach = EM_386;
+#else
+# error "unknown architecture"
+#endif
+	const int elfdata = (ntohs(42) == 42 ? Elf2msb : Elf2lsb);
+
+	int i;
+	for (i = 0; i < sizeof(elfatoms)/sizeof(atom_t); ++i)
+	{
+		uint8_t *lname = (uint8_t *)elfatoms[i].lname;
+		size_t atomlen = strlen((char *)lname + 1);
+		assert(atomlen < 256);
+		lname[0] = (uint8_t)atomlen;
+		elfatoms[i].term = tag_atom(atoms_set(lname));
+	}
+
+	const size_t infolen = 3;
+	term_t info[infolen];
+	info[0] = heap_tuple2(&proc->hp, elfatoms[ElfClass].term, tag_int(elfclass));
+	info[1] = heap_tuple2(&proc->hp, elfatoms[ElfData].term, elfatoms[elfdata].term);
+	info[2] = heap_tuple2(&proc->hp, elfatoms[ElfMach].term, tag_int(elfmach));
+	term_t infolist = heap_vector_to_list(&proc->hp, info, infolen);
+
+	size_t nsect = sizeof(sections)/sizeof(section_t);
+	term_t sectvec[nsect];
+
+	for (i = 0; i < nsect; ++i)
+	{
+		term_t sectname = heap_strz(&proc->hp, sections[i].name);
+		term_t startaddr = int_to_term(sections[i].start, &proc->hp);
+		term_t endaddr = int_to_term(sections[i].end, &proc->hp);
+		if (sections[i].backup)
+			sectvec[i] = heap_tuple4(&proc->hp, sectname, startaddr, endaddr,
+			                         int_to_term((uintptr_t)*(sections[i].backup), &proc->hp));
+		else
+			sectvec[i] = heap_tuple3(&proc->hp, sectname, startaddr, endaddr);
+	}
+	term_t sectlist = heap_vector_to_list(&proc->hp, sectvec, nsect);
+
+	return heap_tuple3(&proc->hp, elfatoms[ElfElf].term, infolist, sectlist);
+}
+
+term_t cbif_ling_memory2(proc_t *proc, term_t *regs)
+{
+	term_t From = regs[0];
+	term_t Size = regs[1];
+
+	if (!is_int(From) || !is_int(Size))
+		return heap_tuple2(&proc->hp, A_ERROR, A_EINVAL);
+
+	/* this initialization produces a warning, and rightly so */
+	uintptr_t from = int_value(From);
+	size_t size = int_value(Size);
+	//printk("%s: from=0x%x, size=0x%x\n", __FUNCTION__, from, size);
+
+	uint8_t *data = NULL;
+	term_t bin = heap_make_bin(&proc->hp, size, &data);
+	//printk("%s: bin=0x%x, data=*%x\n", __FUNCTION__, bin, (uintptr_t)data);
+
+	memcpy(data, (void *)from, size);
+
+	return heap_tuple2(&proc->hp, A_OK, bin);
+}
+
+term_t cbif_ling_memb1(proc_t *proc, term_t *regs)
+{
+	term_t Addr = regs[0];
+	if (!is_int(Addr))
+		return heap_tuple2(&proc->hp, A_ERROR, A_EINVAL);
+
+	uint8_t *addr = (uint8_t *)(uintptr_t)int_value(Addr);
+	return heap_tuple2(&proc->hp, A_OK, tag_int(addr[0]));
+}
+
+term_t cbif_ling_meml1(proc_t *proc, term_t *regs)
+{
+	term_t Addr = regs[0];
+	if (!is_int(Addr))
+		return heap_tuple2(&proc->hp, A_ERROR, A_EINVAL);
+
+	uint32_t *addr = (uint32_t *)(uintptr_t)int_value(Addr);
+	return heap_tuple2(&proc->hp, A_OK, tag_int(addr[0]));
+}
+#else // !LING_XEN
+
+term_t cbif_ling_execinfo0(proc_t *proc, term_t *regs)
+{
+	bif_not_implemented();
+}
+
+term_t cbif_ling_memory2(proc_t *proc, term_t *regs)
+{
+	bif_not_implemented();
+}
+
+term_t cbif_ling_memb1(proc_t *proc, term_t *regs)
+{
+	bif_not_implemented();
+}
+
+term_t cbif_ling_meml1(proc_t *proc, term_t *regs)
+{
+	bif_not_implemented();
+}
+#endif
 

@@ -185,6 +185,11 @@ ling:profile_display()	cbif_profile_display0
 
 ling:experimental(What,Arg)			cbif_experimental2
 
+ling:exec_info()		cbif_ling_execinfo0
+ling:memory(From,To)	cbif_ling_memory2
+ling:peek8(Addr)		cbif_ling_memb1
+ling:peek32(Addr)		cbif_ling_meml1
+
 lwip:stats()			cbif_stats0
 
 # bif_hash.c
