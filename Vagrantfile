@@ -6,18 +6,18 @@ VAGRANTFILE_API_VERSION = "2"
 $script = <<EOF
 set -xe
 export DEBIAN_FRONTEND=noninteractive
+sudo apt-get update
 
-if [ ! -x "$(which erl)" -o $(($(date +%s) - $(stat -c '%Z' /var/lib/apt/periodic/update-success-stamp))) -gt 7200 ]; then
-	sudo sh -c 'echo "deb http://packages.erlang-solutions.com/debian wheezy contrib" > /etc/apt/sources.list.d/erlang.list'
-	wget -c http://packages.erlang-solutions.com/debian/erlang_solutions.asc
-	sudo apt-key add erlang_solutions.asc
-	rm -f erlang_solutions.asc
-	sudo apt-get update
-	rm -f erlang_solutions.asc
-fi
-
-sudo apt-get install -y --force-yes erlang git autoconf gcc-arm-none-eabi make build-essential
+sudo apt-get install -y --force-yes git autoconf gcc-arm-none-eabi make build-essential
 sudo apt-get install -y xen-hypervisor-4.4-amd64 bridge-utils
+
+wget http://packages.erlang-solutions.com/site/esl/esl-erlang/FLAVOUR_1_general/esl-erlang_17.5-1~ubuntu~trusty_amd64.deb
+sudo dpkg -i esl-erlang_17.5-1~ubuntu~trusty_amd64.deb || true
+sudo apt-get install -f -y
+sudo dpkg -i esl-erlang_17.5-1~ubuntu~trusty_amd64.deb
+
+dpkg-divert --divert /etc/grub.d/08_linux_xen --rename /etc/grub.d/20_linux_xen 
+update-grub
 
 # create a workspace for local pushes
 sudo -u vagrant -i git init ling
@@ -30,6 +30,9 @@ cd \\$1; shift
 exec "\\$@"
 INLING
 chmod +x /usr/local/bin/indir
+
+# reboot for xen divert
+reboot
 EOF
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
