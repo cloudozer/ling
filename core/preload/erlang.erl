@@ -92,7 +92,7 @@
 
 -export([crc32/1,adler32/1]).
 
--export([nif_error/1]).
+-export([nif_error/1, nif_error/2]).
 
 %% Not sure what are these. Special handling in otp.tab hints that they may be
 %% widespead.
@@ -811,5 +811,8 @@ purge_module(Mod) ->
 
 nif_error(Error) ->
 	erlang:error({nifs_not_supported,Error}).
+
+nif_error(Error, Args) ->
+	erlang:error({nifs_not_supported, Error}, Args).
 
 %EOF
