@@ -198,11 +198,6 @@ erlang:phash(Term,Range)	cbif_phash2
 erlang:phash2(Term)			cbif_phash2_1
 erlang:phash2(Term,Range)	cbif_phash2_2
 
-erlang:md5(Data)				cbif_md5_1
-erlang:md5_init()				cbif_md5_init0
-erlang:md5_update(Ctx,IoData)	cbif_md5_update2
-erlang:md5_final(Ctx)			cbif_md5_final1
-
 erlang:crc32(Old,Data)				cbif_crc32_2
 erlang:crc32_combine(Fst,Sec,Sz)	cbif_crc32_combine3
 erlang:adler32(Old,Data)			cbif_adler32_2
@@ -387,21 +382,45 @@ maps:update(Key,Value,Map1)		cbif_update3
 maps:values(Map)				cbif_values1
 
 #bif_crypto.c
-crypto:md5(Data)				cbif_md5_1
-crypto:md5_init()				cbif_md5_init0
-crypto:md5_update(Ctx,IoData)	cbif_md5_update2
+crypto:md5(Data)			cbif_md5_1
+crypto:md5_init()			cbif_md5_init0
+crypto:md5_update(Ctx,Data)		cbif_md5_update2
 crypto:md5_final(Ctx)			cbif_md5_final1
-
-crypto:sha(Data)				cbif_sha1
-crypto:sha_init()				cbif_sha_init0
-crypto:sha_update(Ctx,Data)		cbif_sha_update2
-crypto:sha_final(Ctx)			cbif_sha_final1
-
 crypto:md5_mac_n(Key,Data,Size)		cbif_md5_mac_n3
-crypto:sha_mac_n(Key,Data,Size)		cbif_sha_mac_n3
+
+erlang:md5(Data)			cbif_md5_1
+erlang:md5_init()			cbif_md5_init0
+erlang:md5_update(Ctx,Data)		cbif_md5_update2
+erlang:md5_final(Ctx)			cbif_md5_final1
+
+crypto:sha(Data)			cbif_sha1_1
+crypto:sha_init()			cbif_sha1_init0
+crypto:sha_update(Ctx,Data)		cbif_sha1_update2
+crypto:sha_final(Ctx)			cbif_sha1_final1
+crypto:sha_mac_n(Key,Data,Size)		cbif_sha1_mac_n3
+
+crypto:sha224(Data)			cbif_sha224_1
+crypto:sha224_init()			cbif_sha224_init0
+crypto:sha224_update(Ctx,Data)		cbif_sha224_update2
+crypto:sha224_final(Ctx)		cbif_sha224_final1
 crypto:sha224_mac_n(Key,Data,Size)	cbif_sha224_mac_n3
+
+crypto:sha256(Data)			cbif_sha256_1
+crypto:sha256_init()			cbif_sha256_init0
+crypto:sha256_update(Ctx,Data)		cbif_sha256_update2
+crypto:sha256_final(Ctx)		cbif_sha256_final1
 crypto:sha256_mac_n(Key,Data,Size)	cbif_sha256_mac_n3
+
+crypto:sha384(Data)			cbif_sha384_1
+crypto:sha384_init()			cbif_sha384_init0
+crypto:sha384_update(Ctx,Data)		cbif_sha384_update2
+crypto:sha384_final(Ctx)		cbif_sha384_final1
 crypto:sha384_mac_n(Key,Data,Size)	cbif_sha384_mac_n3
+
+crypto:sha512(Data)			cbif_sha512_1
+crypto:sha512_init()			cbif_sha512_init0
+crypto:sha512_update(Ctx,Data)		cbif_sha512_update2
+crypto:sha512_final(Ctx)		cbif_sha512_final1
 crypto:sha512_mac_n(Key,Data,Size)	cbif_sha512_mac_n3
 
 crypto:aes_cbc_crypt(Key,IVec,Data,Dir)			cbif_aes_cbc_crypt4
